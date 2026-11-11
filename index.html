@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#15343B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="컬러헌터스">
+<title>컬러헌터스 · 울릉 색채수집단</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --bg:#F5F2EA; --card:#FFFDF8; --ink:#15343B; --ink2:#3E4A4C; --ink3:#6A7476; --line:#DAD5C8; --line2:#E9E4D8;
+  --accent:#1F6F63; --accent-ink:#FFFFFF; --soft:#E2EFEA;
+  --sea:#2C6E9B; --forest:#4D7A35; --flower:#B84A62;
+  --warn-bg:#FBF0DA; --warn-ink:#7A4A08; --bad-bg:#FBEFEF; --bad-ink:#A23E55; --ok-bg:#DCEFE8; --ok-ink:#14564C;
+  --font:'Noto Sans KR',system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink2);font-family:var(--font);font-size:18px;line-height:1.6;word-break:keep-all;overflow-wrap:break-word;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,p{margin:0}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;background:var(--ink);color:#F5F2EA;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.top b{font-size:17px;letter-spacing:-.01em}
+.top small{font-size:13px;color:#9DBAB5}
+.top a{color:#F5F2EA;font-size:15px;text-decoration:none;border:1px solid #3D5E64;border-radius:10px;padding:6px 12px}
+main{max-width:560px;margin:0 auto;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 56px);display:flex;flex-direction:column;gap:16px}
+main.wide{max-width:1180px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.between{justify-content:space-between}
+.h1{font-size:26px;line-height:1.3;font-weight:700;color:var(--ink)}
+.h2{font-size:21px;line-height:1.35;font-weight:700;color:var(--ink)}
+.h3{font-size:18px;font-weight:700;color:var(--ink)}
+.muted{color:var(--ink3)}
+.small{font-size:15px}
+.xs{font-size:13px}
+.eyebrow{font-size:14px;font-weight:700;color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:14px;border:2px solid var(--ink);background:var(--card);color:var(--ink);font-size:18px;font-weight:700;cursor:pointer;text-decoration:none}
+.btn.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.dark{background:var(--ink);border-color:var(--ink);color:#F5F2EA}
+.btn.light{border-color:var(--line);color:var(--ink2);font-weight:500}
+.btn.block{width:100%}
+.btn.sm{min-height:44px;font-size:16px;padding:0 14px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.link{background:none;border:0;padding:8px 4px;color:var(--ink3);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:16px}
+.choice{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;padding:14px 16px;border-radius:14px;border:2px solid var(--line);background:var(--card);cursor:pointer}
+.choice b{font-size:19px;color:var(--ink)}
+.choice span{font-size:15px;color:var(--ink3)}
+.choice[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
+.chip{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;border:2px solid var(--line);background:var(--card);cursor:pointer;font-size:16px}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#F5F2EA;font-weight:700}
+.rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ring{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;border-radius:16px;border:3px solid var(--line);background:var(--card);cursor:pointer}
+.ring i{width:46px;height:46px;border-radius:50%;border:8px solid currentColor;display:block}
+.ring b{font-size:20px}
+.ring span{font-size:13px;color:var(--ink3);text-align:center;line-height:1.35}
+.ring[aria-pressed="true"]{border-color:currentColor;background:var(--soft)}
+.progress{display:flex;gap:5px}
+.progress i{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.progress i.on{background:var(--accent)}
+.shot{width:100%;aspect-ratio:4/3;border-radius:14px;overflow:hidden;background:#EAE5D8;display:flex;align-items:center;justify-content:center;position:relative}
+.shot img{width:100%;height:100%;object-fit:cover;display:block}
+.shot .badge{position:absolute;left:10px;top:10px;background:rgba(21,52,59,.85);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700}
+.tips{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px;font-size:16px}
+.notice{padding:14px 16px;border-radius:14px;background:var(--warn-bg);color:var(--warn-ink);font-size:16px}
+.err{padding:14px 16px;border-radius:14px;background:var(--bad-bg);color:var(--bad-ink);font-size:16px}
+.ok{padding:14px 16px;border-radius:14px;background:var(--ok-bg);color:var(--ok-ink);font-size:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:700;color:var(--ink);font-size:18px}
+.field .hint{font-size:14px;color:var(--ink3)}
+.input{width:100%;min-height:54px;padding:10px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:18px}
+textarea.input{min-height:120px;line-height:1.55;resize:vertical}
+.input:focus{border-color:var(--accent);outline:none}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}
+.stat b{display:block;font-size:30px;line-height:1.2;color:var(--ink)}
+.stat span{font-size:14px;color:var(--ink3)}
+.tag{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:14px;font-weight:700;white-space:nowrap;background:#ECE8DD;color:var(--ink2)}
+.tag.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.tag.warn{background:var(--warn-bg);color:var(--warn-ink)}
+.tag.bad{background:var(--bad-bg);color:var(--bad-ink)}
+.rec{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:left;width:100%;cursor:pointer;color:var(--ink2)}
+.rec .th{width:76px;height:76px;border-radius:10px;background:#EAE5D8;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink3)}
+.rec .th img{width:100%;height:100%;object-fit:cover}
+.rec.held{border:2px solid #E3B65A;background:#FFF9EC}
+.map{height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+.check{display:flex;gap:12px;align-items:flex-start;padding:14px;border:2px solid var(--line);border-radius:14px;background:var(--card);cursor:pointer}
+.check input{width:26px;height:26px;margin:2px 0 0;flex:none;accent-color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-size:16px;z-index:50;max-width:92vw}
+.spinner{width:22px;height:22px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* 관리자 */
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.adm{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+@media(min-width:900px){.adm{grid-template-columns:360px minmax(0,1fr)}}
+.qlist{display:flex;flex-direction:column;gap:6px;max-height:75vh;overflow:auto}
+.qitem{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:12px;border:1px solid var(--line);background:var(--card);cursor:pointer;text-align:left;font-size:15px;color:var(--ink2)}
+.qitem[aria-current="true"]{border:2px solid var(--accent);background:var(--soft)}
+.qitem .th{width:56px;height:56px;border-radius:8px;background:#EAE5D8;overflow:hidden}
+.qitem .th img{width:100%;height:100%;object-fit:cover}
+.pics{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.pics figure{margin:0;display:flex;flex-direction:column;gap:4px}
+.pics .ph{background:#1d2427;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:14px}
+.pics img{width:100%;height:100%;object-fit:contain}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;color:var(--ink3);font-weight:500;font-size:13px;padding:8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line2);vertical-align:top}
+dl{margin:0;display:grid;grid-template-columns:90px minmax(0,1fr);gap:6px 12px;font-size:16px}
+dt{color:var(--ink3)}
+dd{margin:0}
+</style>
+</head>
+<body>
+<header class="top" id="top"><div><b>컬러헌터스</b> <small>울릉 색채수집단</small></div><span id="topright"></span></header>
+<main id="view"><div class="card"><p class="muted">불러오는 중…</p></div></main>
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
+
+/* ================= 설정 ================= */
+const SUPABASE_URL = 'https://wyzgzidtholzrokhvzrr.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_KhnJXKmHq3v51UaUkaPluA_XAOkBfK_';
+const EDITION = 'ulleung';
+const BUCKET = 'record-photos';
+const CONSENT_VERSION = 'ul-2026-11';
+const GAP_WARN_MIN = 5;
+const UL_CENTER = [37.505, 130.865];
+
+const CATS = [
+  {v:'나물·약초', ex:'명이, 부지깽이, 묵나물·장아찌'},
+  {v:'식물·꽃·열매', ex:'마가목 열매, 해안 들꽃'},
+  {v:'농작물·먹거리', ex:'늦호박, 호박엿'},
+  {v:'생업 재료', ex:'오징어 덕장, 어구'},
+  {v:'기억 카드', ex:'지금 볼 수 없는 것 — 사진 없이 이야기만'}
+];
+const RINGS = [
+  {v:'바다', c:'var(--sea)', ex:'바닷물·갯바위·해조류'},
+  {v:'숲', c:'var(--forest)', ex:'나물·약초·잎·이끼'},
+  {v:'꽃', c:'var(--flower)', ex:'꽃·열매·호박·먹거리'}
+];
+const STATUS = {pending:['확인 중',''], approved:['인정','ok'], held:['보완 요청','warn'], rejected:['반려','bad']};
+const REASONS = ['키링이 안 보이거나 작음','키링과 대상의 빛이 다름','흔들린 사진','두 사진의 자리·빛이 다름','울릉 이름·이야기가 부족함','위치가 없음','같은 대상이 이미 있음'];
+
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:false}});
+
+/* ================= 상태 ================= */
+const S = {
+  user:null, me:null /* {nickname, role, consent_at} */, edition:null, places:[],
+  records:[], thumbs:{}, queue:[], draft:null, busy:false,
+  adm:{filter:'pending', sel:null, list:[], authors:{}, invites:[], tab:'review', urls:{}, memo:'', reasons:[]}
+};
+const $ = s => document.querySelector(s);
+const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const fmt = iso => { if(!iso) return '—'; const d=new Date(iso); return `${d.getMonth()+1}월 ${d.getDate()}일 ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const tag = st => { const [t,c]=STATUS[st]||STATUS.pending; return `<span class="tag ${c}">${t}</span>`; };
+function toast(msg, ms=2600){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true, ms); }
+function deviceId(){ let d=localStorage.getItem('ch_device'); if(!d){ d=crypto.randomUUID(); localStorage.setItem('ch_device', d);} return d; }
+const inApp = /KAKAOTALK|NAVER\(|Instagram|FBAN|FBAV|Line\//i.test(navigator.userAgent);
+
+/* ================= 오프라인 대기열 (IndexedDB) ================= */
+const idb = (() => {
+  let dbp;
+  function db(){ if(!dbp) dbp=new Promise((ok,no)=>{ const r=indexedDB.open('colorhunters',1); r.onupgradeneeded=()=>r.result.createObjectStore('queue',{keyPath:'id'}); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error); }); return dbp; }
+  async function tx(mode, fn){ const d=await db(); return new Promise((ok,no)=>{ const t=d.transaction('queue',mode); const st=t.objectStore('queue'); const r=fn(st); t.oncomplete=()=>ok(r&&r.result); t.onerror=()=>no(t.error); }); }
+  return {
+    put: item => tx('readwrite', st => st.put(item)),
+    del: id => tx('readwrite', st => st.delete(id)),
+    all: () => tx('readonly', st => st.getAll())
+  };
+})();
+
+/* ================= 사진 처리 ================= */
+async function readExif(file){
+  const out = {taken:null, lat:null, lng:null, make:'', model:'', raw:null};
+  try{
+    const x = await window.exifr.parse(file, {tiff:true, exif:true, gps:true, ifd1:false, xmp:false, icc:false, iptc:false, jfif:false, ihdr:false});
+    if(x){
+      const dt = x.DateTimeOriginal || x.CreateDate || x.ModifyDate;
+      if(dt instanceof Date && !isNaN(dt)) out.taken = dt.toISOString();
+      if(typeof x.latitude==='number' && typeof x.longitude==='number' && !isNaN(x.latitude)){ out.lat=x.latitude; out.lng=x.longitude; }
+      out.make=x.Make||''; out.model=x.Model||'';
+      const keep=['DateTimeOriginal','OffsetTimeOriginal','Make','Model','LensModel','ExposureTime','FNumber','ISOSpeedRatings','ISO','WhiteBalance','ExposureBiasValue','Flash','ColorSpace','latitude','longitude','GPSAltitude','GPSHPositioningError','Software'];
+      const raw={}; keep.forEach(k=>{ if(x[k]!==undefined && x[k]!==null) raw[k]=x[k]; });
+      out.raw = JSON.parse(JSON.stringify(raw));
+    }
+  }catch(e){}
+  if(!out.taken && file.lastModified) out.taken = new Date(file.lastModified).toISOString();
+  return out;
+}
+async function shrink(file, max, q){
+  let bmp;
+  try{ bmp = await createImageBitmap(file, {imageOrientation:'from-image'}); }
+  catch(e){ bmp = await new Promise((ok,no)=>{ const im=new Image(); im.onload=()=>ok(im); im.onerror=no; im.src=URL.createObjectURL(file); }); }
+  const W = bmp.width||bmp.naturalWidth, H = bmp.height||bmp.naturalHeight;
+  const s = Math.min(1, max/Math.max(W,H));
+  const c = document.createElement('canvas'); c.width=Math.round(W*s); c.height=Math.round(H*s);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise(ok=>c.toBlob(ok,'image/jpeg',q));
+  return {blob, w:W, h:H};
+}
+async function takePhoto(file, which){
+  const exif = await readExif(file);
+  const {blob, w, h:ht} = await shrink(file, which===1?2048:1600, which===1?0.92:0.85);
+  return {blob, url:URL.createObjectURL(blob), exif, w, h:ht, bytes:file.size, type:file.type};
+}
+
+/* ================= 인증·초대 ================= */
+async function ensureSession(){
+  const {data:{session}} = await sb.auth.getSession();
+  if(session) { S.user = session.user; return session.user; }
+  const {data, error} = await sb.auth.signInAnonymously();
+  if(error) throw error;
+  S.user = data.user; return data.user;
+}
+async function redeem(token){
+  await ensureSession();
+  const {data, error} = await sb.rpc('redeem_invite', {p_token: token});
+  if(error) throw error;
+  localStorage.setItem('ch_invite', token);
+  S.me = data; localStorage.setItem('ch_me', JSON.stringify(data));
+  return data;
+}
+async function loadMe(){
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){
+    const tok = localStorage.getItem('ch_invite');
+    if(tok){ try{ await redeem(tok); return true; }catch(e){ return false; } }
+    return false;
+  }
+  S.user = session.user;
+  const {data:roles} = await sb.from('user_roles').select('role,edition').eq('user_id', S.user.id);
+  if(!roles || !roles.length){
+    const tok = localStorage.getItem('ch_invite');
+    if(tok){ try{ await redeem(tok); return true; }catch(e){ return false; } }
+    return false;
+  }
+  const cached = JSON.parse(localStorage.getItem('ch_me')||'null');
+  S.me = Object.assign({nickname:'', consent_at:null}, cached||{}, {role: roles[0].role});
+  return true;
+}
+
+/* ================= 데이터 ================= */
+async function loadEdition(){
+  const {data} = await sb.from('editions').select('*').eq('slug', EDITION).single();
+  S.edition = data; S.places = (data && data.places) || [];
+}
+async function loadMine(){
+  if(!S.user) return;
+  const {data, error} = await sb.from('records').select('*').eq('author', S.user.id).eq('edition', EDITION).order('created_at', {ascending:false});
+  if(!error) S.records = data||[];
+  S.queue = (await idb.all().catch(()=>[])) || [];
+  for(const r of S.records){ if(r.photo2_path && !S.thumbs[r.id]) signThumb(r); else if(r.photo1_path && !S.thumbs[r.id]) signThumb(r); }
+}
+async function signThumb(r){
+  const p = r.photo2_path || r.photo1_path; if(!p) return;
+  const r2 = await sb.storage.from(BUCKET).createSignedUrl(p, 3600).catch(()=>({}));
+  const url = r2 && r2.data && r2.data.signedUrl;
+  if(url){ S.thumbs[r.id]=url; const im=document.querySelector(`[data-th="${r.id}"]`); if(im) im.innerHTML=`<img src="${h(url)}" alt="">`; }
+}
+
+/* ================= 업로드 ================= */
+async function uploadBlob(path, blob){
+  const {error} = await sb.storage.from(BUCKET).upload(path, blob, {contentType:'image/jpeg', upsert:false});
+  if(error && !/exists|Duplicate/i.test(error.message||'')) throw error;
+}
+async function processQueue(){
+  if(processQueue.running) return; processQueue.running = true;
+  try{
+    const items = await idb.all();
+    for(const it of items){
+      try{
+        await ensureSession();
+        const uid = S.user.id; const row = Object.assign({}, it.row);
+        if(it.p1){ row.photo1_path = `${uid}/${it.id}-1.jpg`; await uploadBlob(row.photo1_path, it.p1); }
+        if(it.p2){ row.photo2_path = `${uid}/${it.id}-2.jpg`; await uploadBlob(row.photo2_path, it.p2); }
+        if(it.mode==='edit'){
+          const {error} = await sb.from('records').update(row).eq('id', it.id);
+          if(error) throw error;
+        } else {
+          const {error} = await sb.from('records').insert(Object.assign({id: it.id}, row));
+          if(error && error.code !== '23505') throw error;
+        }
+        await idb.del(it.id);
+      }catch(e){ console.warn('queue item failed', e); it.lastError = String(e.message||e); await idb.put(it).catch(()=>{}); }
+    }
+  } finally { processQueue.running = false; }
+  await loadMine(); if(route()==='home' || route()==='') render();
+}
+window.addEventListener('online', ()=>processQueue());
+
+/* ================= 화면 ================= */
+function route(){ return (location.hash||'#/').replace(/^#\/?/, ''); }
+function go(r){ location.hash = '#/'+r; }
+window.addEventListener('hashchange', ()=>{ render(); window.scrollTo(0,0); });
+
+function topRight(){
+  const r = route();
+  let s='';
+  if(S.me && S.me.role==='admin') s = r.startsWith('admin') ? `<a href="#/">기록 화면</a>` : `<a href="#/admin">관리</a>`;
+  $('#topright').innerHTML = s;
+  $('main').className = r.startsWith('admin') ? 'wide' : '';
+}
+
+async function render(){
+  topRight();
+  const r = route();
+  const v = $('#view');
+  if(r.startsWith('i/')) return; // 처리 중
+  if(!S.me){ v.innerHTML = vNoInvite(); return; }
+  if(!S.me.consent_at && S.me.role!=='admin'){ v.innerHTML = vConsent(); bindConsent(); return; }
+  if(r==='new'){ if(!S.draft) S.draft = newDraft(); v.innerHTML = vDraft(); bindDraft(); return; }
+  if(r.startsWith('edit/')){ const id=r.slice(5); if(!S.draft || S.draft.id!==id){ const rec=S.records.find(x=>x.id===id); if(!rec){ go(''); return; } S.draft = draftFrom(rec); } v.innerHTML=vDraft(); bindDraft(); return; }
+  if(r.startsWith('rec/')){ v.innerHTML = vRecord(r.slice(4)); return; }
+  if(r==='done'){ v.innerHTML = vDone(); return; }
+  if(r.startsWith('admin')){ if(S.me.role!=='admin'){ go(''); return; } await renderAdmin(); return; }
+  v.innerHTML = vHome();
+}
+
+function vNoInvite(){
+  return `<div class="card stack">
+    <p class="eyebrow">울릉 색채수집단</p>
+    <h1 class="h1">초대 링크로 들어와 주세요</h1>
+    <p>이 기록 웹은 설명회에서 받은 <b>개인 초대 링크</b>로 열어야 합니다. 단톡방에 올라온 내 링크를 눌러 주세요.</p>
+    <p class="muted small">링크를 잃어버렸으면 단톡방에 이름을 남겨 주세요. 다시 보내 드립니다.</p>
+  </div>`;
+}
+
+function vConsent(){
+  return `<div class="stack" style="gap:14px">
+    <div class="stack" style="gap:4px"><p class="eyebrow">처음 한 번만</p><h1 class="h1">${h(S.me.nickname||'')}님, 반갑습니다</h1>
+    <p>기록을 시작하기 전에 세 가지를 확인해 주세요.</p></div>
+    <label class="check"><input type="checkbox" id="c1"><span><b>사진과 이야기의 이용</b><br><span class="small muted">찍은 사진의 저작권은 나에게 있고, 「색채기반 울릉자원도감」·지도·연구·전시에 쓰는 것을 허락합니다. 도감에는 기여자로 이름(별칭)이 실립니다. 울릉 주민과 사업자는 지역 상품과 안내물에 무료로 쓸 수 있고, 울릉 밖 업체의 상업적 이용은 별도 협의와 내 동의를 거칩니다.</span></span></label>
+    <label class="check"><input type="checkbox" id="c2"><span><b>개인정보</b><br><span class="small muted">이름과 연락처는 활동비 지급과 연락에만 쓰고, 공개할 때는 별칭만 씁니다.</span></span></label>
+    <label class="check"><input type="checkbox" id="c3"><span><b>위치 정보</b><br><span class="small muted">기록한 장소를 남깁니다. 나물 나는 곳·텃밭·사유지는 공개 지도에서 정확한 위치를 흐리게 표시합니다.</span></span></label>
+    <p class="small muted">빼고 싶은 기록은 언제든 비공개로 바꿀 수 있습니다.</p>
+    <button class="btn main block" id="agree" disabled>모두 동의하고 시작하기</button>
+  </div>`;
+}
+function bindConsent(){
+  const boxes=['#c1','#c2','#c3'].map(s=>$(s)); const b=$('#agree');
+  boxes.forEach(x=>x.addEventListener('change',()=>{ b.disabled=!boxes.every(y=>y.checked); }));
+  b.addEventListener('click', async ()=>{
+    b.disabled=true;
+    const {error} = await sb.rpc('record_consent', {p_version: CONSENT_VERSION});
+    if(error){ toast('저장하지 못했어요. 인터넷 연결을 확인해 주세요.'); b.disabled=false; return; }
+    S.me.consent_at = new Date().toISOString(); localStorage.setItem('ch_me', JSON.stringify(S.me));
+    render();
+  });
+}
+
+function counts(){
+  const c={total:S.records.length, approved:0, pending:0, held:0, rejected:0};
+  S.records.forEach(r=>{ c[r.status]=(c[r.status]||0)+1; });
+  return c;
+}
+function vHome(){
+  const c=counts(); const q=S.queue.length;
+  const held=S.records.filter(r=>r.status==='held');
+  return `
+  <div class="stack" style="gap:4px"><p class="eyebrow">${h(S.edition?S.edition.name:'울릉 색채수집단')}</p>
+    <h1 class="h1">${h(S.me.nickname||'')}님의 기록</h1></div>
+  ${inApp?`<div class="notice small">카카오톡 안에서 열었어요. 사진 올리기가 잘 안 되면 오른쪽 아래 <b>⋯ → 다른 브라우저로 열기</b>를 눌러 주세요. 기록은 그대로 이어집니다.</div>`:''}
+  <div class="stats">
+    <div class="stat"><b>${c.total}</b><span>올린 기록</span></div>
+    <div class="stat"><b>${c.approved}</b><span>인정</span></div>
+    <div class="stat"><b>${c.pending + (q)}</b><span>확인 중</span></div>
+  </div>
+  ${q?`<div class="notice"><b>보내지 못한 기록 ${q}건</b>이 휴대폰에 남아 있어요. 인터넷이 잡히는 곳에서 아래 버튼을 눌러 주세요.<div style="margin-top:10px"><button class="btn dark sm" id="retry">지금 보내기</button></div></div>`:''}
+  ${held.length?`<div class="notice"><b>보완 요청 ${held.length}건</b> — 아래 노란 칸을 눌러 고쳐서 다시 내 주세요.</div>`:''}
+  <button class="btn main block" style="min-height:64px;font-size:20px" id="start">＋ 기록 남기기</button>
+  <details class="card"><summary class="h3" style="cursor:pointer">무엇을 기록하나요?</summary>
+    <div class="stack" style="margin-top:10px">${CATS.map(x=>`<div><b>${h(x.v)}</b> <span class="muted small">— ${h(x.ex)}</span></div>`).join('')}
+    <p class="small muted">같은 자원이라도 장소나 때(말리기 전과 후)가 다르면 각각 한 건입니다. 보호종이나 남의 밭은 들어가지 말고 보이는 곳에서만 찍어 주세요.</p></div>
+  </details>
+  <div class="stack">
+    <p class="h3">내 기록</p>
+    ${S.queue.map(it=>`<div class="rec"><div class="th">${it.thumb?`<img src="${h(it.thumb)}" alt="">`:'대기'}</div><div class="stack" style="gap:2px"><b>${h(it.row.local_name||'(이름 없음)')}</b><span class="small muted">${h(it.row.category||'')} · 휴대폰에 저장됨</span><span><span class="tag warn">보내기 대기</span></span></div></div>`).join('')}
+    ${S.records.length? S.records.map(r=>`<button class="rec ${r.status==='held'?'held':''}" data-open="${h(r.id)}">
+        <div class="th" data-th="${h(r.id)}">${S.thumbs[r.id]?`<img src="${h(S.thumbs[r.id])}" alt="">`:(r.is_memory?'기억 카드':'')}</div>
+        <div class="stack" style="gap:2px;min-width:0"><b>${h(r.local_name||r.color_name)}</b>
+        <span class="small muted">${h(r.category)} · ${h(r.area||r.place_name||'')} · ${fmt(r.created_at)}</span>
+        <span>${tag(r.status)}${r.status==='held'&&r.review_memo?` <span class="small" style="color:var(--warn-ink)">${h(r.review_memo)}</span>`:''}</span></div></button>`).join('')
+      : (S.queue.length?'':`<div class="card muted">아직 올린 기록이 없어요. 위 버튼으로 첫 기록을 남겨 보세요.</div>`)}
+  </div>
+  <p class="xs muted" style="text-align:center">문의: 색채수집단 단톡방 · 컬러랩제주</p>`;
+}
+document.addEventListener('click', e=>{
+  const t=e.target.closest('[data-open]'); if(t){ const id=t.dataset.open; const rec=S.records.find(x=>x.id===id); if(rec && rec.status==='held'){ S.draft=draftFrom(rec); go('edit/'+id);} else go('rec/'+id); return; }
+  if(e.target.id==='start'){ S.draft=newDraft(); go('new'); }
+  if(e.target.id==='retry'){ e.target.disabled=true; e.target.textContent='보내는 중…'; processQueue().then(()=>toast(S.queue.length?'아직 보내지 못한 기록이 있어요':'모두 보냈어요')); }
+});
+
+function vRecord(id){
+  const r=S.records.find(x=>x.id===id); if(!r) return `<div class="card">기록을 찾을 수 없어요. <a href="#/">돌아가기</a></div>`;
+  setTimeout(async ()=>{ for(const k of ['photo1_path','photo2_path']){ if(!r[k]) continue; const {data}=await sb.storage.from(BUCKET).createSignedUrl(r[k],3600); const el=document.querySelector(`[data-ph="${k}"]`); if(el&&data) el.innerHTML=`<img src="${h(data.signedUrl)}" alt="">`; } },0);
+  return `<button class="link" onclick="history.back()">← 내 기록</button>
+  <div class="card stack">
+    <div class="row between"><h1 class="h2">${h(r.local_name||r.color_name)}</h1>${tag(r.status)}</div>
+    ${r.status==='held'?`<div class="notice">보완 요청: ${h(r.review_memo||'')} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
+    ${!r.is_memory?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div><div class="shot" data-ph="photo2_path"><span class="badge">② 키링 없이</span></div></div>`:'<p class="tag">기억 카드</p>'}
+    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'—')}</dd><dt>동네</dt><dd>${h(r.area||r.place_name||'—')}</dd><dt>쓰임</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${fmt(r.photo1_taken_at||r.taken_at||r.created_at)}</dd></dl>
+    <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">끄면 이 기록은 공개하지 않아요.</span></span></label>
+  </div>`;
+}
+document.addEventListener('change', async e=>{
+  if(e.target.id==='share' && route().startsWith('rec/')){
+    const id=route().slice(4); const val=e.target.checked;
+    const {error}=await sb.from('records').update({share:val}).eq('id', id);
+    if(error){ toast('바꾸지 못했어요'); e.target.checked=!val; return; }
+    const r=S.records.find(x=>x.id===id); if(r) r.share=val; toast(val?'공개로 바꿨어요':'비공개로 바꿨어요');
+  }
+});
+
+/* ---------- 기록 남기기 ---------- */
+function newDraft(){ return {id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', local_name:'', usage:'', story:'', share:true, error:''}; }
+function draftFrom(r){ return {id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||'', p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], error:''}; }
+const isMemory = d => d.category==='기억 카드';
+function steps(d){ return isMemory(d) ? ['what','where','words','check'] : ['what','ring','p1','p2','where','words','check']; }
+
+function vDraft(){
+  const d=S.draft; const st=steps(d); const k=st[d.step-1];
+  const prog=`<div class="progress">${st.map((_,i)=>`<i class="${i<d.step?'on':''}"></i>`).join('')}</div>`;
+  const head=`<div class="row between"><button class="link" id="back">← ${d.step>1?'이전':'그만두기'}</button><span class="small muted">${d.step} / ${st.length}</span></div>${prog}
+    ${d.mode==='edit'?`<div class="notice small"><b>보완 요청</b> ${h(d.memo||'')} ${h((d.reasons||[]).join(', '))}</div>`:''}`;
+  let body='', foot='';
+  if(k==='what'){
+    body=`<h1 class="h2">무엇을 기록하나요?</h1><div class="stack">${CATS.map(x=>`<button class="choice" data-cat="${h(x.v)}" aria-pressed="${d.category===x.v}"><b>${h(x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`;
+    foot=`<button class="btn main block" id="next" ${d.category?'':'disabled'}>다음</button>`;
+  } else if(k==='ring'){
+    body=`<h1 class="h2">어떤 키링을 대고 찍나요?</h1><p class="muted small">찍을 대상과 비슷한 색 조각이 많은 키링을 고르세요.</p>
+      <div class="rings">${RINGS.map(x=>`<button class="ring" style="color:${x.c}" data-ring="${x.v}" aria-pressed="${d.keyring===x.v}"><i></i><b>${x.v}</b><span>${x.ex}</span></button>`).join('')}</div>`;
+    foot=`<button class="btn main block" id="next" ${d.keyring?'':'disabled'}>다음</button>`;
+  } else if(k==='p1'){
+    body=`<h1 class="h2">① 키링을 대고 한 장</h1>
+      <div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진"><span class="badge">① 키링과 함께</span>`:(d.oldP1?'<span class="muted small">이미 올린 사진이 있어요 (바꾸려면 다시 찍기)</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>
+      <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="1" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="1" data-cap="0">사진첩에서 고르기</button></div>
+      <div class="card"><ul class="tips"><li>키링을 대상 <b>바로 옆, 같은 높이</b>에</li><li>키링과 대상이 <b>같은 빛</b>을 받게 (반은 그늘, 반은 햇빛 ✕)</li><li>키링이 화면의 5분의 1 이상 보이게</li><li>손가락이 색 조각을 가리지 않게</li><li>플래시·필터는 끄고</li></ul></div>`;
+    foot=`<button class="btn main block" id="next" ${(d.p1||d.oldP1)?'':'disabled'}>다음</button>`;
+  } else if(k==='p2'){
+    const gap = (d.p1&&d.p2&&d.p1.exif.taken&&d.p2.exif.taken) ? Math.abs(new Date(d.p1.exif.taken)-new Date(d.p2.exif.taken))/60000 : null;
+    body=`<h1 class="h2">② 키링만 빼고 한 장</h1><p class="muted small">같은 자리, 같은 빛에서 바로 이어서 찍어요. 자원의 모양이 잘 보이게 가까이.</p>
+      <div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="키링 없이 찍은 사진"><span class="badge">② 키링 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>
+      <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="2" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="2" data-cap="0">사진첩에서 고르기</button></div>
+      ${gap!=null && gap>GAP_WARN_MIN?`<div class="notice">두 사진을 찍은 시간이 <b>${Math.round(gap)}분</b> 차이 나요. 빛이 바뀌었을 수 있으니, 가능하면 같은 자리에서 다시 이어서 찍어 주세요.</div>`:''}`;
+    foot=`<button class="btn main block" id="next" ${(d.p2||d.oldP2)?'':'disabled'}>다음</button>`;
+  } else if(k==='where'){
+    const opts=S.places.map(p=>`<option value="${h(p.name)}" ${d.area===p.name?'selected':''}>${h(p.name)}</option>`).join('');
+    body=`<h1 class="h2">어디에서 찍었나요?</h1>
+      <div class="field"><label for="area">동네</label><select id="area" class="input"><option value="">동네 고르기</option>${opts}<option value="그 밖의 곳" ${d.area==='그 밖의 곳'?'selected':''}>그 밖의 곳</option></select></div>
+      <div class="stack"><div class="row between"><b>지도 위치</b><button class="btn light sm" id="gps">지금 위치 쓰기</button></div>
+      <p class="small muted" id="locmsg">${locMsg(d)}</p>
+      <div class="map" id="map"></div>
+      <p class="xs muted">지도를 눌러 핀을 옮길 수 있어요. 인터넷이 약해 지도가 안 보이면 동네만 골라도 됩니다.</p></div>`;
+    foot=`<button class="btn main block" id="next" ${d.area?'':'disabled'}>다음</button>`;
+  } else if(k==='words'){
+    body=`<h1 class="h2">울릉 이름과 이야기</h1>
+      <div class="field"><label for="ln">울릉에서는 뭐라고 부르나요? <span style="color:var(--bad-ink)">*</span></label><input id="ln" class="input" maxlength="40" value="${h(d.local_name)}" placeholder="예: 명이, 부지깽이"></div>
+      <div class="field"><label for="us">어디에 쓰나요?</label><input id="us" class="input" maxlength="500" value="${h(d.usage)}" placeholder="예: 봄에 따서 장아찌로 담가요"></div>
+      <div class="field"><label for="sto">들려줄 이야기 ${isMemory(d)?'<span style="color:var(--bad-ink)">*</span>':''}</label><textarea id="sto" class="input" maxlength="1000" placeholder="언제 따서 어떻게 먹는지, 얽힌 기억 무엇이든 한두 문장이면 돼요">${h(d.story)}</textarea>
+      <span class="hint">🎤 키보드의 마이크 버튼을 누르고 말하면 글로 바뀌어요.</span></div>`;
+    foot=`<button class="btn main block" id="next" ${wordsOk(d)?'':'disabled'}>다음</button>`;
+  } else if(k==='check'){
+    body=`<h1 class="h2">이렇게 올릴게요</h1>
+      ${!isMemory(d)?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">①</span></div><div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">②</span></div></div>`:''}
+      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(d.keyring)}</dd>`:''}<dt>동네</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd><dt>울릉 이름</dt><dd>${h(d.local_name)}</dd><dt>쓰임</dt><dd>${h(d.usage||'—')}</dd><dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
+      <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">정확한 채취지는 흐리게 표시해요.</span></span></label>
+      ${d.error?`<div class="err">${h(d.error)}</div>`:''}`;
+    foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?'<span class="spinner"></span> 올리는 중…':(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
+  }
+  return `${head}<div class="stack" style="gap:14px">${body}</div><div class="stack">${foot}</div>
+    <input type="file" id="fcam" accept="image/*" capture="environment" hidden><input type="file" id="fgal" accept="image/*" hidden>`;
+}
+function wordsOk(d){ return d.local_name.trim().length>0 && (!isMemory(d) || d.story.trim().length>0); }
+function locMsg(d){
+  if(d.lat==null) return '아직 지도 위치가 없어요.';
+  const src={exif:'사진에 담긴 위치', device:'휴대폰 현재 위치', map:'지도에서 고른 위치'}[d.locMethod]||'위치';
+  return `${src}를 썼어요${d.acc?` (오차 약 ${Math.round(d.acc)}m)`:''}.`;
+}
+
+let pickTarget=1, mapObj=null, marker=null;
+function bindDraft(){
+  const d=S.draft; const st=steps(d); const k=st[d.step-1];
+  $('#back').onclick=()=>{ if(d.step>1){ d.step--; render(); } else { if(confirm('이 기록을 그만둘까요? 입력한 내용은 사라져요.')){ S.draft=null; go(''); } } };
+  document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ d.category=b.dataset.cat; render(); });
+  document.querySelectorAll('[data-ring]').forEach(b=>b.onclick=()=>{ d.keyring=b.dataset.ring; render(); });
+  document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ pickTarget=+b.dataset.pick; (b.dataset.cap==='1'?$('#fcam'):$('#fgal')).click(); });
+  ['#fcam','#fgal'].forEach(s=>{ const inp=$(s); inp.onchange=async ()=>{
+    const f=inp.files&&inp.files[0]; inp.value=''; if(!f) return;
+    toast('사진을 준비하고 있어요…', 1500);
+    try{
+      const p=await takePhoto(f, pickTarget);
+      p.fromCamera = (s==='#fcam');
+      if(pickTarget===1){ d.p1=p; if(p.exif.lat!=null && d.locMethod!=='map'){ d.lat=p.exif.lat; d.lng=p.exif.lng; d.locMethod='exif'; d.acc=null; } }
+      else d.p2=p;
+      if(p.fromCamera && d.lat==null) tryGps(true);
+      render();
+    }catch(e){ toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요.'); }
+  }; });
+  const nx=$('#next'); if(nx) nx.onclick=()=>{ d.step++; render(); window.scrollTo(0,0); };
+  if(k==='where'){
+    $('#area').onchange=e=>{ d.area=e.target.value; $('#next').disabled=!d.area; };
+    $('#gps').onclick=()=>tryGps(false);
+    initMap();
+  }
+  if(k==='words'){
+    const upd=()=>{ d.local_name=$('#ln').value; d.usage=$('#us').value; d.story=$('#sto').value; $('#next').disabled=!wordsOk(d); };
+    ['#ln','#us','#sto'].forEach(s=>$(s).addEventListener('input', upd));
+  }
+  if(k==='check'){
+    $('#dshare').onchange=e=>{ d.share=e.target.checked; };
+    $('#submit').onclick=submitDraft;
+  }
+}
+function tryGps(silent){
+  const d=S.draft; if(!navigator.geolocation){ if(!silent) toast('이 휴대폰에서는 위치를 쓸 수 없어요'); return; }
+  if(!silent) toast('위치를 찾고 있어요…', 2000);
+  navigator.geolocation.getCurrentPosition(pos=>{
+    d.lat=pos.coords.latitude; d.lng=pos.coords.longitude; d.acc=pos.coords.accuracy; d.locMethod='device';
+    if(route()==='new'||route().startsWith('edit/')){ const m=$('#locmsg'); if(m) m.textContent=locMsg(d); if(mapObj){ placeMarker(); mapObj.setView([d.lat,d.lng],15);} }
+  }, err=>{ if(!silent) toast(err.code===1?'위치 사용이 허용되지 않았어요. 지도를 눌러 직접 표시해 주세요.':'위치를 찾지 못했어요. 지도를 눌러 표시해 주세요.', 3500); }, {enableHighAccuracy:true, timeout:12000, maximumAge:60000});
+}
+function initMap(){
+  const d=S.draft; if(!window.L){ $('#map').innerHTML='<p class="small muted" style="padding:12px">지도를 불러오지 못했어요. 동네만 골라 주세요.</p>'; return; }
+  if(mapObj){ mapObj.remove(); mapObj=null; marker=null; }
+  mapObj=L.map('map',{zoomControl:true, attributionControl:true}).setView(d.lat!=null?[d.lat,d.lng]:UL_CENTER, d.lat!=null?15:12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(mapObj);
+  if(d.lat!=null) placeMarker();
+  mapObj.on('click', e=>{ d.lat=e.latlng.lat; d.lng=e.latlng.lng; d.acc=null; d.locMethod='map'; placeMarker(); const m=$('#locmsg'); if(m) m.textContent=locMsg(d); });
+}
+function placeMarker(){ const d=S.draft; if(!mapObj) return; if(marker) marker.setLatLng([d.lat,d.lng]); else marker=L.marker([d.lat,d.lng]).addTo(mapObj); }
+
+async function submitDraft(){
+  const d=S.draft; S.busy=true; d.error=''; render();
+  const placeId=(S.places.find(p=>p.name===d.area)||{}).id||'';
+  const row={
+    edition:EDITION, category:d.category, keyring:isMemory(d)?'':d.keyring, is_memory:isMemory(d),
+    local_name:d.local_name.trim(), color_name:(d.local_name.trim()||d.category).slice(0,30), usage:d.usage.trim(), story:d.story.trim(),
+    area:d.area, place_id:placeId, place_name:d.area,
+    lat:d.lat, lng:d.lng, gps_accuracy_m:d.acc, loc_method:d.locMethod||'none',
+    share:!!d.share, user_agent:navigator.userAgent.slice(0,200), device_id:deviceId()
+  };
+  if(d.p1){ row.photo1_taken_at=d.p1.exif.taken; row.exif1=d.p1.exif.raw; row.taken_at=d.p1.exif.taken; }
+  if(d.p2){ row.photo2_taken_at=d.p2.exif.taken; row.exif2=d.p2.exif.raw; }
+  if(!row.taken_at && d.mode==='new') row.taken_at=new Date().toISOString();
+  const item={id:d.id, mode:d.mode, row, p1:d.p1?d.p1.blob:null, p2:d.p2?d.p2.blob:null, created:Date.now(), thumb:null};
+  try{ await idb.put(item); }catch(e){}
+  try{
+    await ensureSession();
+    const uid=S.user.id;
+    if(item.p1){ row.photo1_path=`${uid}/${d.id}-1.jpg`; await uploadBlob(row.photo1_path, item.p1); }
+    if(item.p2){ row.photo2_path=`${uid}/${d.id}-2.jpg`; await uploadBlob(row.photo2_path, item.p2); }
+    if(d.mode==='edit'){
+      if(!item.p1 && d.oldP1) delete row.photo1_path;
+      const {error}=await sb.from('records').update(row).eq('id', d.id); if(error) throw error;
+    } else {
+      const {error}=await sb.from('records').insert(Object.assign({id:d.id}, row)); if(error && error.code!=='23505') throw error;
+    }
+    await idb.del(d.id).catch(()=>{});
+    S.busy=false; S.lastDone={queued:false, mode:d.mode}; S.draft=null;
+    await loadMine(); go('done');
+  }catch(e){
+    console.warn(e);
+    S.busy=false;
+    const offline = !navigator.onLine || /fetch|network|Failed/i.test(String(e.message||e));
+    if(offline){ S.lastDone={queued:true, mode:d.mode}; S.draft=null; S.queue=await idb.all().catch(()=>[]); go('done'); }
+    else { d.error='올리지 못했어요: '+(e.message||e)+' — 잠시 뒤 다시 눌러 주세요. 입력한 내용은 그대로 있어요.'; render(); }
+  }
+}
+function vDone(){
+  const q=S.lastDone&&S.lastDone.queued;
+  return `<div class="card stack" style="gap:14px;text-align:center;padding:28px 18px">
+    <p style="font-size:44px;line-height:1">${q?'📥':'✅'}</p>
+    <h1 class="h2">${q?'휴대폰에 저장했어요':'제출했어요'}</h1>
+    <p>${q?'인터넷이 잡히면 첫 화면에서 «지금 보내기»를 눌러 주세요. 저절로 보내지기도 해요.':'컬러랩제주가 확인한 뒤 인정하거나, 모자란 부분의 보완을 부탁드려요.'}</p>
+    <button class="btn main block" id="start">＋ 하나 더 기록하기</button>
+    <a class="btn light block" href="#/">내 기록 보기</a></div>`;
+}
+
+/* ================= 관리자 ================= */
+async function renderAdmin(){
+  const A=S.adm; const v=$('#view');
+  v.innerHTML=`<div class="row between"><h1 class="h2">울릉 색채수집단 관리</h1>
+    <div class="tabs">${[['review','검수'],['people','참여자·링크'],['export','내보내기']].map(([k,t])=>`<button class="chip" data-tab="${k}" aria-pressed="${A.tab===k}">${t}</button>`).join('')}</div></div>
+    <div id="admbody"><div class="card muted">불러오는 중…</div></div>`;
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ A.tab=b.dataset.tab; renderAdmin(); });
+  if(A.tab==='review') await admReview();
+  else if(A.tab==='people') await admPeople();
+  else await admExport();
+}
+async function admLoad(){
+  const A=S.adm;
+  const {data, error}=await sb.from('records').select('*').eq('edition', EDITION).order('created_at',{ascending:true});
+  if(error){ $('#admbody').innerHTML=`<div class="err">불러오지 못했어요: ${h(error.message)}</div>`; return false; }
+  A.list=data||[];
+  const {data:au}=await sb.rpc('record_authors',{p_edition:EDITION});
+  A.authors={}; (au||[]).forEach(x=>A.authors[x.user_id]=x.nickname);
+  return true;
+}
+async function admReview(){
+  const A=S.adm; if(!(await admLoad())) return;
+  const c={pending:0,held:0,approved:0,rejected:0}; A.list.forEach(r=>c[r.status]++);
+  const list=A.list.filter(r=>A.filter==='all'||r.status===A.filter);
+  if(!A.sel || !list.find(r=>r.id===A.sel)) A.sel=list[0]?list[0].id:null;
+  const cur=A.list.find(r=>r.id===A.sel);
+  $('#admbody').innerHTML=`<div class="tabs" style="margin-bottom:12px">${[['pending','확인 중'],['held','보완 요청'],['approved','인정'],['rejected','반려'],['all','전체']].map(([k,t])=>`<button class="chip" data-f="${k}" aria-pressed="${A.filter===k}">${t} ${k==='all'?A.list.length:c[k]}</button>`).join('')}</div>
+   <div class="adm"><div class="qlist">${list.length?list.map(r=>`<button class="qitem" data-sel="${h(r.id)}" aria-current="${r.id===A.sel}"><div class="th" data-qt="${h(r.id)}"></div><div style="min-width:0"><b>${h(r.local_name||r.color_name)}</b><br><span class="xs muted">${h(A.authors[r.author]||'?')} · ${h(r.category)} · ${h(r.area||'')}</span></div><div>${tag(r.status)}<br><span class="xs muted">${fmt(r.created_at)}</span></div></button>`).join(''):'<div class="card muted">해당하는 기록이 없어요.</div>'}</div>
+   <div>${cur?admDetail(cur):''}</div></div>`;
+  document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ A.filter=b.dataset.f; A.sel=null; admReview(); });
+  document.querySelectorAll('[data-sel]').forEach(b=>b.onclick=()=>{ A.sel=b.dataset.sel; A.memo=''; A.reasons=[]; admReview(); });
+  list.slice(0,80).forEach(async r=>{ const p=r.photo2_path||r.photo1_path; if(!p) return; const u=await admUrl(p); const el=document.querySelector(`[data-qt="${r.id}"]`); if(el&&u) el.innerHTML=`<img src="${h(u)}" alt="">`; });
+  if(cur) bindDetail(cur);
+}
+async function admUrl(p){ const A=S.adm; if(A.urls[p]) return A.urls[p]; const {data}=await sb.storage.from(BUCKET).createSignedUrl(p, 3600); if(data){ A.urls[p]=data.signedUrl; return data.signedUrl;} return null; }
+function admDetail(r){
+  const A=S.adm;
+  const gap=(r.photo1_taken_at&&r.photo2_taken_at)?Math.round(Math.abs(new Date(r.photo1_taken_at)-new Date(r.photo2_taken_at))/60000):null;
+  const ex=r.exif1||{};
+  return `<div class="card stack" style="gap:14px">
+    <div class="row between"><div><h2 class="h2">${h(r.local_name||r.color_name)}</h2><p class="small muted">${h(A.authors[r.author]||'?')} · ${fmt(r.created_at)}${r.resubmitted_at?' · 보완 후 다시 냄':''}</p></div>${tag(r.status)}</div>
+    ${r.is_memory?'<p><span class="tag">기억 카드 — 사진 없음</span></p>':`<div class="pics"><figure><div class="ph" data-big="${h(r.photo1_path||'')}">불러오는 중</div><figcaption class="xs muted">① 키링과 함께 · ${h(r.keyring||'')} 키링 · ${fmt(r.photo1_taken_at)}</figcaption></figure><figure><div class="ph" data-big="${h(r.photo2_path||'')}">${r.photo2_path?'불러오는 중':'없음'}</div><figcaption class="xs muted">② 키링 없이 · ${fmt(r.photo2_taken_at)}</figcaption></figure></div>`}
+    ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
+    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>동네</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
+      <dt>쓰임</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
+      <dt>기기</dt><dd class="small">${h([ex.Make,ex.Model].filter(Boolean).join(' ')||'—')}</dd><dt>공개</dt><dd>${r.share?'동의':'비공개'}</dd></dl>
+    ${r.review_memo?`<div class="small muted">이전 검수 메모: ${h(r.review_memo)} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
+    <div class="stack"><b>보완 사유</b><div class="row">${REASONS.map(x=>`<button class="chip" data-rs="${h(x)}" aria-pressed="${A.reasons.includes(x)}">${h(x)}</button>`).join('')}</div>
+      <textarea id="memo" class="input" style="min-height:70px" placeholder="주민에게 보일 메모 (예: 키링이 그늘에 있어요. 둘 다 그늘에서 다시 찍어 주세요)">${h(A.memo)}</textarea></div>
+    <div class="row"><button class="btn main" data-set="approved">인정</button><button class="btn" data-set="held" style="border-color:#C98A1B;color:#7A4A08">보완 요청</button><button class="btn light" data-set="rejected">반려</button><button class="btn light" data-set="pending">확인 중으로</button></div>
+  </div>`;
+}
+function bindDetail(r){
+  const A=S.adm;
+  document.querySelectorAll('[data-big]').forEach(async el=>{ const p=el.dataset.big; if(!p) return; const u=await admUrl(p); if(u) el.innerHTML=`<a href="${h(u)}" target="_blank" rel="noopener" style="display:block;width:100%;height:100%"><img src="${h(u)}" alt=""></a>`; });
+  document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const x=b.dataset.rs; A.memo=$('#memo').value; A.reasons=A.reasons.includes(x)?A.reasons.filter(y=>y!==x):[...A.reasons,x]; b.setAttribute('aria-pressed', A.reasons.includes(x)); });
+  $('#memo').oninput=e=>{ A.memo=e.target.value; };
+  document.querySelectorAll('[data-set]').forEach(b=>b.onclick=async ()=>{
+    const st=b.dataset.set;
+    if(st==='held' && !A.memo.trim() && !A.reasons.length){ toast('보완 요청은 사유나 메모를 남겨 주세요'); return; }
+    b.disabled=true;
+    const {error}=await sb.from('records').update({status:st, review_memo:st==='approved'?'':A.memo.trim(), review_reasons:st==='approved'?[]:A.reasons}).eq('id', r.id);
+    if(error){ toast('저장 실패: '+error.message); b.disabled=false; return; }
+    toast({approved:'인정했어요',held:'보완 요청을 보냈어요',rejected:'반려했어요',pending:'확인 중으로 돌렸어요'}[st]);
+    A.memo=''; A.reasons=[];
+    const list=A.list.filter(x=>A.filter==='all'||x.status===A.filter); const i=list.findIndex(x=>x.id===r.id);
+    A.sel = (list[i+1]||list[i-1]||{}).id || null;
+    admReview();
+  });
+}
+async function admPeople(){
+  const {data, error}=await sb.rpc('admin_invites');
+  if(error){ $('#admbody').innerHTML=`<div class="err">${h(error.message)}</div>`; return; }
+  const base=location.origin+location.pathname;
+  const rows=(data||[]).filter(x=>x.edition===EDITION||x.role==='admin');
+  $('#admbody').innerHTML=`<div class="card stack"><p class="h3">새 참여자 링크 만들기</p>
+    <div class="row" style="align-items:flex-end">
+      <div class="field" style="flex:1 1 140px"><label for="n1" style="font-size:15px">별칭(공개)</label><input id="n1" class="input" placeholder="예: 도동 김선생"></div>
+      <div class="field" style="flex:1 1 120px"><label for="n2" style="font-size:15px">실명(비공개)</label><input id="n2" class="input"></div>
+      <div class="field" style="flex:1 1 140px"><label for="n3" style="font-size:15px">연락처(비공개)</label><input id="n3" class="input" inputmode="tel"></div>
+      <div class="field" style="flex:0 1 130px"><label for="n4" style="font-size:15px">역할</label><select id="n4" class="input"><option value="surveyor">수집단</option><option value="reviewer">검수자</option></select></div>
+      <button class="btn main" id="mk">만들기</button></div></div>
+    <div class="card" style="overflow-x:auto"><table><tr><th>별칭</th><th>실명·연락처</th><th>역할</th><th>접속</th><th>올림</th><th>인정</th><th>확인 중</th><th>보완</th><th>예상 활동비</th><th>개인 링크</th></tr>
+    ${rows.map(x=>{ const link=`${base}#/i/${x.token}`; const pay = x.role==='surveyor' ? (100000+Number(x.approved)*20000).toLocaleString('ko-KR')+'원' : '—';
+      return `<tr><td><b>${h(x.nickname)}</b></td><td class="small">${h(x.real_name)}<br>${h(x.phone)}</td><td class="small">${{surveyor:'수집단',reviewer:'검수자',admin:'관리자'}[x.role]}</td><td class="small">${x.redeemed_at?fmt(x.redeemed_at):'<span class="muted">아직</span>'}${x.consent_at?'<br>동의 완료':''}</td><td>${x.total}</td><td><b>${x.approved}</b></td><td>${x.pending}</td><td>${x.held}</td><td class="small">${pay}</td><td><button class="btn light sm" data-copy="${h(link)}">링크 복사</button></td></tr>`; }).join('')}
+    </table><p class="xs muted" style="margin-top:8px">예상 활동비 = 기본 100,000원 + 인정 건수 × 20,000원 (1인 최대 건수 상한은 아직 반영하지 않음). 관리자 링크는 남에게 보내지 마세요.</p></div>`;
+  $('#mk').onclick=async ()=>{
+    const nick=$('#n1').value.trim(); if(!nick){ toast('별칭을 적어 주세요'); return; }
+    const {data:tok, error:e2}=await sb.rpc('admin_create_invite',{p_edition:EDITION, p_role:$('#n4').value, p_nickname:nick, p_real_name:$('#n2').value.trim(), p_phone:$('#n3').value.trim(), p_memo:''});
+    if(e2){ toast('만들지 못했어요: '+e2.message); return; }
+    await navigator.clipboard.writeText(`${base}#/i/${tok}`).catch(()=>{});
+    toast('만들었어요. 링크를 복사했어요'); admPeople();
+  };
+  document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async ()=>{ try{ await navigator.clipboard.writeText(b.dataset.copy); toast('복사했어요'); }catch(e){ prompt('이 링크를 복사하세요', b.dataset.copy); } });
+}
+async function admExport(){
+  if(!(await admLoad())) return;
+  const A=S.adm;
+  $('#admbody').innerHTML=`<div class="card stack"><p>기록 ${A.list.length}건을 엑셀에서 열 수 있는 CSV로 내려받습니다. 사진은 경로만 들어갑니다.</p>
+    <div class="row"><button class="btn main" id="csvall">전체 CSV</button><button class="btn" id="csvok">인정 기록만 CSV</button></div></div>`;
+  const dl=(rows, name)=>{
+    const cols=['id','status','nickname','category','local_name','usage','story','keyring','area','lat','lng','loc_method','photo1_taken_at','photo2_taken_at','created_at','share','review_memo','photo1_path','photo2_path'];
+    const esc=v=>{ const s=v==null?'':String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+    const csv='﻿'+cols.join(',')+'\n'+rows.map(r=>cols.map(c=>esc(c==='nickname'?A.authors[r.author]:r[c])).join(',')).join('\n');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=name; a.click();
+  };
+  $('#csvall').onclick=()=>dl(A.list, `ulleung-records-${new Date().toISOString().slice(0,10)}.csv`);
+  $('#csvok').onclick=()=>dl(A.list.filter(r=>r.status==='approved'), `ulleung-approved-${new Date().toISOString().slice(0,10)}.csv`);
+}
+
+/* ================= 시작 ================= */
+async function boot(){
+  try{
+    const r=route();
+    await loadEdition().catch(()=>{});
+    if(r.startsWith('i/')){
+      $('#view').innerHTML='<div class="card"><p>초대 링크를 확인하고 있어요…</p></div>';
+      try{ await redeem(r.slice(2).trim()); history.replaceState(null,'', location.pathname+'#/'); }
+      catch(e){ $('#view').innerHTML=`<div class="card stack"><h1 class="h2">링크를 열지 못했어요</h1><p>링크가 잘못됐거나 인터넷이 약해요. 다시 눌러 보고, 계속 안 되면 단톡방에 알려 주세요.</p><p class="xs muted">${h(e.message||e)}</p></div>`; return; }
+    } else {
+      await loadMe();
+    }
+    if(S.me){ await loadMine(); processQueue(); }
+    render();
+  }catch(e){
+    console.error(e);
+    $('#view').innerHTML=`<div class="card stack"><h1 class="h2">불러오지 못했어요</h1><p>인터넷 연결을 확인하고 새로고침해 주세요.</p><p class="xs muted">${h(e.message||e)}</p></div>`;
+  }
+}
+boot();
+</script>
+</body>
+</html>
