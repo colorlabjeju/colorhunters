@@ -117,6 +117,23 @@ textarea.input{min-height:120px;line-height:1.55;resize:vertical}
 table{width:100%;border-collapse:collapse;font-size:15px}
 th{text-align:left;color:var(--ink3);font-weight:500;font-size:13px;padding:8px;border-bottom:1px solid var(--line)}
 td{padding:8px;border-bottom:1px solid var(--line2);vertical-align:top}
+.hero{display:flex;flex-direction:column;gap:10px;padding:8px 2px 4px}
+.projs{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@media(min-width:900px){.projs{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}}
+.proj{display:grid;grid-template-columns:42% minmax(0,1fr);min-height:240px;padding:0;border:0;background:#E2E7E7;text-align:left;cursor:pointer;font:inherit;color:inherit;overflow:hidden}
+.proj:hover .pmore,.proj:focus-visible .pmore{border-color:var(--ink)}
+.pimg{position:relative;overflow:hidden;background:var(--birch)}
+.pimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.swatch{position:absolute;inset:0;display:flex}
+.swatch i{display:block;height:100%}
+.pbody{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:22px 20px}
+.ptag{display:inline-block;padding:5px 10px;border:1px solid #C3CCCF;background:#F3F6F6;color:var(--accent-text);font-size:13px;line-height:1.3}
+.ptitle{font-size:24px;line-height:1.3;font-weight:700;color:var(--ink);margin-top:6px}
+.pdesc{font-size:15px;line-height:1.6;color:var(--ink3)}
+.pmore{margin-top:auto;padding:12px 0 6px;font-size:15px;font-weight:500;color:var(--ink);border-bottom:1px solid #9FAEB3}
+@media(max-width:480px){.proj{grid-template-columns:34% minmax(0,1fr);min-height:220px}.pbody{padding:18px 14px;gap:8px}.ptag{font-size:12px;padding:4px 8px;white-space:nowrap}.ptitle{font-size:22px}}
+.aboutimg{position:relative;height:150px;overflow:hidden;background:var(--birch)}
+.aboutimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .gal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .gcard{display:flex;flex-direction:column;padding:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);text-align:left;cursor:pointer;font:inherit;color:inherit}
 .gimg{aspect-ratio:1;background:#DCE2E5;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px}
@@ -326,7 +343,7 @@ function topRight(){
   $('#topright').innerHTML = s;
   $('#topsub').textContent = S.me ? '울릉 색채수집단' : '';
   document.title = S.me ? '컬러헌터스 · 울릉 색채수집단' : '컬러헌터스 · 오늘, 이 자리의 색을 찾다';
-  $('main').className = r.startsWith('admin') ? 'wide' : '';
+  $('main').className = (r.startsWith('admin') || (!S.me && (r==='' ))) ? 'wide' : '';
 }
 
 async function render(){
@@ -347,37 +364,48 @@ async function render(){
 
 /* ---------- 첫 화면 (로그인 전) ---------- */
 const LANDING = [
-  {key:'ulleung', name:'울릉 헤리티지', sub:'울릉 색채수집단', state:'참여 중', tone:'ok', color:'#86915D',
-   text:'나물·약초, 열매, 먹거리, 생업 재료. 울릉 사람들이 함께 섬의 자원을 색으로 모아 「색채기반 울릉자원도감」을 만듭니다.',
-   note:'울릉 색채수집단 주민이 참여하고 있어요. 모인 색은 도감과 자원 지도로 공개됩니다.'},
-  {key:'camellia', name:'카멜리아 동백', sub:'동백 에디션', state:'11월 22일 시작', tone:'warn', color:'#224653',
+  {key:'camellia', title:'제주 동백의 색', tag:'시즌 프로젝트 · 11.22 시작', sub:'카멜리아 동백', state:'11월 22일 시작', tone:'warn',
+   desc:'겨울 정원에서 발견한 색을 함께 기록해요.',
    text:'카멜리아힐에서 시작해 제주 동백 여행지를 돌며, 그날 그 자리의 동백 색을 키링과 함께 찾아 남깁니다.',
-   note:'11월 22일에 열려요. 동백 키링은 카멜리아힐과 뚜띠콜로리에서 받을 수 있어요.'},
-  {key:'jejublues', name:'제주블루스', sub:'제주 바다색 미션', state:'준비 중', tone:'', color:'#A9B8BE',
+   sw:[['#7E1A2C',3],['#A8283D',4],['#C9455A',3],['#E08A93',2],['#F1D3D2',2],['#2F4A2B',3],['#5E7146',2]]},
+  {key:'ulleung', title:'울릉의 생활색', tag:'조사단 프로젝트 · 진행 중', sub:'울릉 헤리티지', state:'진행 중', tone:'ok',
+   desc:'주민의 시선으로 모으는 우리 지역의 색과 이야기.',
+   text:'나물·약초, 열매, 먹거리, 생업 재료. 울릉 사람들이 함께 섬의 자원을 색으로 모아 「색채기반 울릉자원도감」을 만듭니다.',
+   sw:[['#2E4A33',3],['#4F6B3E',3],['#86915D',3],['#B9AE7E',2],['#D9C9A0',2],['#2B4B55',3],['#6F8C95',2]]},
+  {key:'jejublues', title:'제주블루스', tag:'상시 프로젝트 · 준비 중', sub:'제주 바다색 미션', state:'준비 중', tone:'',
+   desc:'걸으며 만나는 제주 바다의 푸른 색을 모아요.',
    text:'제주 해안을 걸으며 오늘의 바다색을 기록합니다. 제주블루스 키링 하나로 언제든 참여하는 상시 미션입니다.',
-   note:'곧 열려요. 제주블루스 키링 출시와 함께 시작합니다.'}
+   sw:[['#173E5A',3],['#1F5F82',3],['#2F86A6',3],['#6FB3C8',2],['#A9D3DC',2],['#D8ECEF',2],['#4A5A55',2]]},
+  {key:'tradition', title:'한국의 전통색', tag:'아카이브 프로젝트 · 준비 중', sub:'한옥 컬러헌팅', state:'준비 중', tone:'',
+   desc:'한옥과 옛 공간에 깃든 우리 색을 찾아요.',
+   text:'기와, 나무, 흙벽, 창호지, 단청. 한옥과 전통 공간을 천천히 걸으며 오래된 색을 찾아 기록합니다. 안동 수졸당에서 시작합니다.',
+   sw:[['#2C2B29',2],['#5B4A3A',3],['#8C6A4A',3],['#C7A27A',2],['#ECE4D3',3],['#B23A2E',2],['#1F5A7A',2],['#D9A62E',1]]}
 ];
+// 사진이 생기면 img/프로젝트키.jpg 로 넣고 여기에 경로를 적는다. 없으면 색띠 이미지를 보여 준다.
+const LANDING_IMG = {};
+function projImage(x){
+  if(LANDING_IMG[x.key]) return `<img src="${LANDING_IMG[x.key]}" alt="${h(x.title)}">`;
+  return `<div class="swatch" aria-hidden="true">${x.sw.map(([c,w])=>`<i style="background:${c};flex:${w}"></i>`).join('')}</div>`;
+}
 function vNoInvite(){
   return `
-  <section class="stack" style="gap:10px;padding:8px 2px 4px">
-    <div class="rings" aria-hidden="true" style="grid-template-columns:repeat(3,28px);gap:6px">${LANDING.map(x=>`<i style="display:block;width:28px;height:28px;border-radius:50%;border:6px solid ${x.color}"></i>`).join('')}</div>
+  <section class="hero">
     <p class="eyebrow">COLOR HUNTERS</p>
-    <h1 class="h1" style="font-size:30px">오늘, 이 자리의 색을 찾다</h1>
+    <h1 class="h1" style="font-size:32px">오늘, 이 자리의 색을 찾다</h1>
     <p>컬러보정키링을 대고 찍으면, 그날 그 자리의 색이 기록이 됩니다. 여러 사람의 기록이 모여 지역의 색이 쌓입니다.</p>
   </section>
-  <p class="h3" style="margin-top:6px">지금의 활동</p>
-  ${LANDING.map(x=>`
-    <button class="card stack" data-land="${x.key}" style="gap:8px;text-align:left;cursor:pointer;border-left:8px solid ${x.color};width:100%;font:inherit;color:inherit">
-      <div class="row between"><span class="h2">${x.name}</span><span class="tag ${x.tone}">${x.state}</span></div>
-      <p class="small muted">${x.sub}</p>
-      <p class="small">${x.text}</p>
-      <p class="small" style="color:var(--accent-text);font-weight:700">자세히 보기 →</p>
-    </button>`).join('')}
-  <div class="card stack" style="gap:6px">
-    <p class="h3">함께 모은 색</p>
-    <p class="small muted">기록이 검수를 거쳐 쌓이면 활동별 색 지도와 팔레트를 여기서 볼 수 있어요.</p>
-  </div>
-  <p class="xs muted" style="text-align:center;margin-top:8px">컬러헌터스는 컬러랩제주의 시민참여 색채 아카이브입니다.<br><a href="https://colorhunting.org" target="_blank" rel="noopener">colorhunting.org</a></p>`;
+  <div class="row between" style="margin-top:8px"><p class="h3">프로젝트</p></div>
+  <div class="projs">${LANDING.map(x=>`
+    <button class="proj" data-land="${x.key}" aria-label="${h(x.title)} 살펴보기">
+      <div class="pimg">${projImage(x)}</div>
+      <div class="pbody">
+        <span class="ptag">${h(x.tag)}</span>
+        <h2 class="ptitle">${h(x.title)}</h2>
+        <p class="pdesc">${h(x.desc)}</p>
+        <span class="pmore">프로젝트 살펴보기 ↗</span>
+      </div>
+    </button>`).join('')}</div>
+  <p class="xs muted" style="text-align:center;margin-top:12px">컬러헌터스는 컬러랩제주의 시민참여 색채 아카이브입니다. <a href="https://colorhunting.org" target="_blank" rel="noopener">colorhunting.org</a></p>`;
 }
 document.addEventListener('click', e=>{
   const b=e.target.closest('[data-land]'); if(!b) return;
@@ -392,9 +420,10 @@ async function loadAllEditions(){
 }
 function aboutShell(x, inner){
   return `<button class="link" id="aboutback" style="align-self:flex-start">← 컬러헌터스</button>
-  <section class="stack" style="gap:8px;border-left:8px solid ${x.color};padding:4px 0 4px 16px">
-    <div class="row between"><p class="eyebrow">${h(x.sub)}</p><span class="tag ${x.tone}">${h(x.state)}</span></div>
-    <h1 class="h1">${h(x.name)}</h1>
+  <div class="aboutimg">${projImage(x)}</div>
+  <section class="stack" style="gap:8px">
+    <span class="ptag" style="align-self:flex-start">${h(x.tag)}</span>
+    <h1 class="h1">${h(x.title)}</h1>
     <p>${h(x.text)}</p>
   </section>${galleryShell(x.key)}${inner}`;
 }
@@ -423,6 +452,14 @@ async function vAbout(key){
       ${places.length?`<dt>동백 여행지</dt><dd>${places.map(h).join(' · ')}</dd>`:''}</dl></div>
     ${STEPS}
     <div class="notice">11월 22일에 열려요. 그날부터 이 페이지에서 바로 참여할 수 있습니다.</div>`);
+  }
+  if(key==='tradition'){
+    return aboutShell(x, `
+    <div class="card stack" style="gap:10px"><p class="h3">무엇을 찾나요</p>
+      <dl><dt>지붕</dt><dd>기와, 처마, 서까래</dd><dt>벽과 문</dt><dd>흙벽, 회벽, 창호지, 문살</dd><dt>나무</dt><dd>기둥, 마루, 오래된 나뭇결</dd><dt>장식</dt><dd>단청, 장석, 생활 도구</dd></dl></div>
+    ${STEPS}
+    <div class="card stack" style="gap:6px"><p class="h3">시작하는 곳</p><p class="small">안동 수졸당에서 시작해 한옥이 있는 지역으로 넓혀 갑니다.</p></div>
+    <div class="notice">곧 열려요. 한옥 컬러헌팅 프로그램과 함께 시작합니다.</div>`);
   }
   return aboutShell(x, `
     <div class="card stack" style="gap:10px"><p class="h3">미션</p>
