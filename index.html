@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#15343B">
+<meta name="theme-color" content="#224653">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="컬러헌터스">
 <title>컬러헌터스</title>
@@ -15,10 +15,12 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{
-  --bg:#F5F2EA; --card:#FFFDF8; --ink:#15343B; --ink2:#3E4A4C; --ink3:#6A7476; --line:#DAD5C8; --line2:#E9E4D8;
-  --accent:#1F6F63; --accent-ink:#FFFFFF; --soft:#E2EFEA;
+  /* 팔레트: Silver Birch #D5DCDF · Blackthorn Berry #224653 · Willow Leaf #86915D */
+  --birch:#D5DCDF; --berry:#224653; --willow:#86915D;
+  --bg:#E8EDEF; --card:#F8FAFA; --ink:#224653; --ink2:#2F4A55; --ink3:#5B6E77; --line:#C9D2D6; --line2:#DDE3E6;
+  --accent:#6B7548; --accent-ink:#FFFFFF; --accent-text:#5E6840; --soft:#E9ECDD;
   --sea:#2C6E9B; --forest:#4D7A35; --flower:#B84A62;
-  --warn-bg:#FBF0DA; --warn-ink:#7A4A08; --bad-bg:#FBEFEF; --bad-ink:#A23E55; --ok-bg:#DCEFE8; --ok-ink:#14564C;
+  --warn-bg:#F6EED8; --warn-ink:#6E4A0C; --bad-bg:#F6E9EA; --bad-ink:#9C3A4E; --ok-bg:#E9ECDD; --ok-ink:#4F5A35;
   --font:'Noto Sans KR',system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 }
 *{box-sizing:border-box}
@@ -26,12 +28,12 @@ html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink2);font-family:var(--font);font-size:18px;line-height:1.6;word-break:keep-all;overflow-wrap:break-word;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3,p{margin:0}
-a{color:var(--accent)}
+a{color:var(--accent-text)}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.top{position:sticky;top:0;z-index:20;background:var(--ink);color:#F5F2EA;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.top{position:sticky;top:0;z-index:20;background:var(--berry);color:#F8FAFA;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .top b{font-size:17px;letter-spacing:-.01em}
-.top small{font-size:13px;color:#9DBAB5}
-.top a{color:#F5F2EA;font-size:15px;text-decoration:none;border:1px solid #3D5E64;border-radius:10px;padding:6px 12px}
+.top small{font-size:13px;color:#B9C6CB}
+.top a{color:#F8FAFA;font-size:15px;text-decoration:none;border:1px solid #4A6B77;border-radius:10px;padding:6px 12px}
 main{max-width:560px;margin:0 auto;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 56px);display:flex;flex-direction:column;gap:16px}
 main.wide{max-width:1180px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
@@ -44,10 +46,10 @@ main.wide{max-width:1180px}
 .muted{color:var(--ink3)}
 .small{font-size:15px}
 .xs{font-size:13px}
-.eyebrow{font-size:14px;font-weight:700;color:var(--accent)}
+.eyebrow{font-size:14px;font-weight:700;color:var(--accent-text);letter-spacing:.02em}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:14px;border:2px solid var(--ink);background:var(--card);color:var(--ink);font-size:18px;font-weight:700;cursor:pointer;text-decoration:none}
 .btn.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn.dark{background:var(--ink);border-color:var(--ink);color:#F5F2EA}
+.btn.dark{background:var(--berry);border-color:var(--berry);color:#F8FAFA}
 .btn.light{border-color:var(--line);color:var(--ink2);font-weight:500}
 .btn.block{width:100%}
 .btn.sm{min-height:44px;font-size:16px;padding:0 14px}
@@ -58,7 +60,7 @@ main.wide{max-width:1180px}
 .choice span{font-size:15px;color:var(--ink3)}
 .choice[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
 .chip{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;border:2px solid var(--line);background:var(--card);cursor:pointer;font-size:16px}
-.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#F5F2EA;font-weight:700}
+.chip[aria-pressed="true"]{border-color:var(--berry);background:var(--berry);color:#F8FAFA;font-weight:700}
 .rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .ring{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;border-radius:16px;border:3px solid var(--line);background:var(--card);cursor:pointer}
 .ring i{width:46px;height:46px;border-radius:50%;border:8px solid currentColor;display:block}
@@ -67,10 +69,10 @@ main.wide{max-width:1180px}
 .ring[aria-pressed="true"]{border-color:currentColor;background:var(--soft)}
 .progress{display:flex;gap:5px}
 .progress i{flex:1;height:6px;border-radius:3px;background:var(--line)}
-.progress i.on{background:var(--accent)}
-.shot{width:100%;aspect-ratio:4/3;border-radius:14px;overflow:hidden;background:#EAE5D8;display:flex;align-items:center;justify-content:center;position:relative}
+.progress i.on{background:var(--willow)}
+.shot{width:100%;aspect-ratio:4/3;border-radius:14px;overflow:hidden;background:#DCE2E5;display:flex;align-items:center;justify-content:center;position:relative}
 .shot img{width:100%;height:100%;object-fit:cover;display:block}
-.shot .badge{position:absolute;left:10px;top:10px;background:rgba(21,52,59,.85);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700}
+.shot .badge{position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700}
 .tips{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px;font-size:16px}
 .notice{padding:14px 16px;border-radius:14px;background:var(--warn-bg);color:var(--warn-ink);font-size:16px}
 .err{padding:14px 16px;border-radius:14px;background:var(--bad-bg);color:var(--bad-ink);font-size:16px}
@@ -85,14 +87,14 @@ textarea.input{min-height:120px;line-height:1.55;resize:vertical}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}
 .stat b{display:block;font-size:30px;line-height:1.2;color:var(--ink)}
 .stat span{font-size:14px;color:var(--ink3)}
-.tag{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:14px;font-weight:700;white-space:nowrap;background:#ECE8DD;color:var(--ink2)}
+.tag{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:14px;font-weight:700;white-space:nowrap;background:var(--birch);color:var(--ink2)}
 .tag.ok{background:var(--ok-bg);color:var(--ok-ink)}
 .tag.warn{background:var(--warn-bg);color:var(--warn-ink)}
 .tag.bad{background:var(--bad-bg);color:var(--bad-ink)}
 .rec{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:left;width:100%;cursor:pointer;color:var(--ink2)}
-.rec .th{width:76px;height:76px;border-radius:10px;background:#EAE5D8;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink3)}
+.rec .th{width:76px;height:76px;border-radius:10px;background:#DCE2E5;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink3)}
 .rec .th img{width:100%;height:100%;object-fit:cover}
-.rec.held{border:2px solid #E3B65A;background:#FFF9EC}
+.rec.held{border:2px solid #D9B25E;background:#FBF6E8}
 .map{height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
 .check{display:flex;gap:12px;align-items:flex-start;padding:14px;border:2px solid var(--line);border-radius:14px;background:var(--card);cursor:pointer}
 .check input{width:26px;height:26px;margin:2px 0 0;flex:none;accent-color:var(--accent)}
@@ -106,11 +108,11 @@ textarea.input{min-height:120px;line-height:1.55;resize:vertical}
 .qlist{display:flex;flex-direction:column;gap:6px;max-height:75vh;overflow:auto}
 .qitem{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:12px;border:1px solid var(--line);background:var(--card);cursor:pointer;text-align:left;font-size:15px;color:var(--ink2)}
 .qitem[aria-current="true"]{border:2px solid var(--accent);background:var(--soft)}
-.qitem .th{width:56px;height:56px;border-radius:8px;background:#EAE5D8;overflow:hidden}
+.qitem .th{width:56px;height:56px;border-radius:8px;background:#DCE2E5;overflow:hidden}
 .qitem .th img{width:100%;height:100%;object-fit:cover}
 .pics{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .pics figure{margin:0;display:flex;flex-direction:column;gap:4px}
-.pics .ph{background:#1d2427;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:14px}
+.pics .ph{background:#1B3640;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:14px}
 .pics img{width:100%;height:100%;object-fit:contain}
 table{width:100%;border-collapse:collapse;font-size:15px}
 th{text-align:left;color:var(--ink3);font-weight:500;font-size:13px;padding:8px;border-bottom:1px solid var(--line)}
@@ -334,13 +336,13 @@ async function render(){
 
 /* ---------- 첫 화면 (로그인 전) ---------- */
 const LANDING = [
-  {key:'ulleung', name:'울릉 헤리티지', sub:'울릉 색채수집단', state:'참여 중', tone:'ok', color:'#4D7A35',
+  {key:'ulleung', name:'울릉 헤리티지', sub:'울릉 색채수집단', state:'참여 중', tone:'ok', color:'#86915D',
    text:'나물·약초, 열매, 먹거리, 생업 재료. 울릉 사람들이 함께 섬의 자원을 색으로 모아 「색채기반 울릉자원도감」을 만듭니다.',
    note:'울릉 색채수집단 주민이 참여하고 있어요. 모인 색은 도감과 자원 지도로 공개됩니다.'},
-  {key:'camellia', name:'카멜리아 동백', sub:'동백 에디션', state:'11월 22일 시작', tone:'warn', color:'#B84A62',
+  {key:'camellia', name:'카멜리아 동백', sub:'동백 에디션', state:'11월 22일 시작', tone:'warn', color:'#224653',
    text:'카멜리아힐에서 시작해 제주 동백 여행지를 돌며, 그날 그 자리의 동백 색을 키링과 함께 찾아 남깁니다.',
    note:'11월 22일에 열려요. 동백 키링은 카멜리아힐과 뚜띠콜로리에서 받을 수 있어요.'},
-  {key:'jejublues', name:'제주블루스', sub:'제주 바다색 미션', state:'준비 중', tone:'', color:'#2C6E9B',
+  {key:'jejublues', name:'제주블루스', sub:'제주 바다색 미션', state:'준비 중', tone:'', color:'#A9B8BE',
    text:'제주 해안을 걸으며 오늘의 바다색을 기록합니다. 제주블루스 키링 하나로 언제든 참여하는 상시 미션입니다.',
    note:'곧 열려요. 제주블루스 키링 출시와 함께 시작합니다.'}
 ];
