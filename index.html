@@ -117,6 +117,16 @@ textarea.input{min-height:120px;line-height:1.55;resize:vertical}
 table{width:100%;border-collapse:collapse;font-size:15px}
 th{text-align:left;color:var(--ink3);font-weight:500;font-size:13px;padding:8px;border-bottom:1px solid var(--line)}
 td{padding:8px;border-bottom:1px solid var(--line2);vertical-align:top}
+.gal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gcard{display:flex;flex-direction:column;padding:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);text-align:left;cursor:pointer;font:inherit;color:inherit}
+.gimg{aspect-ratio:1;background:#DCE2E5;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px}
+.gimg img{width:100%;height:100%;object-fit:cover;display:block}
+.gtxt{display:flex;flex-direction:column;gap:2px;padding:10px 12px}
+.gtxt b{color:var(--ink);font-size:16px}
+.gtxt span{color:var(--ink3);font-size:13px}
+.sheet{position:fixed;inset:0;z-index:60;background:rgba(20,40,48,.55);display:flex;align-items:flex-end;justify-content:center}
+.sheet-in{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:14px 18px calc(env(safe-area-inset-bottom,0px) + 22px);display:flex;flex-direction:column;gap:12px}
+@media(min-width:700px){.sheet{align-items:center}.sheet-in{border-radius:20px}}
 dl{margin:0;display:grid;grid-template-columns:90px minmax(0,1fr);gap:6px 12px;font-size:16px}
 dt{color:var(--ink3)}
 dd{margin:0}
@@ -324,6 +334,7 @@ async function render(){
   const r = route();
   const v = $('#view');
   if(r.startsWith('i/')) return; // 처리 중
+  if(r.startsWith('about/')){ v.innerHTML = await vAbout(r.slice(6)); return; }
   if(!S.me){ v.innerHTML = vNoInvite(); return; }
   if(!S.me.consent_at && S.me.role!=='admin'){ v.innerHTML = vConsent(); bindConsent(); return; }
   if(r==='new'){ if(!S.draft) S.draft = newDraft(); v.innerHTML = vDraft(); bindDraft(); return; }
@@ -360,7 +371,7 @@ function vNoInvite(){
       <div class="row between"><span class="h2">${x.name}</span><span class="tag ${x.tone}">${x.state}</span></div>
       <p class="small muted">${x.sub}</p>
       <p class="small">${x.text}</p>
-      <p class="small" data-landnote="${x.key}" hidden style="color:var(--ink);background:var(--soft);border-radius:10px;padding:10px 12px">${x.note}</p>
+      <p class="small" style="color:var(--accent-text);font-weight:700">자세히 보기 →</p>
     </button>`).join('')}
   <div class="card stack" style="gap:6px">
     <p class="h3">함께 모은 색</p>
@@ -370,8 +381,100 @@ function vNoInvite(){
 }
 document.addEventListener('click', e=>{
   const b=e.target.closest('[data-land]'); if(!b) return;
-  const n=document.querySelector(`[data-landnote="${b.dataset.land}"]`); if(n) n.hidden=!n.hidden;
+  go('about/'+b.dataset.land);
 });
+
+/* ---------- 활동 소개 페이지 (로그인 없이) ---------- */
+async function loadAllEditions(){
+  if(S.allEd) return S.allEd;
+  const {data} = await sb.from('editions').select('slug,name,partner,period,intro,tool,tool_where,places,status');
+  S.allEd = {}; (data||[]).forEach(e=>S.allEd[e.slug]=e); return S.allEd;
+}
+function aboutShell(x, inner){
+  return `<button class="link" id="aboutback" style="align-self:flex-start">← 컬러헌터스</button>
+  <section class="stack" style="gap:8px;border-left:8px solid ${x.color};padding:4px 0 4px 16px">
+    <div class="row between"><p class="eyebrow">${h(x.sub)}</p><span class="tag ${x.tone}">${h(x.state)}</span></div>
+    <h1 class="h1">${h(x.name)}</h1>
+    <p>${h(x.text)}</p>
+  </section>${galleryShell(x.key)}${inner}`;
+}
+const STEPS = `<div class="card stack" style="gap:10px"><p class="h3">이렇게 기록해요</p>
+  <ol class="tips" style="gap:8px"><li><b>키링을 대고 한 장</b> — 대상 바로 옆, 같은 빛 아래에서</li><li><b>키링을 빼고 한 장</b> — 같은 자리에서 바로 이어서</li><li><b>장소와 시간</b> — 휴대폰 위치로 자동 기록</li><li><b>이름과 이야기</b> — 그 자리에서 본 것, 한두 문장</li></ol>
+  <p class="small muted">키링의 색 조각은 원래 색값을 알고 있는 기준색입니다. 함께 찍으면 빛과 휴대폰이 바꾼 색을 되돌려 대상의 색을 숫자로 남길 수 있어요.</p></div>`;
+async function vAbout(key){
+  const x = LANDING.find(l=>l.key===key); if(!x) return vNoInvite();
+  if(key==='ulleung'){
+    return aboutShell(x, `
+    <div class="card stack" style="gap:10px"><p class="h3">함께 만드는 것</p>
+      <dl><dt>도감</dt><dd>「색채기반 울릉자원도감」 — 자원의 울릉 이름, 쓰임, 이야기, 색</dd><dt>지도</dt><dd>울릉 자원 지도 — 어느 동네에서 무엇이 나고 쓰이는지</dd><dt>기록</dt><dd>이번 겨울에 시작해 사계절 기록으로 이어갑니다</dd></dl></div>
+    <div class="card stack" style="gap:10px"><p class="h3">기록하는 자원</p>
+      ${CATS.map(c=>`<div><b>${h(c.v)}</b> <span class="small muted">— ${h(c.ex)}</span></div>`).join('')}</div>
+    ${STEPS}
+    <div class="card stack" style="gap:6px"><p class="h3">함께하는 곳</p><p class="small">한동대학교 IRIS 리빙랩 · 컬러랩제주 · 울릉 색채수집단</p>
+      <p class="small muted">정확한 채취지와 사유지는 공개 지도에 나오지 않도록 흐리게 표시합니다.</p></div>`);
+  }
+  const eds = await loadAllEditions().catch(()=>({}));
+  if(key==='camellia'){
+    const e = eds.camellia || {};
+    const places = (e.places||[]).map(p=>p.name).filter(Boolean);
+    return aboutShell(x, `
+    <div class="card stack" style="gap:10px"><p class="h3">미션</p>
+      <dl><dt>기간</dt><dd>${h(e.period||'11.22 – 12.11')}</dd><dt>준비물</dt><dd>${h(e.tool||'동백 키링 또는 보정 카드')}<br><span class="small muted">카멜리아힐과 뚜띠콜로리에서 받을 수 있어요</span></dd>
+      ${places.length?`<dt>동백 여행지</dt><dd>${places.map(h).join(' · ')}</dd>`:''}</dl></div>
+    ${STEPS}
+    <div class="notice">11월 22일에 열려요. 그날부터 이 페이지에서 바로 참여할 수 있습니다.</div>`);
+  }
+  return aboutShell(x, `
+    <div class="card stack" style="gap:10px"><p class="h3">미션</p>
+      <dl><dt>장소</dt><dd>제주 해안 어디서나</dd><dt>준비물</dt><dd>제주블루스 키링</dd><dt>기간</dt><dd>상시</dd></dl></div>
+    ${STEPS}
+    <div class="notice">곧 열려요. 제주블루스 키링 출시와 함께 시작합니다.</div>`);
+}
+document.addEventListener('click', e=>{ if(e.target.id==='aboutback') go(''); });
+
+/* ---------- 공개 갤러리 (로그인 없이, 인정·공개 동의 기록만) ---------- */
+const ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5emd6aWR0aG9senJva2h2enJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxMTQ4MjksImV4cCI6MjEwOTY5MDgyOX0.amqEEP42UFeHhof4oxZpkz_GSj2_-bdQEa1rXhfNUPE';
+S.gallery = {};
+async function loadGallery(edition){
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/public-gallery?edition=${encodeURIComponent(edition)}`, {headers:{Authorization:`Bearer ${ANON_JWT}`, apikey:ANON_JWT}});
+  if(!res.ok) throw new Error('gallery '+res.status);
+  const j = await res.json(); S.gallery[edition] = j.records || []; return S.gallery[edition];
+}
+function galleryShell(edition){
+  setTimeout(()=>fillGallery(edition), 0);
+  return `<section class="stack" style="gap:10px">
+    <div class="row between"><p class="h3">모인 기록</p><span class="small muted" id="gcount"></span></div>
+    <div id="gallery"><div class="card muted small">불러오는 중…</div></div></section>`;
+}
+async function fillGallery(edition){
+  const box = $('#gallery'); if(!box) return;
+  let list;
+  try{ list = S.gallery[edition] || await loadGallery(edition); }
+  catch(e){ box.innerHTML = `<div class="card muted small">기록을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</div>`; return; }
+  const c = $('#gcount'); if(c) c.textContent = list.length ? `${list.length}건` : '';
+  if(!list.length){ box.innerHTML = `<div class="card stack" style="gap:6px"><p class="small">아직 공개된 기록이 없어요.</p><p class="small muted">참여자가 올린 기록은 컬러랩제주의 확인을 거쳐 이곳에 차례로 쌓입니다.</p></div>`; return; }
+  box.innerHTML = `<div class="gal">${list.map((r,i)=>`
+    <button class="gcard" data-g="${i}">
+      <div class="gimg">${r.photo?`<img src="${h(r.photo)}" alt="${h(r.name)}" loading="lazy">`:`<span>${r.is_memory?'기억 카드':''}</span>`}</div>
+      <div class="gtxt"><b>${h(r.name)}</b><span>${h(r.category)}${r.area?' · '+h(r.area):''}</span></div>
+    </button>`).join('')}</div>`;
+  box.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>openRecord(list[+b.dataset.g]));
+}
+function openRecord(r){
+  const d = document.createElement('div'); d.className='sheet';
+  d.innerHTML = `<div class="sheet-in" role="dialog" aria-modal="true" aria-label="${h(r.name)}">
+    <button class="link" data-close style="align-self:flex-end">닫기 ✕</button>
+    ${r.photo?`<div class="shot" style="aspect-ratio:auto;max-height:60vh;background:#1B3640"><img src="${h(r.photo)}" alt="${h(r.name)}" style="object-fit:contain;max-height:60vh"></div>`:''}
+    <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(r.keyring)+' 키링':''}</p><h2 class="h2">${h(r.name)}</h2>
+      ${r.usage?`<p><b>쓰임</b> ${h(r.usage)}</p>`:''}
+      ${r.story?`<p style="white-space:pre-wrap">${h(r.story)}</p>`:''}
+      <p class="small muted">${[r.area, r.by?`기록 ${r.by}`:'', fmt(r.at)].filter(Boolean).map(h).join(' · ')}</p></div></div>`;
+  const close = ()=>{ d.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = e=>{ if(e.key==='Escape') close(); };
+  d.addEventListener('click', e=>{ if(e.target===d || e.target.closest('[data-close]')) close(); });
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(d);
+}
 
 function vConsent(){
   return `<div class="stack" style="gap:14px">
