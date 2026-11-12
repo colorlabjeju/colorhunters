@@ -183,6 +183,39 @@ body{font-size:17px;letter-spacing:-.01em;color:var(--ink2)}
 .sheet-in{border-radius:6px 6px 0 0}
 @media(min-width:700px){.sheet-in{border-radius:6px}}
 a{color:var(--accent-text)}
+
+/* ===== 휴대폰 비율 ===== */
+html,body{overflow-x:hidden}
+.actionbar{position:sticky;bottom:0;z-index:15;display:flex;flex-direction:column;gap:6px;margin:4px -16px 0;padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 12px);background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.actionbar p{text-align:center}
+@media(max-width:420px){
+  body{font-size:16px}
+  main{padding:14px 14px calc(env(safe-area-inset-bottom,0px) + 40px);gap:14px}
+  .actionbar{margin:4px -14px 0;padding-left:14px;padding-right:14px}
+  .top{padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px}
+  .top .logo{font-size:18px}
+  .display{font-size:36px}
+  .h1{font-size:23px}
+  .h2{font-size:19px}
+  .btn{min-height:52px;font-size:17px;padding:0 12px}
+  .btn.sm{min-height:42px;font-size:15px}
+  .choice{padding:11px 14px}
+  .choice b{font-size:17px}
+  .choice span{font-size:14px}
+  .ring{padding:12px 6px}
+  .ring i{width:40px;height:40px;border-width:7px}
+  .ring b{font-size:18px}
+  .stat{padding:10px 6px}
+  .stat b{font-size:28px}
+  .card{padding:15px}
+  .tips{font-size:15px}
+  .shot{aspect-ratio:4/3}
+  .map{height:220px}
+  .input{font-size:17px;min-height:50px}
+  textarea.input{min-height:110px}
+  .rec{grid-template-columns:64px minmax(0,1fr)}
+  .rec .th{width:64px;height:64px}
+}
 </style>
 </head>
 <body>
@@ -679,14 +712,14 @@ function vDraft(){
   } else if(k==='p1'){
     body=`<h1 class="h2">① 키링을 대고 한 장</h1>
       <div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진"><span class="badge">① 키링과 함께</span>`:(d.oldP1?'<span class="muted small">이미 올린 사진이 있어요 (바꾸려면 다시 찍기)</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>
-      <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="1" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="1" data-cap="0">사진첩에서 고르기</button></div>
+      <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="1" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="1" data-cap="0">앨범에서 선택</button></div>
       <div class="card"><ul class="tips"><li>키링을 대상 <b>바로 옆, 같은 높이</b>에</li><li>키링과 대상이 <b>같은 빛</b>을 받게 (반은 그늘, 반은 햇빛 ✕)</li><li>키링이 화면의 5분의 1 이상 보이게</li><li>손가락이 색 조각을 가리지 않게</li><li>플래시·필터는 끄고</li></ul></div>`;
     foot=`<button class="btn main block" id="next" ${(d.p1||d.oldP1)?'':'disabled'}>다음</button>`;
   } else if(k==='p2'){
     const gap = (d.p1&&d.p2&&d.p1.exif.taken&&d.p2.exif.taken) ? Math.abs(new Date(d.p1.exif.taken)-new Date(d.p2.exif.taken))/60000 : null;
     body=`<h1 class="h2">② 키링만 빼고 한 장</h1><p class="muted small">같은 자리, 같은 빛에서 바로 이어서 찍어요. 자원의 모양이 잘 보이게 가까이.</p>
       <div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="키링 없이 찍은 사진"><span class="badge">② 키링 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>
-      <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="2" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="2" data-cap="0">사진첩에서 고르기</button></div>
+      <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="2" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="2" data-cap="0">앨범에서 선택</button></div>
       ${gap!=null && gap>GAP_WARN_MIN?`<div class="notice">두 사진을 찍은 시간이 <b>${Math.round(gap)}분</b> 차이 나요. 빛이 바뀌었을 수 있으니, 가능하면 같은 자리에서 다시 이어서 찍어 주세요.</div>`:''}`;
     foot=`<button class="btn main block" id="next" ${(d.p2||d.oldP2)?'':'disabled'}>다음</button>`;
   } else if(k==='where'){
@@ -713,7 +746,7 @@ function vDraft(){
       ${d.error?`<div class="err">${h(d.error)}</div>`:''}`;
     foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?'<span class="spinner"></span> 올리는 중…':(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
   }
-  return `${head}<div class="stack" style="gap:14px">${body}</div><div class="stack">${foot}</div>
+  return `${head}<div class="stack" style="gap:14px">${body}</div><div class="actionbar">${foot}</div>
     <input type="file" id="fcam" accept="image/*" capture="environment" hidden><input type="file" id="fgal" accept="image/*" hidden>`;
 }
 function wordsOk(d){ return d.local_name.trim().length>0 && (!isMemory(d) || d.story.trim().length>0); }
