@@ -299,22 +299,44 @@ async function readExif(file){
   if(!out.taken && file.lastModified) out.taken = new Date(file.lastModified).toISOString();
   return out;
 }
-async function shrink(file, max, q){
-  let bmp;
-  try{ bmp = await createImageBitmap(file, {imageOrientation:'from-image'}); }
-  catch(e){ bmp = await new Promise((ok,no)=>{ const im=new Image(); im.onload=()=>ok(im); im.onerror=no; im.src=URL.createObjectURL(file); }); }
+/* 사진 자동 축소 — 색 비교에 충분한 크기만 남기고 용량을 줄여 올린다.
+   ① 키링 사진: 긴 변 1600px, 화질 0.88부터, 목표 약 450KB (색 조각 하나가 수십 px 이상 남아 평균색 계산에 충분)
+   ② 키링 없는 사진: 긴 변 1280px, 화질 0.8부터, 목표 약 230KB (도감·지도 보기용)
+   목표보다 크면 화질을 조금씩 낮추고(최저선 아래로는 내리지 않음), 그래도 크면 크기를 한 번 더 줄인다. */
+const SHRINK = {1:{max:1600, q:0.88, minQ:0.78, target:450*1024, floor:1280}, 2:{max:1280, q:0.8, minQ:0.66, target:230*1024, floor:1024}};
+async function decodeImage(file){
+  try{ return await createImageBitmap(file, {imageOrientation:'from-image'}); }
+  catch(e){ return await new Promise((ok,no)=>{ const im=new Image(); im.onload=()=>ok(im); im.onerror=no; im.src=URL.createObjectURL(file); }); }
+}
+function toJpeg(c, q){ return new Promise(ok=>c.toBlob(ok,'image/jpeg',q)); }
+async function shrink(file, cfg){
+  const bmp = await decodeImage(file);
   const W = bmp.width||bmp.naturalWidth, H = bmp.height||bmp.naturalHeight;
-  const s = Math.min(1, max/Math.max(W,H));
-  const c = document.createElement('canvas'); c.width=Math.round(W*s); c.height=Math.round(H*s);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-  const blob = await new Promise(ok=>c.toBlob(ok,'image/jpeg',q));
-  return {blob, w:W, h:H};
+  let max = cfg.max, blob = null, q = cfg.q, out = [0,0];
+  for(let pass=0; pass<2; pass++){
+    const s = Math.min(1, max/Math.max(W,H));
+    const c = document.createElement('canvas'); c.width=Math.round(W*s); c.height=Math.round(H*s);
+    const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bmp, 0, 0, c.width, c.height);
+    q = cfg.q; blob = await toJpeg(c, q);
+    while(blob && blob.size > cfg.target && q - 0.05 >= cfg.minQ - 1e-9){ q = +(q-0.05).toFixed(2); blob = await toJpeg(c, q); }
+    out = [c.width, c.height];
+    c.width = c.height = 0;
+    if(!blob || blob.size <= cfg.target*1.15 || max <= cfg.floor) break;
+    max = cfg.floor;
+  }
+  if(bmp.close) bmp.close();
+  if(!blob) throw new Error('jpeg');
+  return {blob, w:W, h:H, ow:out[0], oh:out[1], q};
 }
 async function takePhoto(file, which){
   const exif = await readExif(file);
-  const {blob, w, h:ht} = await shrink(file, which===1?2048:1600, which===1?0.92:0.85);
-  return {blob, url:URL.createObjectURL(blob), exif, w, h:ht, bytes:file.size, type:file.type};
+  const r = await shrink(file, SHRINK[which===1?1:2]);
+  return {blob:r.blob, url:URL.createObjectURL(r.blob), exif, w:r.w, h:r.h, ow:r.ow, oh:r.oh, bytes:file.size, sent:r.blob.size, type:file.type};
 }
+function mb(n){ return n>=1024*1024 ? (n/1048576).toFixed(1)+'MB' : Math.max(1,Math.round(n/1024))+'KB'; }
+function sizeNote(p){ return p ? `<p class="xs muted">원본 ${mb(p.bytes)} → 올릴 크기 ${mb(p.sent)} (${p.ow}×${p.oh}px, 색 비교용으로 자동 축소)</p>` : ''; }
+function withTimeout(promise, ms){ return Promise.race([promise, new Promise((_,no)=>setTimeout(()=>no(new Error('timeout')), ms))]); }
 
 /* ================= 인증·초대 ================= */
 async function ensureSession(){
@@ -383,8 +405,10 @@ async function processQueue(){
       try{
         await ensureSession();
         const uid = S.user.id; const row = Object.assign({}, it.row);
-        if(it.p1){ row.photo1_path = `${uid}/${it.id}-1.jpg`; await uploadBlob(row.photo1_path, it.p1); }
-        if(it.p2){ row.photo2_path = `${uid}/${it.id}-2.jpg`; await uploadBlob(row.photo2_path, it.p2); }
+        const ups=[];
+        if(it.p1){ row.photo1_path = `${uid}/${it.id}-1.jpg`; ups.push(uploadBlob(row.photo1_path, it.p1)); }
+        if(it.p2){ row.photo2_path = `${uid}/${it.id}-2.jpg`; ups.push(uploadBlob(row.photo2_path, it.p2)); }
+        await Promise.all(ups);
         if(it.mode==='edit'){
           const {error} = await sb.from('records').update(row).eq('id', it.id);
           if(error) throw error;
@@ -403,7 +427,7 @@ window.addEventListener('online', ()=>processQueue());
 /* ================= 화면 ================= */
 function route(){ return (location.hash||'#/').replace(/^#\/?/, ''); }
 function go(r){ location.hash = '#/'+r; }
-window.addEventListener('hashchange', ()=>{ render(); window.scrollTo(0,0); });
+window.addEventListener('hashchange', ()=>{ S.textEdit=null; render(); window.scrollTo(0,0); });
 
 function topRight(){
   const r = route();
@@ -677,10 +701,43 @@ function vRecord(id){
     <div class="row between"><h1 class="h2">${h(r.local_name||r.color_name)}</h1>${tag(r.status)}</div>
     ${r.status==='held'?`<div class="notice">보완 요청: ${h(r.review_memo||'')} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
     ${!r.is_memory?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div><div class="shot" data-ph="photo2_path"><span class="badge">② 키링 없이</span></div></div>`:'<p class="tag">기억 카드</p>'}
-    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'—')}</dd><dt>동네</dt><dd>${h(r.area||r.place_name||'—')}</dd><dt>쓰임</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${fmt(r.photo1_taken_at||r.taken_at||r.created_at)}</dd></dl>
+    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'—')}</dd><dt>동네</dt><dd>${h(r.area||r.place_name||'—')}</dd><dt>쓰임</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${fmt(r.photo1_taken_at||r.taken_at||r.created_at)}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
+    ${canEditText(r)?(S.textEdit===r.id?vTextForm(r):`<button class="btn light block" id="tedit">✎ 이름·쓰임·이야기 고치기</button>`):''}
     <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">끄면 이 기록은 공개하지 않아요.</span></span></label>
   </div>`;
 }
+/* ---------- 이름(제목)·쓰임·이야기 고치기 ---------- */
+const canEditText = r => r && r.status!=='rejected' && r.status!=='held';
+function vTextForm(r){
+  return `<div class="card stack" style="gap:12px;background:var(--paper,#F4F6F7)">
+    <p class="h3">이름·쓰임·이야기 고치기</p>
+    <div class="field"><label for="ln2">울릉 이름 <span style="color:var(--bad-ink)">*</span></label><input id="ln2" class="input" maxlength="40" value="${h(r.local_name||r.color_name||'')}"></div>
+    <div class="field"><label for="us2">어디에 쓰나요?</label><input id="us2" class="input" maxlength="500" value="${h(r.usage||'')}"></div>
+    <div class="field"><label for="sto2">들려줄 이야기 ${r.is_memory?'<span style="color:var(--bad-ink)">*</span>':''}</label><textarea id="sto2" class="input" maxlength="1000">${h(r.story||'')}</textarea>
+      <span class="hint">🎤 키보드의 마이크 버튼을 누르고 말하면 글로 바뀌어요.</span></div>
+    ${r.status==='approved'?'<p class="xs muted">이미 인정된 기록이에요. 고친 글은 공개 기록에도 바로 반영되고, 컬러랩제주에 고친 시각이 함께 표시돼요.</p>':''}
+    <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn light" id="tcancel">취소</button><button class="btn main" id="tsave">저장하기</button></div>
+  </div>`;
+}
+async function saveText(id){
+  const r=S.records.find(x=>x.id===id); if(!r) return;
+  const ln=$('#ln2').value.trim(), us=$('#us2').value.trim(), st=$('#sto2').value.trim();
+  if(!ln){ toast('울릉 이름을 적어 주세요'); $('#ln2').focus(); return; }
+  if(r.is_memory && !st){ toast('기억 카드는 이야기가 꼭 필요해요'); $('#sto2').focus(); return; }
+  const b=$('#tsave'); b.disabled=true; b.innerHTML='<span class="spinner"></span> 저장 중…';
+  const {data, error}=await sb.from('records').update({local_name:ln, color_name:ln.slice(0,30), usage:us, story:st}).eq('id', id).select().single();
+  if(error || !data || data.local_name!==ln || (data.story||'')!==st || (data.usage||'')!==us){
+    b.disabled=false; b.textContent='저장하기'; toast('저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'); return;
+  }
+  Object.assign(r, data); S.textEdit=null; S.gallery={}; render(); toast('고친 내용을 저장했어요');
+}
+document.addEventListener('click', e=>{
+  if(!route().startsWith('rec/')) return;
+  const id=route().slice(4);
+  if(e.target.id==='tedit'){ S.textEdit=id; render(); setTimeout(()=>{ const x=$('#ln2'); if(x) x.focus(); },50); }
+  else if(e.target.id==='tcancel'){ S.textEdit=null; render(); }
+  else if(e.target.id==='tsave'){ saveText(id); }
+});
 document.addEventListener('change', async e=>{
   if(e.target.id==='share' && route().startsWith('rec/')){
     const id=route().slice(4); const val=e.target.checked;
@@ -712,6 +769,7 @@ function vDraft(){
   } else if(k==='p1'){
     body=`<h1 class="h2">① 키링을 대고 한 장</h1>
       <div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진"><span class="badge">① 키링과 함께</span>`:(d.oldP1?'<span class="muted small">이미 올린 사진이 있어요 (바꾸려면 다시 찍기)</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>
+      ${sizeNote(d.p1)}
       <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="1" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="1" data-cap="0">앨범에서 선택</button></div>
       <div class="card"><ul class="tips"><li>키링을 대상 <b>바로 옆, 같은 높이</b>에</li><li>키링과 대상이 <b>같은 빛</b>을 받게 (반은 그늘, 반은 햇빛 ✕)</li><li>키링이 화면의 5분의 1 이상 보이게</li><li>손가락이 색 조각을 가리지 않게</li><li>플래시·필터는 끄고</li></ul></div>`;
     foot=`<button class="btn main block" id="next" ${(d.p1||d.oldP1)?'':'disabled'}>다음</button>`;
@@ -719,6 +777,7 @@ function vDraft(){
     const gap = (d.p1&&d.p2&&d.p1.exif.taken&&d.p2.exif.taken) ? Math.abs(new Date(d.p1.exif.taken)-new Date(d.p2.exif.taken))/60000 : null;
     body=`<h1 class="h2">② 키링만 빼고 한 장</h1><p class="muted small">같은 자리, 같은 빛에서 바로 이어서 찍어요. 자원의 모양이 잘 보이게 가까이.</p>
       <div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="키링 없이 찍은 사진"><span class="badge">② 키링 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>
+      ${sizeNote(d.p2)}
       <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="2" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="2" data-cap="0">앨범에서 선택</button></div>
       ${gap!=null && gap>GAP_WARN_MIN?`<div class="notice">두 사진을 찍은 시간이 <b>${Math.round(gap)}분</b> 차이 나요. 빛이 바뀌었을 수 있으니, 가능하면 같은 자리에서 다시 이어서 찍어 주세요.</div>`:''}`;
     foot=`<button class="btn main block" id="next" ${(d.p2||d.oldP2)?'':'disabled'}>다음</button>`;
@@ -744,7 +803,7 @@ function vDraft(){
       <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(d.keyring)}</dd>`:''}<dt>동네</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd><dt>울릉 이름</dt><dd>${h(d.local_name)}</dd><dt>쓰임</dt><dd>${h(d.usage||'—')}</dd><dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
       <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">정확한 채취지는 흐리게 표시해요.</span></span></label>
       ${d.error?`<div class="err">${h(d.error)}</div>`:''}`;
-    foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?'<span class="spinner"></span> 올리는 중…':(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
+    foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?`<span class="spinner"></span> 올리는 중…${(d.p1||d.p2)?' ('+mb((d.p1?d.p1.sent:0)+(d.p2?d.p2.sent:0))+')':''}`:(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
   }
   return `${head}<div class="stack" style="gap:14px">${body}</div><div class="actionbar">${foot}</div>
     <input type="file" id="fcam" accept="image/*" capture="environment" hidden><input type="file" id="fgal" accept="image/*" hidden>`;
@@ -826,8 +885,11 @@ async function submitDraft(){
   try{
     await ensureSession();
     const uid=S.user.id;
-    if(item.p1){ row.photo1_path=`${uid}/${d.id}-1.jpg`; await uploadBlob(row.photo1_path, item.p1); }
-    if(item.p2){ row.photo2_path=`${uid}/${d.id}-2.jpg`; await uploadBlob(row.photo2_path, item.p2); }
+    const ups=[];
+    if(item.p1){ row.photo1_path=`${uid}/${d.id}-1.jpg`; ups.push(uploadBlob(row.photo1_path, item.p1)); }
+    if(item.p2){ row.photo2_path=`${uid}/${d.id}-2.jpg`; ups.push(uploadBlob(row.photo2_path, item.p2)); }
+    /* 두 장을 동시에 보내고, 전파가 약해 90초 넘게 걸리면 휴대폰에 저장해 두고 나중에 이어서 보낸다 */
+    await withTimeout(Promise.all(ups), 90000);
     if(d.mode==='edit'){
       if(!item.p1 && d.oldP1) delete row.photo1_path;
       const {error}=await sb.from('records').update(row).eq('id', d.id); if(error) throw error;
@@ -840,8 +902,8 @@ async function submitDraft(){
   }catch(e){
     console.warn(e);
     S.busy=false;
-    const offline = !navigator.onLine || /fetch|network|Failed/i.test(String(e.message||e));
-    if(offline){ S.lastDone={queued:true, mode:d.mode}; S.draft=null; S.queue=await idb.all().catch(()=>[]); go('done'); }
+    const offline = !navigator.onLine || /fetch|network|Failed|timeout/i.test(String(e.message||e));
+    if(offline){ S.lastDone={queued:true, mode:d.mode}; S.draft=null; S.queue=await idb.all().catch(()=>[]); go('done'); setTimeout(()=>processQueue(), 60000); }
     else { d.error='올리지 못했어요: '+(e.message||e)+' — 잠시 뒤 다시 눌러 주세요. 입력한 내용은 그대로 있어요.'; render(); }
   }
 }
@@ -895,7 +957,7 @@ function admDetail(r){
   const gap=(r.photo1_taken_at&&r.photo2_taken_at)?Math.round(Math.abs(new Date(r.photo1_taken_at)-new Date(r.photo2_taken_at))/60000):null;
   const ex=r.exif1||{};
   return `<div class="card stack" style="gap:14px">
-    <div class="row between"><div><h2 class="h2">${h(r.local_name||r.color_name)}</h2><p class="small muted">${h(A.authors[r.author]||'?')} · ${fmt(r.created_at)}${r.resubmitted_at?' · 보완 후 다시 냄':''}</p></div>${tag(r.status)}</div>
+    <div class="row between"><div><h2 class="h2">${h(r.local_name||r.color_name)}</h2><p class="small muted">${h(A.authors[r.author]||'?')} · ${fmt(r.created_at)}${r.resubmitted_at?' · 보완 후 다시 냄':''}${r.text_edited_at?' · 글 고침 '+fmt(r.text_edited_at):''}</p></div>${tag(r.status)}</div>
     ${r.is_memory?'<p><span class="tag">기억 카드 — 사진 없음</span></p>':`<div class="pics"><figure><div class="ph" data-big="${h(r.photo1_path||'')}">불러오는 중</div><figcaption class="xs muted">① 키링과 함께 · ${h(r.keyring||'')} 키링 · ${fmt(r.photo1_taken_at)}</figcaption></figure><figure><div class="ph" data-big="${h(r.photo2_path||'')}">${r.photo2_path?'불러오는 중':'없음'}</div><figcaption class="xs muted">② 키링 없이 · ${fmt(r.photo2_taken_at)}</figcaption></figure></div>`}
     ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
     <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>동네</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
