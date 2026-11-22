@@ -14,6 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+KR:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{
@@ -230,10 +231,182 @@ html,body{overflow-x:hidden}
   .rec{grid-template-columns:64px minmax(0,1fr)}
   .rec .th{width:64px;height:64px}
 }
+/* ===== 에디토리얼 랜딩 · 미션 소개 (시안 «Life is full of colors.» 2026-11-22) =====
+   body.ed = 로그인 없이 보는 랜딩과 미션 소개. body.ed.land = 랜딩(폭 제한 없음). 기록·로그인·관리 화면은 그대로. */
+.top .logo img,#topnav,.pill{display:none}
+body.ed{--e-bg:#F6F3EC;--e-ink:#242A26;--e-ink2:#3B403A;--e-mute:#5E6250;--e-line:#D8D6C9;--e-clay:#A6503F;--e-sand:#ECE8DE;--e-pad:clamp(20px,4.5vw,64px);
+  --e-serif:'Noto Serif KR','Apple SD Gothic Neo',serif;--e-latin:'Cormorant Garamond','Noto Serif KR',serif;--e-mono:'IBM Plex Mono',ui-monospace,monospace;--e-sans:'IBM Plex Sans KR',var(--font);
+  background:var(--e-bg);color:var(--e-ink);font-family:var(--e-sans);letter-spacing:0;line-height:1.7}
+body.ed a{color:var(--e-ink)}
+body.ed a:hover{color:var(--e-clay)}
+body.ed :focus-visible{outline-color:var(--e-clay)}
+body.ed .top{background:var(--e-bg);border-bottom:1px solid var(--e-line);padding-left:var(--e-pad);padding-right:var(--e-pad);gap:12px 28px}
+body.ed .top .logo{display:flex;align-items:center;gap:10px;font-family:var(--e-latin);font-weight:600;font-size:clamp(19px,2vw,25px);letter-spacing:.2em;line-height:1;color:var(--e-ink)}
+body.ed .top .logo img{display:block;width:30px;height:30px}
+body.ed .top #topright{display:flex;align-items:center;gap:8px 18px}
+body.ed .top #topright a{border:0;padding:10px 4px;font-size:14px;letter-spacing:0;color:var(--e-ink)}
+body.ed .pill{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:0 18px;border:0;border-radius:999px;background:var(--e-clay);color:var(--e-bg);font-size:14px;font-weight:500;cursor:pointer}
+@media(min-width:960px){body.ed.land #topnav{display:flex;gap:4px 28px;margin:0 auto}}
+#topnav button{background:none;border:0;padding:10px 0;font-size:15px;cursor:pointer;color:var(--e-ink)}
+#topnav button:hover{color:var(--e-clay)}
+@media(max-width:699px){body.ed .pill{display:none}}
+/* 미션 소개 */
+body.ed .h1{font-family:var(--e-serif);font-weight:500;font-size:30px;line-height:1.35;color:var(--e-ink)}
+body.ed .h2,body.ed .h3{font-family:var(--e-serif);font-weight:500;color:var(--e-ink)}
+body.ed .card{background:transparent;border-color:var(--e-line);border-radius:0}
+body.ed .muted,body.ed dt{color:var(--e-mute)}
+body.ed .ptag{font-family:var(--e-mono);font-size:12px;letter-spacing:.1em;color:var(--e-clay);background:none;border:0;padding:0}
+body.ed .btn{border-radius:999px}
+body.ed .btn.main{background:var(--e-ink);border-color:var(--e-ink);color:var(--e-bg)}
+body.ed .link{color:var(--e-ink2)}
+body.ed .gcard{background:transparent;border-color:var(--e-line);border-radius:0}
+body.ed .gtxt b{font-family:var(--e-serif);font-weight:500;color:var(--e-ink)}
+body.ed .sheet-in{background:var(--e-bg)}
+/* 랜딩 */
+main.land{max-width:none;padding:0;gap:0}
+.L{display:flex;flex-direction:column;font-size:16px}
+.L section{scroll-margin-top:64px}
+.L .wrap{max-width:1440px;margin:0 auto;width:100%;padding-left:var(--e-pad);padding-right:var(--e-pad)}
+.L .eyebrow{font-family:var(--e-mono);font-size:12px;font-weight:400;letter-spacing:.16em;color:var(--e-mute)}
+.L h2.t{font-family:var(--e-serif);font-weight:500;font-size:clamp(27px,3.2vw,40px);line-height:1.3;color:var(--e-ink)}
+.L .lead{font-size:17px;color:var(--e-ink2)}
+.L .head{display:flex;flex-direction:column;gap:8px}
+.L .cta{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 26px;border-radius:999px;border:1px solid var(--e-ink);background:none;color:var(--e-ink);font-size:16px;font-weight:500;cursor:pointer;text-decoration:none}
+.L .cta.solid{background:var(--e-ink);color:var(--e-bg)}
+.L .cta.inv{background:var(--e-bg);color:var(--e-ink);border-color:var(--e-bg)}
+/* 표지 */
+.L-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:clamp(20px,4.5vw,64px);align-items:center;padding-top:clamp(36px,5vw,72px);padding-bottom:clamp(40px,4vw,72px)}
+.L-hero .txt{display:flex;flex-direction:column;gap:clamp(20px,2vw,28px)}
+.L-hero h1{display:flex;flex-direction:column;gap:clamp(12px,1.3vw,18px);font-weight:400}
+.L-hero h1 .en{font-family:var(--e-latin);font-weight:500;font-size:clamp(60px,7.8vw,112px);line-height:.97;letter-spacing:-.015em;color:var(--e-ink)}
+.L-hero h1 .en i{font-weight:400;color:var(--e-clay)}
+.L-hero h1 .ko{font-family:var(--e-serif);font-size:clamp(22px,2.3vw,32px);line-height:1.4;letter-spacing:-.01em;color:var(--e-ink)}
+.L-hero .lead{font-size:clamp(16px,1.3vw,18px);max-width:30em}
+.L-hero .btns{display:flex;flex-wrap:wrap;gap:12px}
+.L-hero figure{margin:0;display:flex;flex-direction:column;gap:14px}
+.L-hero figure img{display:block;width:100%;aspect-ratio:5/6;object-fit:cover;background:var(--e-line)}
+.L-hero figcaption{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;line-height:1.4}
+.L-hero figcaption i{width:44px;height:44px;background:#C8AE71}
+.L-hero figcaption b{display:block;font-family:var(--e-serif);font-weight:500;font-size:16px}
+.L-hero figcaption span{font-size:13px;color:var(--e-mute)}
+.L-hero figcaption code{font-family:var(--e-mono);font-size:12px;color:var(--e-mute)}
+/* 미션 */
+.L-missions{background:var(--e-sand)}
+.L-missions .wrap{display:flex;flex-direction:column;gap:clamp(22px,3vw,44px);padding-top:clamp(56px,7.2vw,104px);padding-bottom:clamp(56px,7.2vw,104px)}
+.L-mlist{display:flex;flex-wrap:wrap;gap:28px}
+.L-m{flex:1 1 250px;display:flex;flex-direction:column;gap:12px;padding:0;border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.L-m .ph{position:relative;display:block;aspect-ratio:3/4;width:100%}
+.L-m .ph.soon{border:1px dashed #777B65;display:flex;align-items:center;justify-content:center;font-family:var(--e-latin);font-style:italic;font-size:30px;color:var(--e-mute)}
+.L-m .badge{position:absolute;left:14px;top:14px;font-size:12px;font-weight:500;padding:4px 10px;border-radius:999px;background:var(--e-bg);color:var(--e-ink)}
+.L-m .meta{font-family:var(--e-mono);font-size:12px;color:var(--e-mute)}
+.L-m b{font-family:var(--e-serif);font-size:24px;font-weight:500;line-height:1.35;color:var(--e-ink)}
+.L-m .d{font-size:15px;color:var(--e-ink2)}
+.L-m:hover b{color:var(--e-clay)}
+/* 지역의 색 */
+.L-places{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:clamp(28px,4vw,56px);align-items:start;padding-top:clamp(64px,7.8vw,112px);padding-bottom:clamp(64px,7.8vw,112px)}
+.L-places .col{display:flex;flex-direction:column;gap:22px}
+.L-regions{margin:0;padding:0;list-style:none;border-top:1px solid var(--e-ink)}
+.L-regions li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--e-line)}
+.L-regions b{font-family:var(--e-serif);font-weight:500;font-size:19px}
+.L-regions span{font-size:14px;color:var(--e-mute);text-align:right}
+.L-regions li.soon b{color:var(--e-mute);font-weight:400}
+.L-ctitle{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.L-ctitle b{font-family:var(--e-serif);font-weight:500;font-size:22px}
+.L-ctitle span{font-family:var(--e-mono);font-size:12px;color:var(--e-mute)}
+.L-colors{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:22px 14px;min-height:120px}
+.L-colors li{display:flex;flex-direction:column;gap:6px}
+.L-colors i{display:block;aspect-ratio:1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.L-colors span{font-family:var(--e-serif);font-size:14px;line-height:1.4}
+.L-colors code{font-family:var(--e-mono);font-size:11px;color:var(--e-mute)}
+.L-more{display:none;align-self:flex-start;background:none;border:0;padding:10px 0;font-size:15px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:var(--e-ink)}
+.L-note{font-size:14px;color:var(--e-mute);border-top:1px solid var(--e-line);padding-top:16px}
+/* 컬러헌터 되기 */
+.L-become{background:var(--e-ink);color:var(--e-bg)}
+.L-become .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:clamp(26px,5vw,72px);align-items:start;padding-top:clamp(64px,8.3vw,120px);padding-bottom:clamp(64px,8.3vw,120px)}
+.L-become .col{display:flex;flex-direction:column;gap:clamp(22px,2.6vw,36px)}
+.L-become .eyebrow{color:#C9C7BA}
+.L-become h2{display:flex;flex-direction:column;gap:12px;font-weight:400}
+.L-become h2 .en{font-family:var(--e-latin);font-weight:500;font-size:clamp(42px,4.5vw,64px);line-height:1.02;color:var(--e-bg)}
+.L-become h2 .en i{font-weight:400;color:#E0A193}
+.L-become h2 .ko{font-family:var(--e-serif);font-size:clamp(18px,1.7vw,24px);line-height:1.5;color:#E7E3D8}
+.L-steps{margin:0;padding:0;list-style:none;border-top:1px solid #4A514B}
+.L-steps li{display:grid;grid-template-columns:120px 1fr;gap:6px 20px;padding:20px 0;border-bottom:1px solid #4A514B}
+.L-steps .n{font-family:var(--e-mono);font-size:12px;letter-spacing:.12em;color:#C9C7BA;padding-top:4px}
+.L-steps b{display:block;font-family:var(--e-serif);font-weight:500;font-size:20px;color:var(--e-bg)}
+.L-steps .d{display:block;font-size:15px;color:#D8D6C9}
+.L-become .mine{font-size:14px;color:#C9C7BA;max-width:26em}
+.L-become .act{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center}
+/* 도구 */
+.L-tools{display:flex;flex-direction:column;gap:clamp(24px,2.8vw,40px);padding-top:clamp(56px,7.2vw,104px);padding-bottom:clamp(56px,7.2vw,104px)}
+.L-tools .bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px 20px}
+.L-tools .bar a{font-size:15px}
+.L-tlist{display:flex;flex-wrap:wrap;gap:clamp(14px,2vw,28px)}
+.L-t{flex:1 1 280px;border:1px solid var(--e-line);padding:clamp(22px,2.3vw,32px);display:flex;flex-direction:column;gap:14px}
+.L-t h3{font-family:var(--e-serif);font-weight:500;font-size:21px;color:var(--e-ink)}
+.L-t p{font-size:15px;color:var(--e-ink2)}
+.L-t .dots{display:grid;grid-template-columns:repeat(6,14px);gap:4px;height:88px;align-content:center}
+.L-t .dots i{height:14px}
+/* 세 가지 방식 */
+.L-ways{background:var(--e-line)}
+.L-ways .wrap{display:flex;flex-wrap:wrap;gap:clamp(24px,2.8vw,40px);padding-top:clamp(48px,6vw,88px);padding-bottom:clamp(48px,6vw,88px)}
+.L-ways div.w{flex:1 1 260px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--e-ink);padding-top:22px}
+.L-ways b{font-family:var(--e-latin);font-weight:500;font-size:clamp(28px,2.6vw,36px);line-height:1.1;color:var(--e-ink)}
+.L-ways span{font-family:var(--e-serif);font-size:17px}
+/* 바닥 */
+.L-foot{display:flex;flex-direction:column;gap:clamp(28px,3.4vw,48px);padding-top:clamp(40px,5vw,72px);padding-bottom:48px}
+.L-foot .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:32px;font-size:14px}
+.L-foot .cols>div{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.L-foot .brand b{font-family:var(--e-latin);font-weight:600;font-size:22px;letter-spacing:.18em}
+.L-foot .brand i{font-family:var(--e-latin);font-size:19px}
+.L-foot .brand span{color:var(--e-mute)}
+.L-foot button{background:none;border:0;padding:0;font-size:14px;text-decoration:underline;cursor:pointer;color:var(--e-ink)}
+.L-foot .legal{border-top:1px solid var(--e-line);padding-top:20px;font-size:13px;color:var(--e-mute)}
+/* 아래 탭 (폰) */
+.L-tab{display:none}
+.L [hidden]{display:none!important}
+@media(max-width:699px){
+  .L-hero{display:flex;flex-direction:column;align-items:stretch}
+  .L-hero .txt{display:contents}
+  .L-hero .eyebrow{order:1;font-size:11px;letter-spacing:.14em}
+  .L-hero h1{order:2}
+  .L-hero figure{order:3;margin:4px calc(var(--e-pad) * -1) 0}
+  .L-hero figure img{aspect-ratio:4/5}
+  .L-hero figcaption{padding:0 var(--e-pad);grid-template-columns:36px 1fr auto}
+  .L-hero figcaption i{width:36px;height:36px}
+  .L-hero .lead{order:4}
+  .L-hero .btns{order:5;flex-direction:column-reverse;gap:10px}
+  .L .eyebrow{font-size:11px;letter-spacing:.14em}
+  .L-missions .wrap{padding-left:0;padding-right:0}
+  .L-missions .head{padding:0 var(--e-pad)}
+  .L-mlist{flex-wrap:nowrap;gap:14px;overflow-x:auto;padding:0 var(--e-pad) 6px;scroll-snap-type:x proximity;scroll-padding-left:var(--e-pad)}
+  .L-m{flex:0 0 248px;scroll-snap-align:start}
+  .L-m .ph{aspect-ratio:4/5}
+  .L-m b{font-size:20px}
+  .L-colors{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 8px}
+  .L-colors:not(.all) li:not(.pick){display:none}
+  .L-colors span{font-size:12px;line-height:1.35}
+  .L-colors code{display:none}
+  .L-more{display:block}
+  .L-steps li{grid-template-columns:1fr;padding:16px 0}
+  .L-steps b{font-size:18px}
+  .L-steps .d{font-size:14px}
+  .L-become .wrap{display:flex;flex-direction:column;gap:26px}
+  .L-become .col{display:contents}
+  .L-become .eyebrow{order:1}
+  .L-become h2{order:2}
+  .L-steps{order:3}
+  .L-become .act{order:4}
+  .L-become .act .cta{width:100%}
+  .L-foot{padding-bottom:120px}
+  .L-tab{position:fixed;left:0;right:0;bottom:0;z-index:18;display:grid;grid-template-columns:repeat(5,1fr);align-items:end;padding:8px 6px calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--e-bg);border-top:1px solid var(--e-line)}
+  .L-tab button,.L-tab a{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-height:48px;padding:0;border:0;background:none;font-size:11px;color:var(--e-ink);text-decoration:none;cursor:pointer}
+  .L-tab .plus{color:var(--e-clay);font-weight:600}
+  .L-tab .plus i{width:46px;height:46px;margin-top:-22px;border-radius:50%;background:var(--e-clay);color:var(--e-bg);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:26px;line-height:1}
+}
 </style>
 </head>
 <body>
-<header class="top" id="top"><a href="#/" class="logo">COLOR HUNTERS</a><small id="topsub"></small><span id="topright" style="margin-left:auto"></span></header>
+<header class="top" id="top"><a href="#/" class="logo"><img src="icon.svg?v=4" alt="" width="30" height="30">COLOR HUNTERS</a><small id="topsub"></small><nav id="topnav" aria-label="주 메뉴"></nav><span id="topright" style="margin-left:auto"></span></header>
 <main id="view"><div class="card"><p class="muted">불러오는 중…</p></div></main>
 <div id="toast" class="toast" hidden></div>
 
@@ -713,11 +886,18 @@ function topRight(){
   let s='';
   if(S.me && S.me.role==='admin' && !isAnonUser()) s = r.startsWith('admin') ? `<a href="#/">기록 화면</a>` : `<a href="#/admin">관리</a>`;
   else if(CUR.mode==='invite' && (!S.me) && r!=='login' && r!=='signup') s = `<a href="#/login">로그인</a>`;
-  $('#topright').innerHTML = s;
   const about = r.startsWith('about/');
+  /* 로그인 없이 보는 랜딩·미션 소개는 에디토리얼 모양(body.ed) */
+  const land = !about && CUR.mode==='invite' && !S.me && r!=='login' && r!=='signup';
+  document.body.classList.toggle('ed', land || about);
+  document.body.classList.toggle('land', land);
+  if(land) s += `<button class="pill" data-scroll="missions">＋ 기록하기</button>`;
+  else if(about && LANDING.some(x=>x.key===r.slice(6))) s += `<button class="pill" data-rec="${h(r.slice(6))}">＋ 기록하기</button>`;
+  $('#topright').innerHTML = s;
+  $('#topnav').innerHTML = land ? [['places','지역의 색'],['missions','미션'],['become','컬러헌터 되기'],['tools','도구']].map(([k,t])=>`<button data-scroll="${k}">${t}</button>`).join('') : '';
   $('#topsub').textContent = (hasId() && !about) ? CUR.name : '';
   document.title = (hasId() && !about) ? '컬러헌터스 · '+CUR.name : '컬러헌터스 · 오늘, 이 자리의 색을 찾다';
-  $('main').className = (r.startsWith('admin') || (CUR.mode==='invite' && !S.me && r==='')) ? 'wide' : '';
+  $('main').className = land ? 'land' : r.startsWith('admin') ? 'wide' : '';
 }
 
 async function render(){
@@ -748,19 +928,19 @@ async function render(){
 
 /* ---------- 첫 화면 (로그인 전) ---------- */
 const LANDING = [
-  {key:'camellia', title:'제주 동백의 색', tag:'시즌 미션 · 누구나 참여 · 12.11까지', sub:'카멜리아 동백', state:'참여 중', tone:'ok',
+  {key:'camellia', color:'#B31E28', badge:'진행 중', meta:'누구나 · 11.22 – 12.11 · 꽃 키링', card:'카멜리아힐에서 시작해 동백 여행지를 돌며 그날의 동백 색을 찾습니다.', title:'제주 동백의 색', tag:'시즌 미션 · 누구나 참여 · 12.11까지', sub:'카멜리아 동백', state:'참여 중', tone:'ok',
    desc:'겨울 정원에서 발견한 색을 함께 기록해요.',
    text:'카멜리아힐에서 시작해 제주 동백 여행지를 돌며, 그날 그 자리의 동백 색을 키링과 함께 찾아 남깁니다. 별칭만 정하면 누구나 참여할 수 있어요.',
    sw:[['#7E1A2C',3],['#A8283D',4],['#C9455A',3],['#E08A93',2],['#F1D3D2',2],['#2F4A2B',3],['#5E7146',2]]},
-  {key:'ulleung', title:'울릉 헤리티지', tag:'조사단 프로젝트 · 진행 중', sub:'울릉 헤리티지', state:'진행 중', tone:'ok',
+  {key:'ulleung', color:'#4F6B3E', badge:'참여 코드', meta:'울릉 색채수집단 · 바다·숲·꽃 키링', card:'나물·약초, 열매, 먹거리, 생업 재료. 주민의 시선으로 섬의 자원을 색으로 모읍니다.', title:'울릉 헤리티지', tag:'조사단 프로젝트 · 진행 중', sub:'울릉 헤리티지', state:'진행 중', tone:'ok',
    desc:'주민의 시선으로 모으는 우리 지역의 색과 이야기.',
    text:'나물·약초, 열매, 먹거리, 생업 재료. 울릉 사람들이 함께 섬의 자원을 색으로 모아 「색채기반 울릉자원도감」을 만듭니다.',
    sw:[['#2E4A33',3],['#4F6B3E',3],['#86915D',3],['#B9AE7E',2],['#D9C9A0',2],['#2B4B55',3],['#6F8C95',2]]},
-  {key:'jejublues', title:'제주블루스', tag:'상시 프로젝트 · 누구나 참여', sub:'제주 바다색 미션', state:'참여 중', tone:'ok',
+  {key:'jejublues', color:'#1B86C1', badge:'상시', meta:'누구나 · 상시 · 바다 키링', card:'해안을 걸으며 오늘의 바다색을 기록합니다. 계절과 날씨마다 다른 바다.', title:'제주블루스', tag:'상시 프로젝트 · 누구나 참여', sub:'제주 바다색 미션', state:'참여 중', tone:'ok',
    desc:'걸으며 만나는 제주 바다의 푸른 색을 모아요.',
    text:'제주 해안을 걸으며 오늘의 바다색을 기록합니다. 별칭만 정하면 누구나, 언제든 참여하는 상시 미션입니다. 제주블루스 키링이 있으면 색을 숫자로까지 남길 수 있어요.',
    sw:[['#173E5A',3],['#1F5F82',3],['#2F86A6',3],['#6FB3C8',2],['#A9D3DC',2],['#D8ECEF',2],['#4A5A55',2]]},
-  {key:'tradition', title:'한국의 전통색', tag:'아카이브 프로젝트 · 준비 중', sub:'한옥 컬러헌팅', state:'준비 중', tone:'',
+  {key:'tradition', color:'', badge:'', meta:'준비 중', card:'오래된 집과 공예에 남은 색을 찾아 나섭니다.', title:'한국의 전통색', tag:'아카이브 프로젝트 · 준비 중', sub:'한옥 컬러헌팅', state:'준비 중', tone:'',
    desc:'한옥과 옛 공간에 깃든 우리 색을 찾아요.',
    text:'기와, 나무, 흙벽, 창호지, 단청. 한옥과 전통 공간을 천천히 걸으며 오래된 색을 찾아 기록합니다. 안동 수졸당에서 시작합니다.',
    sw:[['#2C2B29',2],['#5B4A3A',3],['#8C6A4A',3],['#C7A27A',2],['#ECE4D3',3],['#B23A2E',2],['#1F5A7A',2],['#D9A62E',1]]}
@@ -771,26 +951,125 @@ function projImage(x){
   if(LANDING_IMG[x.key]) return `<img src="${LANDING_IMG[x.key]}" alt="${h(x.title)}">`;
   return `<div class="swatch" aria-hidden="true">${x.sw.map(([c,w])=>`<i style="background:${c};flex:${w}"></i>`).join('')}</div>`;
 }
+/* 랜딩 — 시안의 구역 중 지금 동작하는 것만: 표지 · 미션 · 지역의 색 · 컬러헌터 되기 · 도구 · 세 가지 방식 · 바닥.
+   (읽을거리·컬러헌터들·색 편지·내 컬러 저널은 내용이 생기면 추가) */
+const LAND_ORDER = ['camellia','jejublues','ulleung','tradition'];
+const LAND_STEPS = [
+  ['01 NOTICE','천천히 본다','걷다가 멈추는 자리에서 시작합니다. 빛이 어디서 오는지 먼저 봅니다.'],
+  ['02 COMPARE','키링에 견준다','대상 바로 옆, 같은 빛 아래 키링을 두고 한 장. 대상만 한 장 더.'],
+  ['03 NAME','이름을 붙인다','그 자리에서 떠오른 말로. 이름은 정답이 아니라 그날의 기억입니다.'],
+  ['04 SHARE','함께 쌓는다','한 사람의 기록이 모여 지역의 색이 됩니다.']
+];
+const LAND_PICK = ['C02','C03','C05','C07','C11','C12','C14','C20','C21','C24','C26','C30']; /* 폰에서 먼저 보이는 12색 */
+const LAND_DOTS = ['#FFEF8A','#C6D800','#71C7D6','#ED6C00','#2990D0','#A97D4C','#009944','#DC1F67','#B31E28','#7B476E','#2F5756','#451F13'];
 function vNoInvite(){
-  return `
-  <section class="hero">
-    <p class="display">COLOR HUNTERS</p>
-    <h1 class="h1" style="font-size:26px">오늘, 이 자리의 색을 찾다</h1>
-    <p>컬러보정키링을 대고 찍으면, 그날 그 자리의 색이 기록이 됩니다. 여러 사람의 기록이 모여 지역의 색이 쌓입니다.</p>
+  setTimeout(fillLandColors, 0);
+  const ms = LAND_ORDER.map(k=>LANDING.find(x=>x.key===k)).filter(Boolean);
+  return `<div class="L">
+  <section class="L-hero wrap" aria-labelledby="hero-h">
+    <div class="txt">
+      <p class="eyebrow">AN INVITATION TO SEE DIFFERENTLY</p>
+      <h1 id="hero-h"><span class="en" lang="en">Life is full<br>of <i>colors.</i></span><span class="ko">세상의 색을 발견하는 사람들</span></h1>
+      <p class="lead">길가의 꽃, 오래된 돌담, 오늘의 바다. 컬러헌터스는 일상의 장면에서 색을 찾아 키링에 견주고, 이름을 붙여 함께 아카이브하는 사람들입니다.</p>
+      <div class="btns"><button class="cta" data-scroll="become">컬러헌터 되기</button><button class="cta solid" data-scroll="missions">미션 참여하기 →</button></div>
+    </div>
+    <figure>
+      <img src="img/hero-forest-keyring.jpg" alt="단풍 든 숲을 배경으로 손에 든 숲 키링" width="1400" height="1050">
+      <figcaption><i aria-hidden="true"></i><span><b>노란 잎</b>곶자왈 · 숲 키링으로 보정한 색</span><code>#C8AE71</code></figcaption>
+    </figure>
   </section>
-  <p class="section-label">PROJECTS</p>
-  <div class="projs">${LANDING.map(x=>`
-    <button class="proj" data-land="${x.key}" aria-label="${h(x.title)} 살펴보기">
-      <div class="pimg">${projImage(x)}</div>
-      <div class="pbody">
-        <span class="ptag">${h(x.tag)}</span>
-        <h2 class="ptitle">${h(x.title)}</h2>
-        <p class="pdesc">${h(x.desc)}</p>
-        <span class="pmore">프로젝트 살펴보기 ↗</span>
-      </div>
-    </button>`).join('')}</div>
-  <p class="xs muted" style="text-align:center;margin-top:12px">컬러헌터스는 컬러랩제주의 시민참여 색채 아카이브입니다. <a href="https://colorhunting.org" target="_blank" rel="noopener">colorhunting.org</a></p>`;
+
+  <section id="missions" class="L-missions" aria-labelledby="missions-h"><div class="wrap">
+    <div class="head"><p class="eyebrow">THE CURRENT MISSION</p><h2 class="t" id="missions-h">지금 찾을 색</h2></div>
+    <div class="L-mlist">${ms.map(x=>`
+      <button class="L-m" data-land="${x.key}" aria-label="${h(x.title)} 살펴보기">
+        ${x.color?`<span class="ph" style="background:${x.color}"><span class="badge">${h(x.badge)}</span></span>`:`<span class="ph soon" lang="en">coming soon</span>`}
+        <span class="meta">${h(x.meta)}</span><b>${h(x.title)}</b><span class="d">${h(x.card)}</span>
+      </button>`).join('')}</div>
+  </div></section>
+
+  <section id="places" class="L-places wrap" aria-labelledby="places-h">
+    <div class="col">
+      <p class="eyebrow">COLORS OF PLACES</p>
+      <h2 class="t" id="places-h">지역의 색을 만나다</h2>
+      <p class="lead">컬러헌터들이 찾은 색이 모여 그 지역의 팔레트가 됩니다. 계절이 바뀌면 같은 자리의 색도 바뀝니다.</p>
+      <ul class="L-regions">
+        <li><b>제주</b><span>제주 동백의 색 · 제주블루스 진행 중</span></li>
+        <li><b>울릉</b><span>주민 기록이 쌓이는 중</span></li>
+        <li class="soon"><b>안동 · 덕유산</b><span>준비 중</span></li>
+      </ul>
+    </div>
+    <div class="col" id="lcolbox">
+      <div class="L-ctitle"><b>제주의 서른 가지 색</b><span>30색 컬러카드 · 측색값</span></div>
+      <ul class="L-colors" id="lcolors" aria-label="30색 컬러카드의 색"></ul>
+      <button class="L-more" id="lmore">서른 가지 모두 보기 →</button>
+      <p class="L-note">기록의 색은 키링에 견주어 남깁니다. 키링 없이 찍은 사진은 «보정 전 참고 기록»으로 따로 구분해요.</p>
+    </div>
+  </section>
+
+  <section id="become" class="L-become" aria-labelledby="become-h"><div class="wrap">
+    <div class="col">
+      <p class="eyebrow">BECOME A COLOR HUNTER</p>
+      <h2 id="become-h"><span class="en" lang="en">The world is your <i>palette.</i></span><span class="ko">가까이 보고, 견주고, 이름 붙이고, 함께 쌓습니다.</span></h2>
+      <div class="act"><button class="cta inv" data-scroll="missions">첫 미션 고르기 →</button><p class="mine">«나의 색»은 진단 결과가 아니라, 내가 찾아 이름 붙인 색입니다.</p></div>
+    </div>
+    <ol class="L-steps">${LAND_STEPS.map(([n,t,d])=>`<li><span class="n">${n}</span><span><b>${t}</b><span class="d">${d}</span></span></li>`).join('')}</ol>
+  </div></section>
+
+  <section id="tools" class="L-tools wrap" aria-labelledby="tools-h">
+    <div class="bar"><div class="head"><p class="eyebrow">IN THE POCKET</p><h2 class="t" id="tools-h">주머니 속 도구</h2></div>
+      <a href="https://tutticolori.co.kr" target="_blank" rel="noopener">도구 구하기 — 뚜띠콜로리 ↗</a></div>
+    <div class="L-tlist">
+      <article class="L-t">
+        <svg width="88" height="88" viewBox="0 0 64 64" role="img" aria-label="톤파인더 키링 그림"><circle cx="32" cy="32" r="27" fill="none" stroke="#242A26"/><circle cx="32" cy="32" r="13" fill="none" stroke="#242A26"/><path d="M32 5A27 27 0 0 1 59 32L45 32A13 13 0 0 0 32 19Z" fill="#4F6B3E"/><path d="M59 32A27 27 0 0 1 32 59L32 45A13 13 0 0 0 45 32Z" fill="#A57139"/><path d="M32 59A27 27 0 0 1 5 32L19 32A13 13 0 0 0 32 45Z" fill="#1B86C1"/><path d="M5 32A27 27 0 0 1 32 5L32 19A13 13 0 0 0 19 32Z" fill="#CE2662"/></svg>
+        <h3>톤파인더 키링</h3><p>숲·바다·꽃. 실측한 서른 칸이 사진 속 빛을 되돌리는 기준이 됩니다.</p></article>
+      <article class="L-t">
+        <div class="dots" aria-hidden="true">${LAND_DOTS.map(c=>`<i style="background:${c}"></i>`).join('')}</div>
+        <h3>30색 컬러카드</h3><p>백서향 꽃술부터 오래된 고목까지, 제주 자연에서 이름 붙인 서른 가지 색.</p></article>
+      <article class="L-t">
+        <svg width="88" height="88" viewBox="0 0 64 64" role="img" aria-label="필드노트 다이어리 그림"><rect x="12" y="6" width="40" height="52" fill="none" stroke="#242A26"/><line x1="18" y1="20" x2="46" y2="20" stroke="#D8D6C9"/><line x1="18" y1="28" x2="46" y2="28" stroke="#D8D6C9"/><line x1="18" y1="36" x2="40" y2="36" stroke="#D8D6C9"/><rect x="18" y="42" width="10" height="10" fill="#C8AE71"/><rect x="30" y="42" width="10" height="10" fill="#BD6959"/></svg>
+        <h3>필드노트 다이어리</h3><p>찾은 색의 이름과 그날의 한 줄을 손으로 남기는 수첩.</p></article>
+    </div>
+  </section>
+
+  <section class="L-ways" aria-label="컬러헌터스의 세 가지 방식"><div class="wrap">
+    <div class="w"><b lang="en">A Way of Seeing</b><span>세상을 새롭게 바라보는 태도</span></div>
+    <div class="w"><b lang="en">A Way of Exploring</b><span>색을 따라 지역을 걷는 여행</span></div>
+    <div class="w"><b lang="en">A Way of Connecting</b><span>발견을 나누고 이어지는 사람들</span></div>
+  </div></section>
+
+  <footer class="L-foot wrap">
+    <div class="cols">
+      <div class="brand"><b>COLOR HUNTERS</b><i lang="en">Life is full of colors.</i><span>세상의 색을 발견하는 사람들</span></div>
+      <div><b>참여</b><button data-scroll="missions">미션</button><button data-scroll="places">지역의 색</button><a href="#/login">로그인</a></div>
+      <div><b>컬러헌팅</b><button data-scroll="become">컬러헌터 되기</button><a href="https://colorhunting.org" target="_blank" rel="noopener">기관·학교 문의 ↗</a><a href="https://tutticolori.co.kr" target="_blank" rel="noopener">도구 · 뚜띠콜로리 ↗</a></div>
+    </div>
+    <p class="legal">컬러헌팅™ 방법으로 기록합니다 · 운영 컬러랩제주</p>
+  </footer>
+
+  <nav class="L-tab" aria-label="아래 탭">
+    <button data-scroll="top"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z" fill="none" stroke="#242A26" stroke-width="1.5"/></svg>홈</button>
+    <button data-scroll="missions"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="#242A26" stroke-width="1.5"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="#242A26" stroke-width="1.5"/></svg>미션</button>
+    <button class="plus" data-scroll="missions"><i aria-hidden="true">＋</i>기록하기</button>
+    <button data-scroll="places"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" fill="none" stroke="#242A26" stroke-width="1.5"/><rect x="13" y="4" width="7" height="7" fill="none" stroke="#242A26" stroke-width="1.5"/><rect x="4" y="13" width="7" height="7" fill="none" stroke="#242A26" stroke-width="1.5"/><rect x="13" y="13" width="7" height="7" fill="#C8AE71" stroke="#242A26" stroke-width="1.5"/></svg>지역의 색</button>
+    <a href="#/login"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4" fill="none" stroke="#242A26" stroke-width="1.5"/><path d="M4.5 20c1-4 4-5.5 7.5-5.5s6.500 1.500 7.500 5.500" fill="none" stroke="#242A26" stroke-width="1.5"/></svg>로그인</a>
+  </nav>
+</div>`;
 }
+/* 30색 컬러카드 측색값은 tool_chips에서 읽는다 */
+async function fillLandColors(){
+  const ul = $('#lcolors'); if(!ul) return;
+  let cs;
+  try{ cs = await loadChips('card30'); }catch(e){ cs = []; }
+  if(!$('#lcolors')) return;
+  if(!cs.length){ const box=$('#lcolbox'); if(box) box.hidden = true; return; }
+  ul.innerHTML = cs.map(c=>`<li class="${LAND_PICK.includes(c.code)?'pick':''}"><i style="background:${h(c.hex)}"></i><span>${h(c.name_ko)}</span><code>${h(c.code.slice(1))} · ${h(c.hex)}</code></li>`).join('');
+}
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-scroll]');
+  if(b){ const id=b.dataset.scroll; if(id==='top') window.scrollTo({top:0, behavior:'smooth'}); else { const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); } return; }
+  if(e.target.id==='lmore'){ $('#lcolors').classList.add('all'); e.target.hidden = true; }
+});
 document.addEventListener('click', e=>{
   const b=e.target.closest('[data-land]'); if(!b) return;
   go('about/'+b.dataset.land);
