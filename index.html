@@ -394,13 +394,178 @@ async function loadMe(){
   const {data:roles} = await sb.from('user_roles').select('role,edition').eq('user_id', S.user.id);
   if(!roles || !roles.length){
     const tok = localStorage.getItem('ch_invite');
-    if(tok){ try{ await redeem(tok); return true; }catch(e){ return false; } }
+    if(tok && isAnonUser()){ try{ await redeem(tok); return true; }catch(e){ return false; } }
     return false;
   }
   const cached = JSON.parse(localStorage.getItem('ch_me')||'null');
-  S.me = Object.assign({nickname:'', consent_at:null}, cached||{}, {role: roles[0].role});
+  const role = (roles.find(x=>x.role==='admin')||roles[0]).role;
+  S.me = Object.assign({nickname:'', consent_at:null}, cached||{}, {role});
+  /* 서버에 있는 별칭·동의 상태를 가져온다 — 다른 기기에서 로그인해도 그대로 */
+  let mi=null; try{ ({data:mi} = await sb.rpc('my_invite')); }catch(e){}
+  if(mi && mi[0]){ Object.assign(S.me, {nickname:mi[0].nickname, consent_at:mi[0].consent_at, login_id:mi[0].login_id}); localStorage.setItem('ch_me', JSON.stringify(S.me)); }
   return true;
 }
+
+/* ================= 아이디·비밀번호 로그인 ================= */
+const ACCOUNT_FN = SUPABASE_URL + '/functions/v1/account';
+const ID_DOMAIN = 'id.colorhunters.app';
+const isAnonUser = () => !!(S.user && S.user.is_anonymous);
+const normId = s => String(s||'').trim().toLowerCase();
+const ACC_ERR = {
+  bad_code:'참여 코드가 맞지 않아요. 설명회나 단톡방에서 받은 코드를 다시 확인해 주세요.',
+  bad_id:'아이디는 영문 소문자·숫자 4~20자로 만들어 주세요. 휴대폰 번호(숫자만)도 돼요.',
+  id_taken:'이미 쓰고 있는 아이디예요. 다른 아이디로 해 주세요.',
+  weak_password:'비밀번호는 6자 이상으로 해 주세요.',
+  no_nickname:'별칭을 적어 주세요.',
+  no_invite:'참여 정보를 찾지 못했어요. 단톡방에 알려 주세요.',
+  already_has_id:'이미 아이디가 있어요. 로그인 화면에서 아이디로 들어와 주세요.',
+  sign_in_first:'연결이 끊겼어요. 받은 개인 링크를 다시 눌러 주세요.',
+  not_allowed:'관리자만 할 수 있어요.',
+  no_login:'이 분은 아직 아이디가 없어요. 개인 링크로 아이디를 먼저 만들게 해 주세요.',
+  server:'잠시 문제가 생겼어요. 조금 뒤에 다시 해 주세요.'
+};
+async function accountCall(body){
+  const {data:{session}} = await sb.auth.getSession();
+  const headers = {'Content-Type':'application/json', apikey: SUPABASE_KEY};
+  if(session) headers.Authorization = 'Bearer ' + session.access_token;
+  let res;
+  try{ res = await withTimeout(fetch(ACCOUNT_FN, {method:'POST', headers, body: JSON.stringify(body)}), 20000); }
+  catch(e){ throw new Error('인터넷 연결이 약해요. 신호가 잡히는 곳에서 다시 눌러 주세요.'); }
+  const j = await res.json().catch(()=>({error:'server'}));
+  if(!res.ok || j.error) throw new Error(ACC_ERR[j.error] || ACC_ERR.server);
+  return j;
+}
+async function passwordLogin(loginId, password){
+  const {data, error} = await sb.auth.signInWithPassword({email: `${normId(loginId)}@${ID_DOMAIN}`, password});
+  if(error){
+    if(/invalid login/i.test(error.message)) throw new Error('아이디나 비밀번호가 맞지 않아요.');
+    if(/fetch|network/i.test(error.message)) throw new Error('인터넷 연결이 약해요. 신호가 잡히는 곳에서 다시 눌러 주세요.');
+    throw new Error(error.message);
+  }
+  S.user = data.user;
+  localStorage.removeItem('ch_invite'); localStorage.removeItem('ch_me');
+  S.me = null; S.records = []; S.thumbs = {};
+  await loadMe(); await loadParts().catch(()=>{});
+  if(hasId()) await loadMine().catch(()=>{});
+}
+async function logout(){
+  const q = (await idb.all().catch(()=>[])) || [];
+  if(q.length && !confirm(`아직 보내지 못한 기록 ${q.length}건이 이 휴대폰에 있어요. 로그아웃하면 다시 로그인해야 보낼 수 있어요. 로그아웃할까요?`)) return;
+  await sb.auth.signOut().catch(()=>{});
+  ['ch_me','ch_invite'].forEach(k=>localStorage.removeItem(k));
+  S.user=null; S.me=null; S.part={}; S.records=[]; S.thumbs={}; S.draft=null;
+  location.hash = '#/'; render();
+}
+document.addEventListener('click', e=>{ if(e.target.closest('[data-logout]')){ e.preventDefault(); logout(); } });
+
+const pwField = (id, label, auto, hint) => `<div class="field"><label for="${id}">${label}</label>
+  <div style="position:relative"><input id="${id}" class="input" type="password" autocomplete="${auto}" maxlength="72" style="padding-right:64px">
+  <button type="button" class="link" data-peek="${id}" style="position:absolute;right:6px;top:50%;transform:translateY(-50%)">보기</button></div>${hint?`<span class="hint">${hint}</span>`:''}</div>`;
+document.addEventListener('click', e=>{ const b=e.target.closest('[data-peek]'); if(!b) return; const i=$('#'+b.dataset.peek); i.type = i.type==='password'?'text':'password'; b.textContent = i.type==='password'?'보기':'숨기기'; });
+const idField = (id, hint) => `<div class="field"><label for="${id}">아이디</label><input id="${id}" class="input" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" maxlength="20" placeholder="예: dodong77">${hint?`<span class="hint">${hint}</span>`:''}</div>`;
+function busyBtn(b, on, label){ b.disabled=on; b.innerHTML = on ? '<span class="spinner"></span> 잠시만요…' : label; }
+function showErr(msg){ const el=$('#accerr'); if(el){ el.textContent=msg; el.hidden=!msg; if(msg) el.scrollIntoView({block:'center', behavior:'smooth'}); } }
+
+function vLogin(){
+  return `<div class="stack" style="gap:14px">
+    <a class="link" href="#/about/ulleung" style="align-self:flex-start">← 울릉 헤리티지 소개</a>
+    <div class="stack" style="gap:4px"><p class="eyebrow">울릉 색채수집단</p><h1 class="h1">로그인</h1>
+      <p>아이디와 비밀번호로 어느 휴대폰에서나 내 기록을 이어 갈 수 있어요.</p></div>
+    ${inApp?`<div class="notice small">카카오톡 안에서 열었어요. 사진 올리기가 잘 안 되면 오른쪽 아래 <b>⋯ → 다른 브라우저로 열기</b>를 누른 뒤 다시 로그인해 주세요.</div>`:''}
+    <form id="loginf" class="card stack" style="gap:12px" novalidate>
+      ${idField('lid')}
+      ${pwField('lpw','비밀번호','current-password')}
+      <div id="accerr" class="err" role="alert" hidden></div>
+      <button class="btn main block" id="lgo" type="submit">로그인</button>
+    </form>
+    <div class="card stack" style="gap:8px"><p class="h3">처음이에요</p>
+      <p class="small">설명회나 단톡방에서 받은 <b>참여 코드</b>로 아이디를 만들어요.</p>
+      <a class="btn block" href="#/signup">참여 코드로 가입하기</a></div>
+    <p class="small muted">예전에 받은 <b>개인 링크</b>로 기록하던 분은 그 링크를 한 번 더 누르면 아이디 만들기 화면이 나와요. 지금까지 올린 기록은 그대로 이어집니다.</p>
+    <p class="small muted">비밀번호를 잊으면 단톡방에 알려 주세요. 관리자가 새 비밀번호를 알려 드려요.</p>
+  </div>`;
+}
+function bindLogin(){
+  $('#loginf').addEventListener('submit', async e=>{
+    e.preventDefault(); const b=$('#lgo'); showErr('');
+    const id=$('#lid').value, pw=$('#lpw').value;
+    if(!normId(id) || !pw){ showErr('아이디와 비밀번호를 적어 주세요.'); return; }
+    busyBtn(b, true);
+    try{ await passwordLogin(id, pw); toast('로그인했어요'); location.hash='#/'; render(); processQueue(); }
+    catch(err){ showErr(err.message); busyBtn(b, false, '로그인'); }
+  });
+}
+
+function vSignup(){
+  return `<div class="stack" style="gap:14px">
+    <a class="link" href="#/login" style="align-self:flex-start">← 로그인</a>
+    <div class="stack" style="gap:4px"><p class="eyebrow">울릉 색채수집단</p><h1 class="h1">참여 코드로 가입</h1>
+      <p>한 번만 만들면 어느 휴대폰에서나 아이디로 로그인해요.</p></div>
+    <form id="signf" class="card stack" style="gap:12px" novalidate>
+      <div class="field"><label for="scode">참여 코드</label><input id="scode" class="input" autocomplete="off" maxlength="20" placeholder="설명회·단톡방에서 받은 코드"></div>
+      <div class="field"><label for="snick">별칭 <span class="small muted">(공개)</span></label><input id="snick" class="input" maxlength="20" placeholder="예: 도동 김선생"><span class="hint">도감과 지도에 기여자로 실리는 이름이에요.</span></div>
+      <div class="field"><label for="sname">이름 <span class="small muted">(비공개)</span></label><input id="sname" class="input" maxlength="40" autocomplete="name"></div>
+      <div class="field"><label for="sphone">연락처 <span class="small muted">(비공개)</span></label><input id="sphone" class="input" maxlength="30" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000"><span class="hint">활동비 지급과 연락에만 써요.</span></div>
+      ${idField('sid','영문 소문자·숫자 4~20자. 휴대폰 번호(숫자만)도 돼요.')}
+      ${pwField('spw','비밀번호','new-password','6자 이상. 숫자만 써도 돼요.')}
+      ${pwField('spw2','비밀번호 한 번 더','new-password')}
+      <div id="accerr" class="err" role="alert" hidden></div>
+      <button class="btn main block" id="sgo" type="submit">가입하고 시작하기</button>
+    </form>
+    <p class="small muted">아이디와 비밀번호는 종이에 적어 두세요. 잊으면 단톡방에 알려 주시면 관리자가 새 비밀번호를 알려 드려요.</p>
+  </div>`;
+}
+function bindSignup(){
+  $('#signf').addEventListener('submit', async e=>{
+    e.preventDefault(); const b=$('#sgo'); showErr('');
+    const v = k => $('#'+k).value;
+    const id = normId(v('sid'));
+    if(!v('scode').trim()) return showErr('참여 코드를 적어 주세요.');
+    if(!v('snick').trim()) return showErr(ACC_ERR.no_nickname);
+    if(!/^[a-z0-9_]{4,20}$/.test(id)) return showErr(ACC_ERR.bad_id);
+    if(v('spw').length < 6) return showErr(ACC_ERR.weak_password);
+    if(v('spw') !== v('spw2')) return showErr('두 비밀번호가 달라요. 다시 적어 주세요.');
+    busyBtn(b, true);
+    try{
+      await accountCall({action:'signup', code:v('scode'), nickname:v('snick'), real_name:v('sname'), phone:v('sphone'), login_id:id, password:v('spw')});
+      await passwordLogin(id, v('spw'));
+      toast('가입했어요. 아이디: '+id, 4000); location.hash='#/'; render();
+    }catch(err){ showErr(err.message); busyBtn(b, false, '가입하고 시작하기'); }
+  });
+}
+
+function vUpgrade(){
+  const n = S.records.length;
+  return `<div class="stack" style="gap:14px">
+    <div class="stack" style="gap:4px"><p class="eyebrow">울릉 색채수집단 · 한 번만</p><h1 class="h1">${h(S.me.nickname||'')}님, 아이디를 만들어 주세요</h1>
+      <p>이제 개인 링크 대신 <b>아이디와 비밀번호</b>로 들어와요. 휴대폰을 바꾸거나 다른 브라우저에서 열어도 내 기록이 그대로 보여요.</p></div>
+    ${n?`<div class="ok small">지금까지 올린 기록 <b>${n}건</b>은 새 아이디로 그대로 옮겨져요.</div>`:''}
+    <form id="upf" class="card stack" style="gap:12px" novalidate>
+      ${idField('uid','영문 소문자·숫자 4~20자. 휴대폰 번호(숫자만)도 돼요.')}
+      ${pwField('upw','비밀번호','new-password','6자 이상. 숫자만 써도 돼요.')}
+      ${pwField('upw2','비밀번호 한 번 더','new-password')}
+      <div id="accerr" class="err" role="alert" hidden></div>
+      <button class="btn main block" id="ugo" type="submit">아이디 만들기</button>
+    </form>
+    <p class="small muted">아이디와 비밀번호는 종이에 적어 두세요. 이미 아이디를 만들었다면 <a href="#/login" data-logout-to-login>로그인 화면</a>으로 가세요.</p>
+  </div>`;
+}
+function bindUpgrade(){
+  $('#upf').addEventListener('submit', async e=>{
+    e.preventDefault(); const b=$('#ugo'); showErr('');
+    const id=normId($('#uid').value), pw=$('#upw').value;
+    if(!/^[a-z0-9_]{4,20}$/.test(id)) return showErr(ACC_ERR.bad_id);
+    if(pw.length < 6) return showErr(ACC_ERR.weak_password);
+    if(pw !== $('#upw2').value) return showErr('두 비밀번호가 달라요. 다시 적어 주세요.');
+    busyBtn(b, true);
+    try{
+      const r = await accountCall({action:'upgrade', login_id:id, password:pw});
+      await passwordLogin(id, pw);
+      toast(`아이디를 만들었어요${r.moved?` · 기록 ${r.moved}건 옮김`:''}`, 4000); location.hash='#/'; render(); processQueue();
+    }catch(err){ showErr(err.message); busyBtn(b, false, '아이디 만들기'); }
+  });
+}
+document.addEventListener('click', async e=>{ if(e.target.closest('[data-logout-to-login]')){ e.preventDefault(); await sb.auth.signOut().catch(()=>{}); ['ch_me','ch_invite'].forEach(k=>localStorage.removeItem(k)); S.user=null; S.me=null; location.hash='#/login'; } });
 
 /* ================= 데이터 ================= */
 async function loadEdition(){
@@ -479,7 +644,8 @@ window.addEventListener('hashchange', ()=>{ S.textEdit=null; render(); window.sc
 function topRight(){
   const r = sub();
   let s='';
-  if(S.me && S.me.role==='admin') s = r.startsWith('admin') ? `<a href="#/">기록 화면</a>` : `<a href="#/admin">관리</a>`;
+  if(S.me && S.me.role==='admin' && !isAnonUser()) s = r.startsWith('admin') ? `<a href="#/">기록 화면</a>` : `<a href="#/admin">관리</a>`;
+  else if(CUR.mode==='invite' && (!S.me) && r!=='login' && r!=='signup') s = `<a href="#/login">로그인</a>`;
   $('#topright').innerHTML = s;
   const about = r.startsWith('about/');
   $('#topsub').textContent = (hasId() && !about) ? CUR.name : '';
@@ -498,7 +664,11 @@ async function render(){
   if(CUR.mode==='public'){
     if(!S.part[CUR.slug]){ v.innerHTML = vJoin(); bindJoin(); return; }
   } else {
+    const permanent = S.me && !isAnonUser();
+    if(r==='login'){ if(permanent){ go(''); return; } v.innerHTML = vLogin(); bindLogin(); return; }
+    if(r==='signup'){ if(permanent){ go(''); return; } v.innerHTML = vSignup(); bindSignup(); return; }
     if(!S.me){ v.innerHTML = vNoInvite(); return; }
+    if(isAnonUser()){ v.innerHTML = vUpgrade(); bindUpgrade(); return; }
     if(!S.me.consent_at && S.me.role!=='admin'){ v.innerHTML = vConsent(); bindConsent(); return; }
   }
   if(r==='new'){ if(!S.draft) S.draft = newDraft(); v.innerHTML = vDraft(); bindDraft(); return; }
@@ -621,7 +791,7 @@ async function vAbout(key){
 }
 document.addEventListener('click', e=>{ if(e.target.id==='aboutback') go(''); });
 const REC_NOTE = {
-  ulleung:['울릉 헤리티지는 색채수집단이 기록해요','울릉 색채수집단으로 함께하는 주민·조사단이 기록에 참여합니다. 받은 참여 링크로 한 번 들어오면, 이 버튼으로 바로 기록할 수 있어요. 참여 문의는 컬러랩제주로 연락해 주세요.'],
+  ulleung:['울릉 헤리티지는 색채수집단이 기록해요','울릉 색채수집단으로 함께하는 주민·조사단이 아이디로 로그인해 기록합니다. 참여 문의는 컬러랩제주로 연락해 주세요.'],
   camellia:['11월 22일부터 기록할 수 있어요','동백 키링을 받고 그날부터 이 버튼으로 바로 기록을 시작합니다. 키링은 카멜리아힐과 뚜띠콜로리에서 받을 수 있어요.'],
   tradition:['곧 열려요','한옥 컬러헌팅 프로그램과 함께 기록을 시작합니다.']
 };
@@ -636,9 +806,10 @@ document.addEventListener('click', e=>{
   const key=b.dataset.rec;
   if(key==='jejublues'){ S.draft=null; location.hash = S.part.jejublues ? '#/jb/new' : '#/jb'; return; }
   if(key==='ulleung' && S.me){
-    if(!S.me.consent_at && S.me.role!=='admin'){ go(''); return; }
+    if(isAnonUser() || (!S.me.consent_at && S.me.role!=='admin')){ go(''); return; }
     S.draft=newDraft(); go('new'); return;
   }
+  if(key==='ulleung'){ CUR=ED.ulleung; go('login'); return; }
   const [t,m]=REC_NOTE[key]||['곧 열려요','']; infoSheet(t,m);
 });
 
@@ -753,7 +924,7 @@ function vHome(){
   return `
   <div class="stack" style="gap:4px"><p class="eyebrow">${h(S.edition?S.edition.name:CUR.name)}</p>
     <h1 class="h1">${h(myNick())}${h(CUR.homeTitle)}</h1></div>
-  ${inApp?`<div class="notice small">카카오톡 안에서 열었어요. 사진 올리기가 잘 안 되면 오른쪽 아래 <b>⋯ → 다른 브라우저로 열기</b>를 눌러 주세요. 기록은 그대로 이어집니다.</div>`:''}
+  ${inApp?`<div class="notice small">카카오톡 안에서 열었어요. 사진 올리기가 잘 안 되면 오른쪽 아래 <b>⋯ → 다른 브라우저로 열기</b>를 눌러 주세요.${CUR.mode==='invite'?' 새 브라우저에서 아이디로 다시 로그인하면 기록이 그대로 이어집니다.':' 기록은 그대로 이어집니다.'}</div>`:''}
   <div class="stats">
     <div class="stat"><b>${c.total}</b><span>올린 기록</span></div>
     <div class="stat"><b>${c.approved}</b><span>인정</span></div>
@@ -777,7 +948,8 @@ function vHome(){
       : (S.queue.length?'':`<div class="card muted">아직 올린 기록이 없어요. 위 버튼으로 첫 기록을 남겨 보세요.</div>`)}
   </div>
   <p class="small" style="text-align:center"><a href="#/about/${CUR.about}">모인 기록 둘러보기 →</a></p>
-  <p class="xs muted" style="text-align:center">${h(CUR.foot)}</p>`;
+  <p class="xs muted" style="text-align:center">${h(CUR.foot)}</p>
+  ${CUR.mode==='invite' && S.me && S.me.login_id ? `<p class="xs muted" style="text-align:center">아이디 <b>${h(S.me.login_id)}</b> · <a href="#/" data-logout>로그아웃</a></p>` : ''}`;
 }
 document.addEventListener('click', e=>{
   const t=e.target.closest('[data-open]'); if(t){ const id=t.dataset.open; const rec=S.records.find(x=>x.id===id); if(rec && rec.status==='held'){ S.draft=draftFrom(rec); go('edit/'+id);} else go('rec/'+id); return; }
@@ -1101,17 +1273,41 @@ async function admPeople(){
   if(error){ $('#admbody').innerHTML=`<div class="err">${h(error.message)}</div>`; return; }
   const base=location.origin+location.pathname;
   const rows=(data||[]).filter(x=>x.edition===S.adm.ed||x.role==='admin');
-  $('#admbody').innerHTML=`<div class="card stack"><p class="h3">새 참여자 링크 만들기</p>
+  const {data:cd}=await sb.rpc('admin_edition_code',{p_edition:S.adm.ed});
+  const code=(cd&&cd[0])||{code:'',active:false};
+  const withId=rows.filter(x=>x.login_id).length;
+  $('#admbody').innerHTML=`<div class="card stack" style="gap:10px"><p class="h3">참여 코드 · 아이디 가입</p>
+    <p class="small">새 참여자는 <b>${h(location.origin)}/#/signup</b> 에서 이 코드로 아이디를 만들어요. 코드를 바꾸면 그 뒤부터는 새 코드로만 가입할 수 있어요(이미 만든 아이디는 그대로).</p>
+    <div class="row" style="align-items:flex-end">
+      <div class="field" style="flex:1 1 160px"><label for="cc" style="font-size:15px">참여 코드</label><input id="cc" class="input" value="${h(code.code)}" maxlength="20"></div>
+      <label class="check" style="flex:0 0 auto"><input type="checkbox" id="ca" ${code.active?'checked':''}><span>가입 받기</span></label>
+      <button class="btn main" id="csave">저장</button></div>
+    <p class="xs muted">아이디로 옮긴 사람 ${withId} / ${rows.length}명 · 비밀번호를 잊은 사람은 표의 「비밀번호 초기화」로 임시 비밀번호 6자리를 만들어 알려 주세요.</p></div>
+    <div class="card stack"><p class="h3">개인 링크 만들기 <span class="small muted">(아이디 가입이 어려운 분만)</span></p>
     <div class="row" style="align-items:flex-end">
       <div class="field" style="flex:1 1 140px"><label for="n1" style="font-size:15px">별칭(공개)</label><input id="n1" class="input" placeholder="예: 도동 김선생"></div>
       <div class="field" style="flex:1 1 120px"><label for="n2" style="font-size:15px">실명(비공개)</label><input id="n2" class="input"></div>
       <div class="field" style="flex:1 1 140px"><label for="n3" style="font-size:15px">연락처(비공개)</label><input id="n3" class="input" inputmode="tel"></div>
       <div class="field" style="flex:0 1 130px"><label for="n4" style="font-size:15px">역할</label><select id="n4" class="input"><option value="surveyor">수집단</option><option value="reviewer">검수자</option></select></div>
       <button class="btn main" id="mk">만들기</button></div></div>
-    <div class="card" style="overflow-x:auto"><table><tr><th>별칭</th><th>실명·연락처</th><th>역할</th><th>접속</th><th>올림</th><th>인정</th><th>확인 중</th><th>보완</th><th>예상 활동비</th><th>개인 링크</th></tr>
+    <div class="card" style="overflow-x:auto"><table><tr><th>별칭</th><th>실명·연락처</th><th>역할</th><th>아이디</th><th>접속</th><th>올림</th><th>인정</th><th>확인 중</th><th>보완</th><th>예상 활동비</th><th>계정</th></tr>
     ${rows.map(x=>{ const link=`${base}#/i/${x.token}`; const pay = x.role==='surveyor' ? (100000+Number(x.approved)*20000).toLocaleString('ko-KR')+'원' : '—';
-      return `<tr><td><b>${h(x.nickname)}</b></td><td class="small">${h(x.real_name)}<br>${h(x.phone)}</td><td class="small">${{surveyor:'수집단',reviewer:'검수자',admin:'관리자'}[x.role]}</td><td class="small">${x.redeemed_at?fmt(x.redeemed_at):'<span class="muted">아직</span>'}${x.consent_at?'<br>동의 완료':''}</td><td>${x.total}</td><td><b>${x.approved}</b></td><td>${x.pending}</td><td>${x.held}</td><td class="small">${pay}</td><td><button class="btn light sm" data-copy="${h(link)}">링크 복사</button></td></tr>`; }).join('')}
-    </table><p class="xs muted" style="margin-top:8px">예상 활동비 = 기본 100,000원 + 인정 건수 × 20,000원 (1인 최대 건수 상한은 아직 반영하지 않음). 관리자 링크는 남에게 보내지 마세요.</p></div>`;
+      return `<tr><td><b>${h(x.nickname)}</b></td><td class="small">${h(x.real_name)}<br>${h(x.phone)}</td><td class="small">${{surveyor:'수집단',reviewer:'검수자',admin:'관리자'}[x.role]}</td><td class="small">${x.login_id?`<b>${h(x.login_id)}</b>`:'<span class="tag warn">아직 없음</span>'}</td><td class="small">${x.redeemed_at?fmt(x.redeemed_at):'<span class="muted">아직</span>'}${x.consent_at?'<br>동의 완료':''}</td><td>${x.total}</td><td><b>${x.approved}</b></td><td>${x.pending}</td><td>${x.held}</td><td class="small">${pay}</td><td>${x.login_id?`<button class="btn light sm" data-reset="${h(x.token)}" data-who="${h(x.nickname)}">비밀번호 초기화</button>`:`<button class="btn light sm" data-copy="${h(link)}">개인 링크 복사</button>`}</td></tr>`; }).join('')}
+    </table><p class="xs muted" style="margin-top:8px">예상 활동비 = 기본 100,000원 + 인정 건수 × 20,000원 (1인 최대 건수 상한은 아직 반영하지 않음). 아이디가 아직 없는 분은 개인 링크를 한 번 열면 아이디 만들기 화면이 나와요. 관리자 링크는 남에게 보내지 마세요.</p></div>`;
+  $('#csave').onclick=async ()=>{
+    const c=$('#cc').value.trim(); if(c.length<4){ toast('참여 코드는 4자 이상으로 해 주세요'); return; }
+    const {error}=await sb.rpc('admin_set_edition_code',{p_edition:S.adm.ed, p_code:c, p_active:$('#ca').checked});
+    if(error){ toast('저장하지 못했어요: '+error.message); return; }
+    toast('참여 코드를 저장했어요'); admPeople();
+  };
+  document.querySelectorAll('[data-reset]').forEach(b=>b.onclick=async ()=>{
+    if(!confirm(`${b.dataset.who}님의 비밀번호를 새로 만들까요? 지금 비밀번호는 더 이상 쓸 수 없어요.`)) return;
+    b.disabled=true;
+    try{ const r=await accountCall({action:'reset', token:b.dataset.reset});
+      infoSheet('임시 비밀번호', `${b.dataset.who}님 · 아이디 ${r.login_id} · 임시 비밀번호 ${r.password} — 이 번호를 전화나 문자로 알려 주세요. 로그인한 뒤 그대로 써도 됩니다.`);
+    }catch(e){ toast(e.message); }
+    b.disabled=false;
+  });
   $('#mk').onclick=async ()=>{
     const nick=$('#n1').value.trim(); if(!nick){ toast('별칭을 적어 주세요'); return; }
     const {data:tok, error:e2}=await sb.rpc('admin_create_invite',{p_edition:S.adm.ed, p_role:$('#n4').value, p_nickname:nick, p_real_name:$('#n2').value.trim(), p_phone:$('#n3').value.trim(), p_memo:''});
@@ -1143,9 +1339,25 @@ async function boot(){
     CUR = edOf(r); S.edLoaded = CUR.slug;
     await loadEdition().catch(()=>{});
     if(r.startsWith('i/')){
+      const {data:{session:cur}} = await sb.auth.getSession();
+      if(cur && !cur.user.is_anonymous){
+        /* 아이디로 로그인한 상태에서 개인 링크를 열면 그 사람 기록이 내 계정으로 넘어오므로 막는다 */
+        history.replaceState(null,'', location.pathname+'#/');
+        $('#view').innerHTML=`<div class="card stack"><h1 class="h2">이미 아이디로 로그인돼 있어요</h1><p>개인 링크는 아이디가 없는 분이 처음 한 번만 쓰는 링크예요. 다른 분의 링크라면 그분 휴대폰에서 열어 주세요.</p><button class="btn main block" id="tohome">내 기록으로</button></div>`;
+        await loadMe(); await loadParts().catch(()=>{}); if(hasId()) await loadMine().catch(()=>{});
+        $('#tohome').onclick=()=>render(); return;
+      }
       $('#view').innerHTML='<div class="card"><p>초대 링크를 확인하고 있어요…</p></div>';
       try{ await redeem(r.slice(2).trim()); history.replaceState(null,'', location.pathname+'#/'); }
-      catch(e){ $('#view').innerHTML=`<div class="card stack"><h1 class="h2">링크를 열지 못했어요</h1><p>링크가 잘못됐거나 인터넷이 약해요. 다시 눌러 보고, 계속 안 되면 단톡방에 알려 주세요.</p><p class="xs muted">${h(e.message||e)}</p></div>`; return; }
+      catch(e){
+        if(/use login/.test(e.message||'')){
+          localStorage.removeItem('ch_invite'); localStorage.removeItem('ch_me');
+          const {data:{session}} = await sb.auth.getSession();
+          if(session && session.user.is_anonymous) await sb.auth.signOut().catch(()=>{});
+          S.me=null; S.user=null;
+          $('#view').innerHTML=`<div class="card stack"><h1 class="h2">이 링크는 이제 쓰지 않아요</h1><p>이미 아이디를 만드셨어요. 아이디와 비밀번호로 로그인해 주세요.</p><button class="btn main block" id="tologin">로그인</button></div>`; $('#tologin').onclick=()=>{ location.hash='#/login'; }; return;
+        }
+        $('#view').innerHTML=`<div class="card stack"><h1 class="h2">링크를 열지 못했어요</h1><p>링크가 잘못됐거나 인터넷이 약해요. 다시 눌러 보고, 계속 안 되면 단톡방에 알려 주세요.</p><p class="xs muted">${h(e.message||e)}</p></div>`; return; }
     } else {
       await loadMe();
     }
