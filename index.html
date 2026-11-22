@@ -69,6 +69,20 @@ main.wide{max-width:1180px}
 .ring b{font-size:20px}
 .ring span{font-size:13px;color:var(--ink3);text-align:center;line-height:1.35}
 .ring[aria-pressed="true"]{border-color:currentColor;background:var(--soft)}
+/* 키링 칸 고르기 */
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.cell{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:4px;border:3px solid transparent;border-radius:6px;background:none;cursor:pointer;font:inherit}
+.cell i{display:block;height:52px;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.cell span{font-size:13px;color:var(--ink3);text-align:center;letter-spacing:.02em}
+.cell[aria-pressed="true"]{border-color:var(--berry)}
+.cell[aria-pressed="true"] span{color:var(--ink);font-weight:600}
+.sw{display:inline-block;width:22px;height:22px;border-radius:3px;vertical-align:-5px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+/* 장소 스탬프 */
+.stamps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stamp{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border:2px dashed var(--line);border-radius:6px;text-align:center;font-size:14px;line-height:1.3;color:var(--ink3)}
+.stamp i{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:18px}
+.stamp.on{border-style:solid;border-color:var(--flower);color:var(--ink)}
+.stamp.on i{background:var(--flower);border-color:var(--flower);color:#fff}
 .progress{display:flex;gap:5px}
 .progress i{flex:1;height:6px;border-radius:3px;background:var(--line)}
 .progress i.on{background:var(--willow)}
@@ -259,6 +273,22 @@ const JB_RINGS = [
   {v:'제주블루스', c:'#1F5F82', ex:'키링을 대고 ①② 두 장'},
   {v:'없음', t:'키링 없이', c:'#8A9497', ex:'사진 한 장만'}
 ];
+/* 제주 동백의 색 (누구나 참여 · 꽃 키링 칸 고르기 · 장소 스탬프) */
+const CAM_CATS = [
+  {v:'꽃', ex:'동백꽃잎, 꽃술, 떨어진 꽃'},
+  {v:'잎', ex:'동백잎, 새순, 단풍'},
+  {v:'열매', ex:'동백 열매, 씨앗'},
+  {v:'나무·껍질', ex:'줄기, 껍질, 이끼'},
+  {v:'흙·돌', ex:'흙길, 현무암, 돌담'},
+  {v:'바다·물', ex:'바다, 연못, 물빛'},
+  {v:'하늘', ex:'겨울 하늘, 빛'},
+  {v:'건축', ex:'건물, 담, 문'},
+  {v:'음식', ex:'동백차, 디저트'},
+  {v:'기타', ex:'그 밖에 눈에 들어온 색'}
+];
+const CAM_REASONS = ['키링이 안 보이거나 작음','키링과 대상의 빛이 다름','흔들리거나 흐린 사진','고른 칸이 사진과 많이 다름','필터·보정이 들어간 사진','장소가 맞지 않음','사람 얼굴이 크게 나옴'];
+const CAM_CONSENT = 'cm-2026-11';
+
 const STATUS = {pending:['확인 중',''], approved:['인정','ok'], held:['보완 요청','warn'], rejected:['반려','bad']};
 const REASONS = ['키링이 안 보이거나 작음','키링과 대상의 빛이 다름','흔들린 사진','두 사진의 자리·빛이 다름','울릉 이름·이야기가 부족함','위치가 없음','같은 대상이 이미 있음'];
 
@@ -277,7 +307,15 @@ const ED = {
     placeLabel:'해안', wordsTitle:'색 이름과 이야기', nameQ:'이 색에 이름을 붙인다면?', nameLabel:'색 이름', namePh:'예: 함덕 아침 옥빛, 비 오는 날 협재',
     usage:false, storyPh:'그날의 바다, 날씨, 함께 있던 사람, 떠오른 기억 무엇이든 한두 문장이면 돼요',
     homeTitle:'님의 바다색 기록', homeNote:'같은 해안이라도 날과 시간이 다르면 각각 한 건입니다. 사람 얼굴이 크게 나오지 않게 찍어 주세요.',
-    foot:'문의: 컬러랩제주 · colorhunting.org', reasons:JB_REASONS, about:'jejublues'}
+    foot:'문의: 컬러랩제주 · colorhunting.org', reasons:JB_REASONS, about:'jejublues',
+    joinTitle:'오늘의 바다색을 함께 모아요', nickPh:'예: 함덕 산책자', useText:'찍은 사진의 저작권은 나에게 있고, 「제주블루스」 기록집·컬러헌터스 지도·연구·전시에 쓰는 것을 허락합니다. 공개할 때는 별칭으로 기여자를 표시하고, 상업적 이용은 별도 협의와 내 동의를 거칩니다.'},
+  camellia:{slug:'camellia', base:'m/camellia/', mode:'public', name:'제주 동백의 색', cats:CAM_CATS, rings:[], center:[33.36,126.55], zoom:9, consentVer:CAM_CONSENT,
+    tool:'keyring-flower', keyring:'꽃', chips:true, stamps:true,
+    placeLabel:'참여 장소', wordsTitle:'색 이름과 이야기', nameQ:'이 색에 이름을 붙인다면?', nameLabel:'색 이름', namePh:'예: 카멜리아힐 첫눈 동백',
+    usage:false, storyPh:'그날의 동백, 날씨, 함께 있던 사람, 떠오른 기억 무엇이든 한두 문장이면 돼요',
+    homeTitle:'님의 동백 기록', homeNote:'참여 장소마다 한 건 이상 남기면 스탬프가 찍혀요. 같은 장소라도 대상이 다르면 각각 한 건입니다. 사람 얼굴이 크게 나오지 않게 찍어 주세요.',
+    foot:'문의: 컬러랩제주 · colorhunting.org', reasons:CAM_REASONS, about:'camellia',
+    joinTitle:'오늘 동백은 무슨 색인가요?', nickPh:'예: 동백 산책자', useText:'찍은 사진의 저작권은 나에게 있고, 「제주 동백의 색」 기록집·컬러헌터스 지도·연구·전시에 쓰는 것을 허락합니다. 공개할 때는 별칭으로 기여자를 표시하고, 상업적 이용은 별도 협의와 내 동의를 거칩니다.'}
 };
 let CUR = ED.ulleung;
 
@@ -576,6 +614,7 @@ async function loadMine(){
   if(!S.user) return;
   const {data, error} = await sb.from('records').select('*').eq('author', S.user.id).eq('edition', CUR.slug).order('created_at', {ascending:false});
   if(!error) S.records = data||[];
+  if(CUR.stamps) await loadContact().catch(()=>{});
   S.queue = ((await idb.all().catch(()=>[])) || []).filter(it=>!it.row || !it.row.edition || it.row.edition===CUR.slug);
   for(const r of S.records){ if(r.photo2_path && !S.thumbs[r.id]) signThumb(r); else if(r.photo1_path && !S.thumbs[r.id]) signThumb(r); }
 }
@@ -591,7 +630,34 @@ async function useEd(ed){
   CUR = ed; S.edLoaded = ed.slug; S.records = []; S.queue = [];
   if(S.draft && S.draft.ed!==ed.slug) S.draft = null;
   await loadEdition().catch(()=>{});
+  if(ed.tool) await loadChips(ed.tool).catch(()=>{});
   if(hasId()) await loadMine().catch(()=>{});
+}
+/* 키링 칸(측색값)은 tool_chips에서. 링별 측색표 순서(밝기순)로 보여 준다 — 실제 칸 위치(pos)가 정해지면 pos 순서로 */
+S.chips = {}; S.contact = {};
+async function loadChips(tool){
+  if(S.chips[tool] && S.chips[tool].length) return S.chips[tool];
+  const {data, error} = await sb.from('tool_chips').select('code,ring,idx,pos,hex,name_ko').eq('tool', tool);
+  if(error) throw error;
+  const ord = c => c.pos ?? c.idx;
+  S.chips[tool] = (data||[]).sort((a,b)=> a.ring===b.ring ? ord(a)-ord(b) : (a.ring==='O'?-1:1));
+  return S.chips[tool];
+}
+const chipOf = (tool, code) => ((S.chips[tool]||[]).find(c=>c.code===code));
+function chipLabel(tool, code, noMatch, hex){
+  if(code){ const c=chipOf(tool, code); const x=hex||(c&&c.hex)||''; return `${x?`<i class="sw" style="background:${h(x)}"></i> `:''}<b>${h(code)}</b>${x?` <span class="small muted">${h(x)}</span>`:''}`; }
+  return noMatch ? '맞는 칸 없음' : '—';
+}
+async function loadContact(){
+  if(!CUR.stamps || !S.user) return;
+  const {data} = await sb.from('mission_contacts').select('consent_at').eq('user_id', S.user.id).eq('edition', CUR.slug).maybeSingle();
+  S.contact[CUR.slug] = data || null;
+}
+/* 스탬프: 미션 장소별로 반려되지 않은 기록이 하나라도 있으면 찍힘 (DB의 mission_places_done과 같은 규칙) */
+function stampState(){
+  const ids = new Set(S.records.filter(r=>r.status!=='rejected' && r.place_id).map(r=>r.place_id));
+  const places = S.places.filter(p=>p.id);
+  return {places, ids, done: places.filter(p=>ids.has(p.id)).length, need: (S.edition&&S.edition.mission_need)||places.length};
 }
 async function signThumb(r){
   const p = r.photo2_path || r.photo1_path; if(!p) return;
@@ -634,9 +700,10 @@ window.addEventListener('online', ()=>processQueue());
 
 /* ================= 화면 ================= */
 function route(){ return (location.hash||'#/').replace(/^#\/?/, ''); }
-/* 제주블루스 화면은 #/jb/… 아래에 둔다 (#/jb = 제주블루스 첫 화면) */
-function edOf(r){ return (r==='jb' || r.startsWith('jb/')) ? ED.jejublues : ED.ulleung; }
-function sub(){ const r=route(); if(r==='jb') return ''; if(r.startsWith('jb/')) return r.slice(3); return r; }
+/* 제주블루스 화면은 #/jb/… 아래, 제주 동백의 색은 #/m/camellia/… 아래에 둔다 (#/jb = 제주블루스 첫 화면) */
+const underBase = (r, e) => e.base && (r===e.base.slice(0,-1) || r.startsWith(e.base));
+function edOf(r){ return Object.values(ED).find(e=>underBase(r, e)) || ED.ulleung; }
+function sub(){ const r=route(); const e=Object.values(ED).find(x=>underBase(r, x)); return e ? r.slice(e.base.length) : r; }
 function go(r){ location.hash = '#/'+CUR.base+r; }
 const homeHref = () => '#/'+CUR.base;
 window.addEventListener('hashchange', ()=>{ S.textEdit=null; render(); window.scrollTo(0,0); });
@@ -681,9 +748,9 @@ async function render(){
 
 /* ---------- 첫 화면 (로그인 전) ---------- */
 const LANDING = [
-  {key:'camellia', title:'제주 동백의 색', tag:'시즌 프로젝트 · 11.22 시작', sub:'카멜리아 동백', state:'11월 22일 시작', tone:'warn',
+  {key:'camellia', title:'제주 동백의 색', tag:'시즌 미션 · 누구나 참여 · 12.11까지', sub:'카멜리아 동백', state:'참여 중', tone:'ok',
    desc:'겨울 정원에서 발견한 색을 함께 기록해요.',
-   text:'카멜리아힐에서 시작해 제주 동백 여행지를 돌며, 그날 그 자리의 동백 색을 키링과 함께 찾아 남깁니다.',
+   text:'카멜리아힐에서 시작해 제주 동백 여행지를 돌며, 그날 그 자리의 동백 색을 키링과 함께 찾아 남깁니다. 별칭만 정하면 누구나 참여할 수 있어요.',
    sw:[['#7E1A2C',3],['#A8283D',4],['#C9455A',3],['#E08A93',2],['#F1D3D2',2],['#2F4A2B',3],['#5E7146',2]]},
   {key:'ulleung', title:'울릉 헤리티지', tag:'조사단 프로젝트 · 진행 중', sub:'울릉 헤리티지', state:'진행 중', tone:'ok',
    desc:'주민의 시선으로 모으는 우리 지역의 색과 이야기.',
@@ -732,7 +799,7 @@ document.addEventListener('click', e=>{
 /* ---------- 활동 소개 페이지 (로그인 없이) ---------- */
 async function loadAllEditions(){
   if(S.allEd) return S.allEd;
-  const {data} = await sb.from('editions').select('slug,name,partner,period,intro,tool,tool_where,places,status');
+  const {data} = await sb.from('editions').select('slug,name,partner,period,intro,tool,tool_where,places,status,question,reward,mission_need');
   S.allEd = {}; (data||[]).forEach(e=>S.allEd[e.slug]=e); return S.allEd;
 }
 function aboutShell(x, inner){
@@ -764,12 +831,18 @@ async function vAbout(key){
   if(key==='camellia'){
     const e = eds.camellia || {};
     const places = (e.places||[]).map(p=>p.name).filter(Boolean);
+    const need = e.mission_need || 5;
     return aboutShell(x, `
     <div class="card stack" style="gap:10px"><p class="h3">미션</p>
-      <dl><dt>기간</dt><dd>${h(e.period||'11.22 – 12.11')}</dd><dt>준비물</dt><dd>${h(e.tool||'동백 키링 또는 보정 카드')}<br><span class="small muted">카멜리아힐과 뚜띠콜로리에서 받을 수 있어요</span></dd>
-      ${places.length?`<dt>동백 여행지</dt><dd>${places.map(h).join(' · ')}</dd>`:''}</dl></div>
-    ${STEPS}
-    <div class="notice">11월 22일에 열려요. 그날부터 이 페이지에서 바로 참여할 수 있습니다.</div>`);
+      <dl><dt>질문</dt><dd>${h(e.question||'오늘 동백은 무슨 색인가요?')}</dd><dt>기간</dt><dd>${h(e.period||'11.22 – 12.11')}</dd><dt>준비물</dt><dd>동백 키링<br><span class="small muted">${h(e.tool_where||'카멜리아힐·뚜띠콜로리에서 받아요')}</span></dd>
+      ${places.length?`<dt>참여 장소</dt><dd>${places.map(h).join(' · ')}</dd>`:''}
+      <dt>참여</dt><dd>별칭만 정하면 누구나 (회원가입 없음)</dd>
+      ${e.reward?`<dt>스탬프</dt><dd>참여 장소 ${places.length||6}곳 중 <b>${need}곳</b>에서 기록하면 ${h(rewardShort(e.reward))}에 응모할 수 있어요</dd>`:''}</dl></div>
+    <div class="card stack" style="gap:10px"><p class="h3">이렇게 기록해요</p>
+      <ol class="tips" style="gap:8px"><li><b>키링을 대고 한 장</b> — 대상 바로 옆, 같은 빛 아래에서</li><li><b>키링을 빼고 한 장</b> — 같은 자리에서 바로 이어서 (건너뛸 수 있어요)</li><li><b>가장 가까운 칸 고르기</b> — 키링 30칸 중 대상과 가장 비슷한 칸. 맞는 칸이 없어도 괜찮아요</li><li><b>참여 장소와 이름·이야기</b> — 위치는 휴대폰으로 자동 기록</li></ol>
+      <p class="small muted">키링의 색 조각은 실제로 색을 재어 둔 기준색입니다. 함께 찍으면 빛과 휴대폰이 바꾼 색을 되돌려 대상의 색을 숫자로 남길 수 있어요.</p></div>
+    <div class="card stack" style="gap:6px"><p class="h3">함께하는 곳</p><p class="small">${h(e.partner||'나우다 × 카멜리아힐')} · 컬러랩제주</p>
+      <p class="small muted">올린 기록은 컬러랩제주가 확인한 뒤 이 페이지에 공개합니다.</p></div>`);
   }
   if(key==='tradition'){
     return aboutShell(x, `
@@ -792,7 +865,6 @@ async function vAbout(key){
 document.addEventListener('click', e=>{ if(e.target.id==='aboutback') go(''); });
 const REC_NOTE = {
   ulleung:['울릉 헤리티지는 색채수집단이 기록해요','울릉 색채수집단으로 함께하는 주민·조사단이 아이디로 로그인해 기록합니다. 참여 문의는 컬러랩제주로 연락해 주세요.'],
-  camellia:['11월 22일부터 기록할 수 있어요','동백 키링을 받고 그날부터 이 버튼으로 바로 기록을 시작합니다. 키링은 카멜리아힐과 뚜띠콜로리에서 받을 수 있어요.'],
   tradition:['곧 열려요','한옥 컬러헌팅 프로그램과 함께 기록을 시작합니다.']
 };
 function infoSheet(title, body){
@@ -804,7 +876,7 @@ function infoSheet(title, body){
 document.addEventListener('click', e=>{
   const b=e.target.closest('[data-rec]'); if(!b) return;
   const key=b.dataset.rec;
-  if(key==='jejublues'){ S.draft=null; location.hash = S.part.jejublues ? '#/jb/new' : '#/jb'; return; }
+  if(key==='jejublues' || key==='camellia'){ const e=ED[key]; S.draft=null; location.hash = '#/'+e.base+(S.part[key]?'new':''); return; }
   if(key==='ulleung' && S.me){
     if(isAnonUser() || (!S.me.consent_at && S.me.role!=='admin')){ go(''); return; }
     S.draft=newDraft(); go('new'); return;
@@ -883,10 +955,10 @@ function bindConsent(){
 function vJoin(){
   return `<div class="stack" style="gap:14px">
     <a class="link" href="#/about/${CUR.about}" style="align-self:flex-start">← ${h(CUR.name)} 소개</a>
-    <div class="stack" style="gap:4px"><p class="eyebrow">${h(CUR.name)} · 누구나 참여</p><h1 class="h1">오늘의 바다색을 함께 모아요</h1>
+    <div class="stack" style="gap:4px"><p class="eyebrow">${h(CUR.name)} · 누구나 참여</p><h1 class="h1">${h(CUR.joinTitle)}</h1>
     <p>별칭만 정하면 바로 기록할 수 있어요. 회원가입은 필요 없습니다.</p></div>
-    <div class="field"><label for="jnick">별칭 <span style="color:var(--bad-ink)">*</span></label><input id="jnick" class="input" maxlength="20" placeholder="예: 함덕 산책자" autocomplete="nickname"><span class="hint">공개 기록에 기여자로 표시돼요. 실명은 적지 않아도 됩니다.</span></div>
-    <label class="check"><input type="checkbox" id="j1"><span><b>사진과 이야기의 이용</b><br><span class="small muted">찍은 사진의 저작권은 나에게 있고, 「제주블루스」 기록집·컬러헌터스 지도·연구·전시에 쓰는 것을 허락합니다. 공개할 때는 별칭으로 기여자를 표시하고, 상업적 이용은 별도 협의와 내 동의를 거칩니다.</span></span></label>
+    <div class="field"><label for="jnick">별칭 <span style="color:var(--bad-ink)">*</span></label><input id="jnick" class="input" maxlength="20" placeholder="${h(CUR.nickPh)}" autocomplete="nickname"><span class="hint">공개 기록에 기여자로 표시돼요. 실명은 적지 않아도 됩니다.</span></div>
+    <label class="check"><input type="checkbox" id="j1"><span><b>사진과 이야기의 이용</b><br><span class="small muted">${h(CUR.useText)}</span></span></label>
     <label class="check"><input type="checkbox" id="j2"><span><b>위치 정보</b><br><span class="small muted">찍은 장소를 남깁니다. 공개 지도에는 약 100m 단위로 흐리게 표시합니다.</span></span></label>
     <label class="check"><input type="checkbox" id="j3"><span><b>나이</b><br><span class="small muted">만 14세 이상이에요. 14세 미만은 보호자와 함께 참여해 주세요.</span></span></label>
     <div class="notice small">기록은 <b>지금 쓰는 이 휴대폰의 이 브라우저</b>에 이어져요. 다른 기기에서는 내 기록 목록이 보이지 않아요. 이미 올린 기록은 그대로 남습니다.</div>
@@ -932,6 +1004,7 @@ function vHome(){
   </div>
   ${q?`<div class="notice"><b>보내지 못한 기록 ${q}건</b>이 휴대폰에 남아 있어요. 인터넷이 잡히는 곳에서 아래 버튼을 눌러 주세요.<div style="margin-top:10px"><button class="btn dark sm" id="retry">지금 보내기</button></div></div>`:''}
   ${held.length?`<div class="notice"><b>보완 요청 ${held.length}건</b> — 아래 노란 칸을 눌러 고쳐서 다시 내 주세요.</div>`:''}
+  ${CUR.stamps?vStamps():''}
   <button class="btn main block" style="min-height:64px;font-size:20px" id="start">＋ 기록 남기기</button>
   <details class="card"><summary class="h3" style="cursor:pointer">무엇을 기록하나요?</summary>
     <div class="stack" style="margin-top:10px">${CUR.cats.map(x=>`<div><b>${h(x.v)}</b> <span class="muted small">— ${h(x.ex)}</span></div>`).join('')}
@@ -957,6 +1030,47 @@ document.addEventListener('click', e=>{
   if(e.target.id==='retry'){ e.target.disabled=true; e.target.textContent='보내는 중…'; processQueue().then(()=>toast(S.queue.length?'아직 보내지 못한 기록이 있어요':'모두 보냈어요')); }
 });
 
+/* ---------- 장소 스탬프 · 추첨 응모 ---------- */
+const rewardShort = t => (t||'').replace(/^\d+곳 달성자 중 /,'') || '경품 추첨';
+function vStamps(){
+  const st = stampState(); if(!st.places.length) return '';
+  const reward = rewardShort((S.edition&&S.edition.reward)||'');
+  const c = S.contact[CUR.slug];
+  let tail = '';
+  if(c) tail = `<div class="ok small">추첨 응모를 마쳤어요 (${fmt(c.consent_at)}). 당첨되면 남겨 주신 연락처로 알려 드려요.</div>`;
+  else if(st.done >= st.need) tail = `<div class="stack" style="gap:10px;border-top:1px solid var(--line);padding-top:12px">
+      <p><b>${st.need}곳 달성!</b> ${h(reward)}에 응모할 수 있어요.</p>
+      <div class="field"><label for="ctname">이름</label><input id="ctname" class="input" maxlength="30" autocomplete="name"></div>
+      <div class="field"><label for="ctphone">휴대폰 번호</label><input id="ctphone" class="input" inputmode="tel" maxlength="13" placeholder="010-0000-0000" autocomplete="tel"></div>
+      <label class="check"><input type="checkbox" id="ctok"><span><b>개인정보 수집·이용 동의</b><br><span class="small muted">이름과 휴대폰 번호는 추첨과 경품 안내에만 쓰고, 미션이 끝나고 경품 발송을 마치면 지웁니다. 공개 기록에는 별칭만 나옵니다.</span></span></label>
+      <p class="xs muted">기록이 확인 과정에서 반려되면 그 장소의 스탬프는 빠지고, 추첨은 인정된 기록 기준으로 합니다.</p>
+      <button class="btn main block" id="ctsend" disabled>추첨 응모하기</button></div>`;
+  else tail = `<p class="small muted">${st.need-st.done}곳 더 기록하면 ${h(reward)}에 응모할 수 있어요.</p>`;
+  return `<div class="card stack" style="gap:12px">
+    <div class="row between"><p class="h3">장소 스탬프</p><b>${st.done} / ${st.need}곳</b></div>
+    <div class="stamps">${st.places.map(p=>`<div class="stamp ${st.ids.has(p.id)?'on':''}"><i>${st.ids.has(p.id)?'✓':''}</i>${h(p.name)}</div>`).join('')}</div>
+    ${tail}</div>`;
+}
+document.addEventListener('input', e=>{
+  if(!['ctname','ctphone'].includes(e.target.id)) return;
+  const b=$('#ctsend'); if(b) b.disabled = !($('#ctname').value.trim() && $('#ctphone').value.replace(/\D/g,'').length>=10 && $('#ctok').checked);
+});
+document.addEventListener('change', e=>{
+  if(e.target.id!=='ctok') return;
+  const b=$('#ctsend'); if(b) b.disabled = !($('#ctname').value.trim() && $('#ctphone').value.replace(/\D/g,'').length>=10 && e.target.checked);
+});
+document.addEventListener('click', async e=>{
+  if(e.target.id!=='ctsend') return;
+  const b=e.target; busyBtn(b, true);
+  const {error} = await sb.rpc('submit_mission_contact', {p_edition:CUR.slug, p_name:$('#ctname').value.trim(), p_phone:$('#ctphone').value, p_version:CUR.consentVer||''});
+  if(error){
+    busyBtn(b, false, '추첨 응모하기');
+    const m=error.message||'';
+    toast(/phone/.test(m)?'휴대폰 번호를 다시 확인해 주세요':/mission not done/.test(m)?'아직 장소가 모자라요':'응모하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.', 3500); return;
+  }
+  await loadContact().catch(()=>{}); toast('추첨 응모를 마쳤어요'); render();
+});
+
 function vRecord(id){
   const r=S.records.find(x=>x.id===id); if(!r) return `<div class="card">기록을 찾을 수 없어요. <a href="${homeHref()}">돌아가기</a></div>`;
   setTimeout(async ()=>{ for(const k of ['photo1_path','photo2_path']){ if(!r[k]) continue; const {data}=await sb.storage.from(BUCKET).createSignedUrl(r[k],3600); const el=document.querySelector(`[data-ph="${k}"]`); if(el&&data) el.innerHTML=`<img src="${h(data.signedUrl)}" alt="">`; } },0);
@@ -964,8 +1078,8 @@ function vRecord(id){
   <div class="card stack">
     <div class="row between"><h1 class="h2">${h(r.local_name||r.color_name)}</h1>${tag(r.status)}</div>
     ${r.status==='held'?`<div class="notice">보완 요청: ${h(r.review_memo||'')} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
-    ${r.is_memory?'<p class="tag">기억 카드</p>':(r.photo1_path?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div><div class="shot" data-ph="photo2_path"><span class="badge">② 키링 없이</span></div></div>`:`<div class="shot" data-ph="photo2_path"><span class="badge">사진</span></div>`)}
-    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'없음')}</dd><dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>쓰임</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${fmt(r.photo1_taken_at||r.taken_at||r.created_at)}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
+    ${r.is_memory?'<p class="tag">기억 카드</p>':(r.photo1_path&&r.photo2_path?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div><div class="shot" data-ph="photo2_path"><span class="badge">② 키링 없이</span></div></div>`:r.photo1_path?`<div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div>`:`<div class="shot" data-ph="photo2_path"><span class="badge">사진</span></div>`)}
+    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>쓰임</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${fmt(r.photo1_taken_at||r.taken_at||r.created_at)}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
     ${canEditText(r)?(S.textEdit===r.id?vTextForm(r):`<button class="btn light block" id="tedit">✎ ${CUR.usage?'이름·쓰임·이야기':'색 이름·이야기'} 고치기</button>`):''}
     <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">끄면 이 기록은 공개하지 않아요.</span></span></label>
   </div>`;
@@ -1012,11 +1126,11 @@ document.addEventListener('change', async e=>{
 });
 
 /* ---------- 기록 남기기 ---------- */
-function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', local_name:'', usage:'', story:'', share:true, error:''}; }
-function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], error:''}; }
+function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', local_name:'', usage:'', story:'', share:true, chip:'', noMatch:false, error:''}; }
+function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], chip:r.chip_code||'', noMatch:!!r.no_match, error:''}; }
 const isMemory = d => d.category==='기억 카드';
 const noRing = d => d.keyring==='없음';
-function steps(d){ return isMemory(d) ? ['what','where','words','check'] : noRing(d) ? ['what','ring','p2','where','words','check'] : ['what','ring','p1','p2','where','words','check']; }
+function steps(d){ if(CUR.chips) return ['what','p1','p2','chip','where','words','check']; return isMemory(d) ? ['what','where','words','check'] : noRing(d) ? ['what','ring','p2','where','words','check'] : ['what','ring','p1','p2','where','words','check']; }
 
 function vDraft(){
   const d=S.draft; const st=steps(d); const k=st[d.step-1];
@@ -1048,10 +1162,25 @@ function vDraft(){
       ${sizeNote(d.p2)}
       <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="2" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="2" data-cap="0">앨범에서 선택</button></div>
       ${gap!=null && gap>GAP_WARN_MIN?`<div class="notice">두 사진을 찍은 시간이 <b>${Math.round(gap)}분</b> 차이 나요. 빛이 바뀌었을 수 있으니, 가능하면 같은 자리에서 다시 이어서 찍어 주세요.</div>`:''}`;
-    foot=`<button class="btn main block" id="next" ${(d.p2||d.oldP2)?'':'disabled'}>다음</button>`;
+    foot = (CUR.chips && !(S.edition&&S.edition.photo2_required))
+      ? `<div class="rings" style="grid-template-columns:1fr 2fr"><button class="btn light" id="skip">건너뛰기</button><button class="btn main" id="next" ${(d.p2||d.oldP2)?'':'disabled'}>다음</button></div>`
+      : `<button class="btn main block" id="next" ${(d.p2||d.oldP2)?'':'disabled'}>다음</button>`;
+  } else if(k==='chip'){
+    const cs=S.chips[CUR.tool]||[];
+    if(!cs.length && !vDraft.chipTry){ vDraft.chipTry=true; loadChips(CUR.tool).then(l=>{ if(l.length && S.draft===d) render(); }).catch(()=>{}).finally(()=>{ vDraft.chipTry=false; }); }
+    const grid=ring=>cs.filter(c=>c.ring===ring).map(c=>`<button class="cell" data-chip="${h(c.code)}" aria-pressed="${d.chip===c.code}" aria-label="${h(c.code)} 칸"><i style="background:${h(c.hex)}"></i><span>${h(c.code)}</span></button>`).join('');
+    body=`<h1 class="h2">가장 가까운 칸 고르기</h1>
+      <p class="muted small">사진이 아니라 <b>실제 대상과 키링을 눈으로 견주어</b> 가장 비슷한 칸을 골라요. 화면 색은 휴대폰마다 조금 달라요 — 칸 번호를 키링에서 확인해 주세요.</p>
+      ${d.p1?`<div class="shot" style="aspect-ratio:auto;max-height:34vh"><img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진" style="object-fit:contain;max-height:34vh"><span class="badge">①</span></div>`:''}
+      ${cs.length?`<p class="small"><b>바깥 링</b> <span class="muted">(${cs.filter(c=>c.ring==='O').length}칸)</span></p><div class="chips">${grid('O')}</div>
+      <p class="small"><b>안쪽 링</b> <span class="muted">(${cs.filter(c=>c.ring==='I').length}칸)</span></p><div class="chips">${grid('I')}</div>`
+        :'<div class="notice small">키링 칸을 불러오지 못했어요. 인터넷이 잡히면 다시 열어 주세요. «맞는 칸이 없어요»로 넘어가도 됩니다.</div>'}
+      <button class="choice" id="nomatch" aria-pressed="${d.noMatch}"><b>맞는 칸이 없어요</b><span>키링에 비슷한 색이 없을 때 — 이것도 소중한 기록이에요</span></button>`;
+    foot=`<button class="btn main block" id="next" ${(d.chip||d.noMatch)?'':'disabled'}>다음</button>`;
   } else if(k==='where'){
     const opts=S.places.map(p=>`<option value="${h(p.name)}" ${d.area===p.name?'selected':''}>${h(p.name)}</option>`).join('');
     body=`<h1 class="h2">어디에서 찍었나요?</h1>
+      ${CUR.stamps?'<p class="small muted">참여 장소에서 찍었다면 그 장소를 골라 주세요. 장소마다 스탬프가 하나씩 찍혀요.</p>':''}
       <div class="field"><label for="area">${h(CUR.placeLabel)}</label><select id="area" class="input"><option value="">${h(CUR.placeLabel)} 고르기</option>${opts}<option value="그 밖의 곳" ${d.area==='그 밖의 곳'?'selected':''}>그 밖의 곳</option></select></div>
       <div class="stack"><div class="row between"><b>지도 위치</b><button class="btn light sm" id="gps">지금 위치 쓰기</button></div>
       <p class="small muted" id="locmsg">${locMsg(d)}</p>
@@ -1067,9 +1196,9 @@ function vDraft(){
     foot=`<button class="btn main block" id="next" ${wordsOk(d)?'':'disabled'}>다음</button>`;
   } else if(k==='check'){
     body=`<h1 class="h2">이렇게 올릴게요</h1>
-      ${isMemory(d)?'':noRing(d)?`<div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}</div>`:`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">①</span></div><div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">②</span></div></div>`}
-      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':d.keyring)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd><dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage?`<dt>쓰임</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
-      <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">정확한 채취지는 흐리게 표시해요.</span></span></label>
+      ${isMemory(d)?'':noRing(d)?`<div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}</div>`:`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">①</span></div><div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:`<span class="small muted">${d.oldP2?'이전 사진':'건너뜀'}</span>`}<span class="badge">②</span></div></div>`}
+      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':d.keyring)}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd><dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage?`<dt>쓰임</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
+      <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">${CUR.usage?'정확한 채취지는 흐리게 표시해요.':'공개 지도에는 약 100m 단위로 흐리게 표시해요.'}</span></span></label>
       ${d.error?`<div class="err">${h(d.error)}</div>`:''}`;
     foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?`<span class="spinner"></span> 올리는 중…${(d.p1||d.p2)?' ('+mb((d.p1?d.p1.sent:0)+(d.p2?d.p2.sent:0))+')':''}`:(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
   }
@@ -1103,6 +1232,10 @@ function bindDraft(){
     }catch(e){ toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요.'); }
   }; });
   const nx=$('#next'); if(nx) nx.onclick=()=>{ d.step++; render(); window.scrollTo(0,0); };
+  const sk=$('#skip'); if(sk) sk.onclick=()=>{ d.p2=null; d.step++; render(); window.scrollTo(0,0); };
+  document.querySelectorAll('[data-chip]').forEach(b=>b.onclick=()=>{ d.chip=b.dataset.chip; d.noMatch=false;
+    document.querySelectorAll('[data-chip]').forEach(x=>x.setAttribute('aria-pressed', x===b)); $('#nomatch').setAttribute('aria-pressed', false); $('#next').disabled=false; });
+  const nm=$('#nomatch'); if(nm) nm.onclick=()=>{ d.noMatch=!d.noMatch; if(d.noMatch) d.chip=''; render(); };
   if(k==='where'){
     $('#area').onchange=e=>{ d.area=e.target.value; $('#next').disabled=!d.area; };
     $('#gps').onclick=()=>tryGps(false);
@@ -1145,6 +1278,7 @@ async function submitDraft(){
     lat:d.lat, lng:d.lng, gps_accuracy_m:d.acc, loc_method:d.locMethod||'none',
     share:!!d.share, user_agent:navigator.userAgent.slice(0,200), device_id:deviceId()
   };
+  if(CUR.tool){ row.tool=CUR.tool; row.chip_code=d.chip||null; row.no_match=!!d.noMatch && !d.chip; }
   if(d.p1){ row.photo1_taken_at=d.p1.exif.taken; row.exif1=d.p1.exif.raw; row.taken_at=d.p1.exif.taken; }
   if(d.p2){ row.photo2_taken_at=d.p2.exif.taken; row.exif2=d.p2.exif.raw; if(!row.taken_at) row.taken_at=d.p2.exif.taken; }
   if(!row.taken_at && d.mode==='new') row.taken_at=new Date().toISOString();
@@ -1230,7 +1364,7 @@ function admDetail(r){
     <div class="row between"><div><h2 class="h2">${h(r.local_name||r.color_name)}</h2><p class="small muted">${h(A.authors[r.author]||'?')} · ${fmt(r.created_at)}${r.resubmitted_at?' · 보완 후 다시 냄':''}${r.text_edited_at?' · 글 고침 '+fmt(r.text_edited_at):''}</p></div>${tag(r.status)}</div>
     ${r.is_memory?'<p><span class="tag">기억 카드 — 사진 없음</span></p>':`<div class="pics"><figure><div class="ph" data-big="${h(r.photo1_path||'')}">${r.photo1_path?'불러오는 중':'키링 사진 없음'}</div><figcaption class="xs muted">① 키링과 함께 · ${h(r.keyring||'키링 없음')} · ${fmt(r.photo1_taken_at)}</figcaption></figure><figure><div class="ph" data-big="${h(r.photo2_path||'')}">${r.photo2_path?'불러오는 중':'없음'}</div><figcaption class="xs muted">② 키링 없이 · ${fmt(r.photo2_taken_at)}</figcaption></figure></div>`}
     ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
-    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>동네</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
+    <dl><dt>분류</dt><dd>${h(r.category)}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(ED[A.ed].placeLabel)}</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
       <dt>쓰임</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
       <dt>기기</dt><dd class="small">${h([ex.Make,ex.Model].filter(Boolean).join(' ')||'—')}</dd><dt>공개</dt><dd>${r.share?'동의':'비공개'}</dd></dl>
     ${r.review_memo?`<div class="small muted">이전 검수 메모: ${h(r.review_memo)} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
@@ -1257,12 +1391,36 @@ function bindDetail(r){
     admReview();
   });
 }
+async function admMission(){
+  const A=S.adm; const e=ED[A.ed];
+  const [{data, error}, {data:edr}] = await Promise.all([sb.rpc('admin_mission_progress',{p_edition:A.ed}), sb.from('editions').select('mission_need,places').eq('slug',A.ed).single()]);
+  if(error){ $('#admbody').innerHTML=`<div class="err">${h(error.message)}</div>`; return; }
+  const rows=data||[]; const need=(edr&&edr.mission_need)||5; const nPlaces=((edr&&edr.places)||[]).length;
+  const ok=rows.filter(x=>x.places_approved>=need && x.contact_at);
+  $('#admbody').innerHTML=`<div class="card stack" style="gap:6px"><p class="h3">누구나 참여 · ${rows.length}명</p>
+    <p class="small muted">참여 주소: <b>${h(location.origin)}/#/${h(e.base.slice(0,-1))}</b> — 별칭과 동의만으로 참여합니다.</p>
+    <p class="small">스탬프 = 참여 장소 ${nPlaces}곳 중 기록한 곳(반려 제외). <b>추첨 대상</b> = 인정된 기록으로 ${need}곳 이상 + 연락처 응모 → 지금 <b>${ok.length}명</b></p>
+    <div class="row"><button class="btn main" id="lotcsv">추첨 대상자 CSV</button><button class="btn light" id="allcsv">참여자 전체 CSV</button></div></div>
+    <div class="card" style="overflow-x:auto"><table><tr><th>별칭</th><th>참여한 때</th><th>스탬프(제출)</th><th>스탬프(인정)</th><th>응모</th></tr>
+    ${rows.map(x=>`<tr><td><b>${h(x.nickname)}</b></td><td class="small">${fmt(x.joined_at)}</td><td>${x.places_submitted}</td><td><b>${x.places_approved}</b></td><td class="small">${x.contact_at?`${h(x.real_name)} · ${h(x.phone)}<br>${fmt(x.contact_at)}`:'<span class="muted">—</span>'}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">아직 참여자가 없어요.</td></tr>'}
+    </table><p class="xs muted" style="margin-top:8px">연락처는 추첨·경품 안내에만 쓰고 경품 발송 뒤 지웁니다. 화면을 캡처해 공유하지 마세요.</p></div>`;
+  const dl=(list, name)=>{
+    const cols=[['nickname','별칭'],['real_name','이름'],['phone','휴대폰'],['places_submitted','스탬프(제출)'],['places_approved','스탬프(인정)'],['contact_at','응모 시각'],['joined_at','참여 시각']];
+    const esc=v=>{ const s=v==null?'':String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+    const csv='\ufeff'+cols.map(c=>c[1]).join(',')+'\n'+list.map(r=>cols.map(c=>esc(r[c[0]])).join(',')).join('\n');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=name; a.click();
+  };
+  const day=new Date().toISOString().slice(0,10);
+  $('#lotcsv').onclick=()=>dl(ok, `${A.ed}-lottery-${day}.csv`);
+  $('#allcsv').onclick=()=>dl(rows, `${A.ed}-participants-${day}.csv`);
+}
 async function admParticipants(){
   const A=S.adm;
+  if(ED[A.ed].stamps) return admMission();
   const {data, error}=await sb.rpc('admin_participants',{p_edition:A.ed});
   if(error){ $('#admbody').innerHTML=`<div class="err">${h(error.message)}</div>`; return; }
   const rows=data||[];
-  $('#admbody').innerHTML=`<div class="card stack" style="gap:6px"><p class="h3">누구나 참여 · ${rows.length}명</p><p class="small muted">참여 주소: <b>${h(location.origin)}/#/jb</b> — 별칭과 동의만으로 참여합니다. 참여 링크를 따로 만들 필요가 없어요.</p></div>
+  $('#admbody').innerHTML=`<div class="card stack" style="gap:6px"><p class="h3">누구나 참여 · ${rows.length}명</p><p class="small muted">참여 주소: <b>${h(location.origin)}/#/${h(ED[A.ed].base.slice(0,-1))}</b> — 별칭과 동의만으로 참여합니다. 참여 링크를 따로 만들 필요가 없어요.</p></div>
     <div class="card" style="overflow-x:auto"><table><tr><th>별칭</th><th>참여한 때</th><th>올림</th><th>인정</th><th>확인 중</th><th>보완</th><th>마지막 기록</th></tr>
     ${rows.map(x=>`<tr><td><b>${h(x.nickname)}</b></td><td class="small">${fmt(x.joined_at)}</td><td>${x.total}</td><td><b>${x.approved}</b></td><td>${x.pending}</td><td>${x.held}</td><td class="small">${x.last_at?fmt(x.last_at):'<span class="muted">—</span>'}</td></tr>`).join('')||'<tr><td colspan="7" class="muted">아직 참여자가 없어요.</td></tr>'}
     </table></div>`;
@@ -1323,7 +1481,7 @@ async function admExport(){
   $('#admbody').innerHTML=`<div class="card stack"><p>기록 ${A.list.length}건을 엑셀에서 열 수 있는 CSV로 내려받습니다. 사진은 경로만 들어갑니다.</p>
     <div class="row"><button class="btn main" id="csvall">전체 CSV</button><button class="btn" id="csvok">인정 기록만 CSV</button></div></div>`;
   const dl=(rows, name)=>{
-    const cols=['id','status','nickname','category','local_name','usage','story','keyring','area','lat','lng','loc_method','photo1_taken_at','photo2_taken_at','created_at','share','review_memo','photo1_path','photo2_path'];
+    const cols=['id','status','nickname','category','local_name','usage','story','keyring','tool','chip_code','chip_hex','no_match','area','place_id','lat','lng','loc_method','photo1_taken_at','photo2_taken_at','created_at','share','review_memo','photo1_path','photo2_path'];
     const esc=v=>{ const s=v==null?'':String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
     const csv='﻿'+cols.join(',')+'\n'+rows.map(r=>cols.map(c=>esc(c==='nickname'?A.authors[r.author]:r[c])).join(',')).join('\n');
     const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=name; a.click();
@@ -1338,6 +1496,7 @@ async function boot(){
     const r=route();
     CUR = edOf(r); S.edLoaded = CUR.slug;
     await loadEdition().catch(()=>{});
+    if(CUR.tool) loadChips(CUR.tool).catch(()=>{});
     if(r.startsWith('i/')){
       const {data:{session:cur}} = await sb.auth.getSession();
       if(cur && !cur.user.is_anonymous){
