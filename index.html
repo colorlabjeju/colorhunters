@@ -262,146 +262,145 @@ body.ed .link{color:var(--e-ink2)}
 body.ed .gcard{background:transparent;border-color:var(--e-line);border-radius:0}
 body.ed .gtxt b{font-family:var(--e-serif);font-weight:500;color:var(--e-ink)}
 body.ed .sheet-in{background:var(--e-bg)}
-/* 랜딩 */
+/* 랜딩 (시안 2026-11-23: 밝은 바탕 · 진녹 버튼 · 둥근 카드 · 가는 고딕 제목) */
+body.ed{--e-green:#2F4A3E}
+body.ed .top .logo{font-family:var(--font);font-weight:800;font-size:17px;letter-spacing:.03em;line-height:1.08;width:min-content}
+body.ed .top .logo img{display:none}
+body.ed .pill,body.ed .top #topright a.pill{background:var(--e-green);color:#fff;border-radius:10px;padding:0 20px;font-weight:600;text-decoration:none}
+body.ed.land{--e-bg:#FBFAF7;--e-line:#E6E4DC;--e-sand:#F3F2EC;font-family:var(--font)}
+body.ed.land .pill{display:inline-flex}
+#topnav button{font-weight:600}
 main.land{max-width:none;padding:0;gap:0}
-.L{display:flex;flex-direction:column;font-size:16px}
-.L section{scroll-margin-top:64px}
-.L .wrap{max-width:1440px;margin:0 auto;width:100%;padding-left:var(--e-pad);padding-right:var(--e-pad)}
-.L .eyebrow{font-family:var(--e-mono);font-size:12px;font-weight:400;letter-spacing:.16em;color:var(--e-mute)}
-.L h2.t{font-family:var(--e-serif);font-weight:500;font-size:clamp(27px,3.2vw,40px);line-height:1.3;color:var(--e-ink)}
-.L .lead{font-size:17px;color:var(--e-ink2)}
-.L .head{display:flex;flex-direction:column;gap:8px}
-.L .cta{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 26px;border-radius:999px;border:1px solid var(--e-ink);background:none;color:var(--e-ink);font-size:16px;font-weight:500;cursor:pointer;text-decoration:none}
-.L .cta.solid{background:var(--e-ink);color:var(--e-bg)}
-.L .cta.inv{background:var(--e-bg);color:var(--e-ink);border-color:var(--e-bg)}
+.L{display:flex;flex-direction:column;font-size:16px;font-family:var(--font);color:var(--e-ink)}
+.L section{scroll-margin-top:72px}
+.L .wrap{max-width:1180px;margin:0 auto;width:100%;padding-left:var(--e-pad);padding-right:var(--e-pad)}
+.L .sec{display:flex;flex-direction:column;gap:clamp(20px,2.6vw,30px);padding-top:clamp(44px,5.5vw,68px);padding-bottom:clamp(44px,5.5vw,68px)}
+.L .sec.line{position:relative}
+.L .sec.line::before{content:'';position:absolute;top:0;left:var(--e-pad);right:var(--e-pad);border-top:1px solid var(--e-line)}
+.L .eyebrow{font-size:11px;font-weight:600;letter-spacing:.18em;color:var(--e-ink2)}
+.L h2.t{font-weight:300;font-size:clamp(26px,3vw,36px);line-height:1.3;letter-spacing:-.02em;color:var(--e-ink)}
+.L .lead{font-size:15px;color:var(--e-ink2);line-height:1.7}
+.L .head{display:flex;flex-direction:column;gap:10px}
+.L .bar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px 20px;flex-wrap:wrap}
+.L .more{background:none;border:0;padding:8px 0;font-size:14px;font-weight:600;color:var(--e-ink);cursor:pointer;text-decoration:none;white-space:nowrap}
+.L .more:hover{color:var(--e-green);text-decoration:underline;text-underline-offset:4px}
+.L .cta{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 24px;border-radius:8px;border:1px solid var(--e-green);background:var(--e-green);color:#fff;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
+.L .cta.line{background:#fff;color:var(--e-ink);border-color:var(--e-ink)}
+.L .cta:hover{filter:brightness(1.12)}
 /* 표지 */
-.L-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:clamp(20px,4.5vw,64px);align-items:center;padding-top:clamp(36px,5vw,72px);padding-bottom:clamp(40px,4vw,72px)}
-.L-hero .txt{display:flex;flex-direction:column;gap:clamp(20px,2vw,28px)}
-.L-hero h1{display:flex;flex-direction:column;gap:clamp(12px,1.3vw,18px);font-weight:400}
-.L-hero h1 .en{font-family:var(--e-latin);font-weight:500;font-size:clamp(60px,7.8vw,112px);line-height:.97;letter-spacing:-.015em;color:var(--e-ink)}
-.L-hero h1 .en i{font-weight:400;color:var(--e-clay)}
-.L-hero h1 .ko{font-family:var(--e-serif);font-size:clamp(22px,2.3vw,32px);line-height:1.4;letter-spacing:-.01em;color:var(--e-ink)}
-.L-hero .lead{font-size:clamp(16px,1.3vw,18px);max-width:30em}
-.L-hero .btns{display:flex;flex-wrap:wrap;gap:12px}
-.L-hero figure{margin:0;display:flex;flex-direction:column;gap:14px}
-.L-hero figure img{display:block;width:100%;aspect-ratio:5/6;object-fit:cover;background:var(--e-line)}
-.L-hero figcaption{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;line-height:1.4}
-.L-hero figcaption i{width:44px;height:44px;background:#C8AE71}
-.L-hero figcaption b{display:block;font-family:var(--e-serif);font-weight:500;font-size:16px}
-.L-hero figcaption span{font-size:13px;color:var(--e-mute)}
-.L-hero figcaption code{font-family:var(--e-mono);font-size:12px;color:var(--e-mute)}
+.L-hero{position:relative;background:var(--e-bg);overflow:hidden}
+.L-hero>img{position:absolute;left:0;top:0;width:66%;height:100%;object-fit:cover;object-position:50% 45%}
+.L-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(251,250,247,0) 36%,rgba(251,250,247,.88) 56%,#FBFAF7 66%)}
+.L-hero .wrap{position:relative;z-index:1;min-height:clamp(400px,40vw,540px);display:flex;align-items:center;justify-content:flex-end}
+.L-hero .txt{width:min(100%,400px);display:flex;flex-direction:column;gap:18px;padding:40px 0}
+.L-hero h1{font-weight:300;font-size:clamp(32px,3.9vw,48px);line-height:1.25;letter-spacing:-.025em;color:var(--e-ink)}
+.L-hero .btns{display:flex;flex-direction:column;gap:10px;align-items:flex-start;margin-top:6px}
+.L-hero .btns .cta{min-width:236px}
 /* 미션 */
-.L-missions{background:var(--e-sand)}
-.L-missions .wrap{display:flex;flex-direction:column;gap:clamp(22px,3vw,44px);padding-top:clamp(56px,7.2vw,104px);padding-bottom:clamp(56px,7.2vw,104px)}
-.L-mlist{display:flex;flex-wrap:wrap;gap:28px}
-.L-m{flex:1 1 250px;display:flex;flex-direction:column;gap:12px;padding:0;border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
-.L-m .ph{position:relative;display:block;aspect-ratio:3/4;width:100%}
-.L-m .ph.soon{border:1px dashed #777B65;display:flex;align-items:center;justify-content:center;font-family:var(--e-latin);font-style:italic;font-size:30px;color:var(--e-mute)}
-.L-m .badge{position:absolute;left:14px;top:14px;font-size:12px;font-weight:500;padding:4px 10px;border-radius:999px;background:var(--e-bg);color:var(--e-ink)}
-.L-m .meta{font-family:var(--e-mono);font-size:12px;color:var(--e-mute)}
-.L-m b{font-family:var(--e-serif);font-size:24px;font-weight:500;line-height:1.35;color:var(--e-ink)}
-.L-m .d{font-size:15px;color:var(--e-ink2)}
-.L-m:hover b{color:var(--e-clay)}
-/* 지역의 색 */
-.L-places{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:clamp(28px,4vw,56px);align-items:start;padding-top:clamp(64px,7.8vw,112px);padding-bottom:clamp(64px,7.8vw,112px)}
-.L-places .col{display:flex;flex-direction:column;gap:22px}
-.L-regions{margin:0;padding:0;list-style:none;border-top:1px solid var(--e-ink)}
-.L-regions li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--e-line)}
-.L-regions b{font-family:var(--e-serif);font-weight:500;font-size:19px}
-.L-regions span{font-size:14px;color:var(--e-mute);text-align:right}
-.L-regions li.soon b{color:var(--e-mute);font-weight:400}
-.L-ctitle{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
-.L-ctitle b{font-family:var(--e-serif);font-weight:500;font-size:22px}
-.L-ctitle span{font-family:var(--e-mono);font-size:12px;color:var(--e-mute)}
-.L-colors{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:22px 14px;min-height:120px}
-.L-colors li{display:flex;flex-direction:column;gap:6px}
-.L-colors i{display:block;aspect-ratio:1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
-.L-colors span{font-family:var(--e-serif);font-size:14px;line-height:1.4}
-.L-colors code{font-family:var(--e-mono);font-size:11px;color:var(--e-mute)}
-.L-more{display:none;align-self:flex-start;background:none;border:0;padding:10px 0;font-size:15px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:var(--e-ink)}
-.L-note{font-size:14px;color:var(--e-mute);border-top:1px solid var(--e-line);padding-top:16px}
-/* 컬러헌터 되기 */
-.L-become{background:var(--e-ink);color:var(--e-bg)}
-.L-become .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:clamp(26px,5vw,72px);align-items:start;padding-top:clamp(64px,8.3vw,120px);padding-bottom:clamp(64px,8.3vw,120px)}
-.L-become .col{display:flex;flex-direction:column;gap:clamp(22px,2.6vw,36px)}
-.L-become .eyebrow{color:#C9C7BA}
-.L-become h2{display:flex;flex-direction:column;gap:12px;font-weight:400}
-.L-become h2 .en{font-family:var(--e-latin);font-weight:500;font-size:clamp(42px,4.5vw,64px);line-height:1.02;color:var(--e-bg)}
-.L-become h2 .en i{font-weight:400;color:#E0A193}
-.L-become h2 .ko{font-family:var(--e-serif);font-size:clamp(18px,1.7vw,24px);line-height:1.5;color:#E7E3D8}
-.L-steps{margin:0;padding:0;list-style:none;border-top:1px solid #4A514B}
-.L-steps li{display:grid;grid-template-columns:120px 1fr;gap:6px 20px;padding:20px 0;border-bottom:1px solid #4A514B}
-.L-steps .n{font-family:var(--e-mono);font-size:12px;letter-spacing:.12em;color:#C9C7BA;padding-top:4px}
-.L-steps b{display:block;font-family:var(--e-serif);font-weight:500;font-size:20px;color:var(--e-bg)}
-.L-steps .d{display:block;font-size:15px;color:#D8D6C9}
-.L-become .mine{font-size:14px;color:#C9C7BA;max-width:26em}
-.L-become .act{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center}
-/* 도구 */
-.L-tools{display:flex;flex-direction:column;gap:clamp(24px,2.8vw,40px);padding-top:clamp(56px,7.2vw,104px);padding-bottom:clamp(56px,7.2vw,104px)}
-.L-tools .bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px 20px}
-.L-tools .bar a{font-size:15px}
-.L-tlist{display:flex;flex-wrap:wrap;gap:clamp(14px,2vw,28px)}
-.L-t{flex:1 1 280px;border:1px solid var(--e-line);padding:clamp(22px,2.3vw,32px);display:flex;flex-direction:column;gap:14px}
-.L-t h3{font-family:var(--e-serif);font-weight:500;font-size:21px;color:var(--e-ink)}
-.L-t p{font-size:15px;color:var(--e-ink2)}
-.L-t .dots{display:grid;grid-template-columns:repeat(6,14px);gap:4px;height:88px;align-content:center}
-.L-t .dots i{height:14px}
-/* 세 가지 방식 */
-.L-ways{background:var(--e-line)}
-.L-ways .wrap{display:flex;flex-wrap:wrap;gap:clamp(24px,2.8vw,40px);padding-top:clamp(48px,6vw,88px);padding-bottom:clamp(48px,6vw,88px)}
-.L-ways div.w{flex:1 1 260px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--e-ink);padding-top:22px}
-.L-ways b{font-family:var(--e-latin);font-weight:500;font-size:clamp(28px,2.6vw,36px);line-height:1.1;color:var(--e-ink)}
-.L-ways span{font-family:var(--e-serif);font-size:17px}
+.L-mlist{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.L-m{display:flex;flex-direction:column;padding:0;border:1px solid var(--e-line);border-radius:10px;overflow:hidden;background:#fff;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.L-m:hover{border-color:var(--e-ink)}
+.L-m .ph{position:relative;display:block;aspect-ratio:11/10;width:100%;background:var(--e-sand)}
+.L-m .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.L-m .ph .stripes{position:absolute;inset:0;display:flex}
+.L-m .badge{position:absolute;left:10px;top:10px;font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;background:rgba(36,42,38,.84);color:#fff}
+.L-m .badge.soon{background:rgba(255,255,255,.92);color:var(--e-ink)}
+.L-m .body{display:flex;flex-direction:column;gap:6px;padding:14px 16px 16px;flex:1}
+.L-m b{font-size:19px;font-weight:500;letter-spacing:-.02em;line-height:1.35;color:var(--e-ink)}
+.L-m .d{font-size:14px;color:var(--e-ink2);line-height:1.55}
+.L-m .acc{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--e-line);font-size:13px;font-weight:600;color:var(--e-ink)}
+.L-m .acc small{font-weight:400;color:var(--e-mute);font-size:12px}
+/* 컬러저널 */
+.L .L-journal{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(24px,5vw,64px);align-items:center}
+.L-journal .head .cta{align-self:flex-start;margin-top:10px}
+.L-jcard{background:#FBF8F0;border:1px solid #E7E0CF;border-radius:4px;box-shadow:7px 8px 0 -1px #F4EFE3,7px 8px 0 0 #E2DAC7,0 16px 32px rgba(60,50,30,.10);padding:14px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;transform:rotate(-.5deg);margin:0 8px 8px 0}
+.L-jcard img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+.L-jcard .j{display:flex;flex-direction:column;gap:10px;padding:6px 4px;min-width:0}
+.L-jcard .jt{font-family:var(--e-latin);font-style:italic;font-size:21px;line-height:1.2}
+.L-jcard .lab{font-size:12px;font-weight:600}
+.L-jcard .lab small{font-weight:400;color:var(--e-mute);font-size:11px}
+.L-jcard .one{display:flex;align-items:center;gap:10px;font-size:13px}
+.L-jcard .one i{width:56px;height:40px;border-radius:4px;flex:none}
+.L-jcard .one code{display:block;font-family:var(--e-mono);font-size:11px;color:var(--e-mute)}
+.L-jcard .pal{display:flex;gap:6px}
+.L-jcard .pal i{flex:1;max-width:36px;aspect-ratio:1;border-radius:3px}
+/* 컬러아카이브 지도 */
+.L .L-archive{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(24px,5vw,64px);align-items:center}
+.L-mapbox{display:flex;flex-direction:column;gap:12px}
+#lmap{height:clamp(300px,34vw,400px);border-radius:10px;border:1px solid var(--e-line);background:#EEF0EC;z-index:0}
+#lmap .leaflet-tile-pane{filter:grayscale(1) brightness(1.1) contrast(.75);opacity:.4}
+.L-tip{background:none;border:0;box-shadow:none;padding:0;font-family:var(--font);color:var(--e-ink);line-height:1.35}
+.L-tip::before{display:none}
+.L-tip{text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 6px #fff}
+.L-tip b{display:block;font-size:14px;font-weight:600}
+.L-tip span{font-size:12px;color:var(--e-ink2)}
+.L-legend{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;color:var(--e-ink2)}
+.L-legend span{display:flex;align-items:center;gap:8px}
+.L-legend i{width:10px;height:10px;border-radius:50%;background:var(--e-green)}
+.L-legend i.soon{background:#B9BBB3}
+.L-archive .note{font-size:13px;color:var(--e-mute)}
+/* 제주의 색 */
+.L-colors{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;min-height:120px}
+.L-colors li{aspect-ratio:4/5;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);line-height:1.35}
+.L-colors small{font-size:11px;opacity:.85}
+.L-colors b{font-size:16px;font-weight:500;letter-spacing:-.01em}
+.L-colors code{margin-top:auto;font-family:var(--e-mono);font-size:11px;opacity:.85}
+.L-colors:not(.all) li:not(.pick){display:none}
+.L-note{font-size:13px;color:var(--e-mute)}
+/* 컬러헌터가 된다는 것 */
+.L-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.L-steps li{border-radius:10px;background:var(--e-sand);padding:20px;display:flex;flex-direction:column;gap:8px}
+.L-steps .n{font-size:11px;letter-spacing:.14em;font-weight:600;color:var(--e-mute)}
+.L-steps b{font-size:18px;font-weight:500;letter-spacing:-.01em}
+.L-steps .d{font-size:14px;color:var(--e-ink2);line-height:1.6}
+.L-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.L-links a{display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:10px;background:var(--e-sand);text-decoration:none;color:var(--e-ink)}
+.L-links a:hover{color:var(--e-ink);box-shadow:inset 0 0 0 1px var(--e-ink)}
+.L-links svg{flex:none}
+.L-links b{display:block;font-size:16px;font-weight:600}
+.L-links span span{font-size:13px;color:var(--e-ink2)}
 /* 바닥 */
-.L-foot{display:flex;flex-direction:column;gap:clamp(28px,3.4vw,48px);padding-top:clamp(40px,5vw,72px);padding-bottom:48px}
-.L-foot .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:32px;font-size:14px}
-.L-foot .cols>div{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-.L-foot .brand b{font-family:var(--e-latin);font-weight:600;font-size:22px;letter-spacing:.18em}
-.L-foot .brand i{font-family:var(--e-latin);font-size:19px}
-.L-foot .brand span{color:var(--e-mute)}
-.L-foot button{background:none;border:0;padding:0;font-size:14px;text-decoration:underline;cursor:pointer;color:var(--e-ink)}
-.L-foot .legal{border-top:1px solid var(--e-line);padding-top:20px;font-size:13px;color:var(--e-mute)}
+.L-foot{position:relative;display:flex;flex-direction:column;gap:18px;padding-top:28px;padding-bottom:40px}
+.L-foot::before{content:'';position:absolute;top:0;left:var(--e-pad);right:var(--e-pad);border-top:1px solid var(--e-line)}
+.L-foot .row1{display:flex;justify-content:space-between;align-items:center;gap:12px 24px;flex-wrap:wrap}
+.L-foot .row1 b{font-weight:800;font-size:15px;letter-spacing:.03em}
+.L-foot .row1 span{font-size:13px;color:var(--e-ink2)}
+.L-foot .row1 a{display:flex}
+.L-foot .legal{border-top:1px solid var(--e-line);padding-top:16px;text-align:center;font-size:12px;color:var(--e-mute)}
+.L-foot .legal a{color:var(--e-mute)}
 /* 아래 탭 (폰) */
 .L-tab{display:none}
 .L [hidden]{display:none!important}
+@media(max-width:899px){
+  .L-hero>img{position:static;width:100%;height:auto;aspect-ratio:4/3}
+  .L-hero::after{display:none}
+  .L-hero .wrap{min-height:0;justify-content:flex-start}
+  .L-hero .txt{width:100%;padding:28px 0 36px}
+  .L-hero .btns{align-items:stretch}
+  .L-mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .L .L-journal,.L .L-archive{grid-template-columns:1fr}
+  .L-colors{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .L-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .L-links{grid-template-columns:1fr}
+}
 @media(max-width:699px){
-  .L-hero{display:flex;flex-direction:column;align-items:stretch}
-  .L-hero .txt{display:contents}
-  .L-hero .eyebrow{order:1;font-size:11px;letter-spacing:.14em}
-  .L-hero h1{order:2}
-  .L-hero figure{order:3;margin:4px calc(var(--e-pad) * -1) 0}
-  .L-hero figure img{aspect-ratio:4/5}
-  .L-hero figcaption{padding:0 var(--e-pad);grid-template-columns:36px 1fr auto}
-  .L-hero figcaption i{width:36px;height:36px}
-  .L-hero .lead{order:4}
-  .L-hero .btns{order:5;flex-direction:column-reverse;gap:10px}
-  .L .eyebrow{font-size:11px;letter-spacing:.14em}
+  body.ed.land .pill{min-height:36px;padding:0 14px;font-size:13px}
   .L-missions .wrap{padding-left:0;padding-right:0}
-  .L-missions .head{padding:0 var(--e-pad)}
-  .L-mlist{flex-wrap:nowrap;gap:14px;overflow-x:auto;padding:0 var(--e-pad) 6px;scroll-snap-type:x proximity;scroll-padding-left:var(--e-pad)}
-  .L-m{flex:0 0 248px;scroll-snap-align:start}
-  .L-m .ph{aspect-ratio:4/5}
-  .L-m b{font-size:20px}
-  .L-colors{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 8px}
-  .L-colors:not(.all) li:not(.pick){display:none}
-  .L-colors span{font-size:12px;line-height:1.35}
+  .L-missions .bar{padding:0 var(--e-pad)}
+  .L-mlist{display:flex;gap:12px;overflow-x:auto;padding:0 var(--e-pad) 6px;scroll-snap-type:x proximity;scroll-padding-left:var(--e-pad)}
+  .L-m{flex:0 0 236px;scroll-snap-align:start}
+  .L-jcard{gap:14px;padding:12px}
+  .L-jcard .jt{font-size:18px}
+  .L-colors{gap:8px}
+  .L-colors li{padding:9px;aspect-ratio:1}
+  .L-colors b{font-size:13px}
   .L-colors code{display:none}
-  .L-more{display:block}
-  .L-steps li{grid-template-columns:1fr;padding:16px 0}
-  .L-steps b{font-size:18px}
-  .L-steps .d{font-size:14px}
-  .L-become .wrap{display:flex;flex-direction:column;gap:26px}
-  .L-become .col{display:contents}
-  .L-become .eyebrow{order:1}
-  .L-become h2{order:2}
-  .L-steps{order:3}
-  .L-become .act{order:4}
-  .L-become .act .cta{width:100%}
+  .L-steps{grid-template-columns:1fr}
   .L-foot{padding-bottom:120px}
   .L-tab{position:fixed;left:0;right:0;bottom:0;z-index:18;display:grid;grid-template-columns:repeat(5,1fr);align-items:end;padding:8px 6px calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--e-bg);border-top:1px solid var(--e-line)}
   .L-tab button,.L-tab a{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-height:48px;padding:0;border:0;background:none;font-size:11px;color:var(--e-ink);text-decoration:none;cursor:pointer}
-  .L-tab .plus{color:var(--e-clay);font-weight:600}
-  .L-tab .plus i{width:46px;height:46px;margin-top:-22px;border-radius:50%;background:var(--e-clay);color:var(--e-bg);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:26px;line-height:1}
+  .L-tab .plus{color:var(--e-green);font-weight:600}
+  .L-tab .plus i{width:46px;height:46px;margin-top:-22px;border-radius:50%;background:var(--e-green);color:#fff;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:26px;line-height:1}
 }
 </style>
 </head>
@@ -891,10 +890,10 @@ function topRight(){
   const land = !about && CUR.mode==='invite' && !S.me && r!=='login' && r!=='signup';
   document.body.classList.toggle('ed', land || about);
   document.body.classList.toggle('land', land);
-  if(land) s += `<button class="pill" data-scroll="missions">＋ 기록하기</button>`;
+  if(land) s = `<a class="pill" href="#/login">로그인</a>`;
   else if(about && LANDING.some(x=>x.key===r.slice(6))) s += `<button class="pill" data-rec="${h(r.slice(6))}">＋ 기록하기</button>`;
   $('#topright').innerHTML = s;
-  $('#topnav').innerHTML = land ? [['places','지역의 색'],['missions','미션'],['become','컬러헌터 되기'],['tools','도구']].map(([k,t])=>`<button data-scroll="${k}">${t}</button>`).join('') : '';
+  $('#topnav').innerHTML = land ? [['missions','미션'],['journal','컬러저널'],['archive','둘러보기'],['colors','제주의 색'],['become','소개']].map(([k,t])=>`<button data-scroll="${k}">${t}</button>`).join('') : '';
   $('#topsub').textContent = (hasId() && !about) ? CUR.name : '';
   document.title = (hasId() && !about) ? '컬러헌터스 · '+CUR.name : '컬러헌터스 · 오늘, 이 자리의 색을 찾다';
   $('main').className = land ? 'land' : r.startsWith('admin') ? 'wide' : '';
@@ -951,119 +950,149 @@ function projImage(x){
   if(LANDING_IMG[x.key]) return `<img src="${LANDING_IMG[x.key]}" alt="${h(x.title)}">`;
   return `<div class="swatch" aria-hidden="true">${x.sw.map(([c,w])=>`<i style="background:${c};flex:${w}"></i>`).join('')}</div>`;
 }
-/* 랜딩 — 시안의 구역 중 지금 동작하는 것만: 표지 · 미션 · 지역의 색 · 컬러헌터 되기 · 도구 · 세 가지 방식 · 바닥.
-   (읽을거리·컬러헌터들·색 편지·내 컬러 저널은 내용이 생기면 추가) */
-const LAND_ORDER = ['camellia','jejublues','ulleung','tradition'];
+/* 랜딩 (시안 2026-11-23) — 표지 · 지금 열린 미션 · 나만의 컬러저널 · 지도로 만나는 컬러아카이브 · 제주의 색 · 컬러헌터가 된다는 것 · 바닥.
+   지어낸 숫자·없는 글은 넣지 않는다: 기록 건수는 공개 기록이 쌓이면, «이달의 색» 읽을거리는 글이 생기면 추가. 사진은 LANDING_IMG에 경로를 적으면 카드에 들어간다. */
+const LAND_ORDER = ['camellia','ulleung','jejublues','tradition'];
+const LAND_CARD = {
+  camellia:{badge:'진행중', d:'겨울을 물들이는 제주의 동백색', acc:'누구나 참여', icon:'user'},
+  ulleung:{badge:'진행중', d:'울릉의 자연과 삶이 만든 고유한 색', acc:'참여 코드', note:'(주민 전용)', icon:'lock'},
+  jejublues:{badge:'진행중', d:'제주의 바다를 걸으며 기록하는 색', acc:'누구나 참여', icon:'user'},
+  tradition:{badge:'곧 열림', soon:true, d:'안동의 전통과 일상에서 발견하는 색', acc:'오픈 예정', icon:'cal'}
+};
+const LAND_ICON = {
+  user:'<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.9-3.7 3.6-5.2 7-5.2s6.100 1.500 7 5.200"/></svg>',
+  lock:'<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="10.500" width="14" height="10" rx="1.500"/><path d="M8.500 10.500V8a3.500 3.500 0 0 1 7 0v2.500"/></svg>',
+  cal:'<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5.500" width="16" height="14.500" rx="1.500"/><path d="M4 10h16M8.500 3.500v4M15.500 3.500v4"/></svg>'
+};
 const LAND_STEPS = [
   ['01 NOTICE','천천히 본다','걷다가 멈추는 자리에서 시작합니다. 빛이 어디서 오는지 먼저 봅니다.'],
   ['02 COMPARE','키링에 견준다','대상 바로 옆, 같은 빛 아래 키링을 두고 한 장. 대상만 한 장 더.'],
   ['03 NAME','이름을 붙인다','그 자리에서 떠오른 말로. 이름은 정답이 아니라 그날의 기억입니다.'],
   ['04 SHARE','함께 쌓는다','한 사람의 기록이 모여 지역의 색이 됩니다.']
 ];
-const LAND_PICK = ['C02','C03','C05','C07','C11','C12','C14','C20','C21','C24','C26','C30']; /* 폰에서 먼저 보이는 12색 */
-const LAND_DOTS = ['#FFEF8A','#C6D800','#71C7D6','#ED6C00','#2990D0','#A97D4C','#009944','#DC1F67','#B31E28','#7B476E','#2F5756','#451F13'];
+const LAND_PICK = ['C02','C05','C11','C14','C21','C26']; /* 먼저 보이는 6색 */
+const LAND_MOOD = ['#E2C987','#C8AE71','#A9772F','#7A5A33','#5E6B3A'];
+/* 지도: 미션이 열린 곳과 준비 중인 곳. 건수는 공개 기록이 쌓이면 붙인다. */
+const LAND_SPOTS = [
+  {n:'제주', s:'동백 · 제주블루스 진행 중', at:[33.38,126.55], dir:'right', live:true},
+  {n:'울릉도', s:'주민 기록이 쌓이는 중', at:[37.5,130.86], dir:'left', live:true},
+  {n:'안동', s:'곧 열림', at:[36.568,128.729], dir:'right'},
+  {n:'덕유산', s:'곧 열림', at:[35.86,127.746], dir:'left'}
+];
+function landPhoto(x){
+  if(LANDING_IMG[x.key]) return `<img src="${LANDING_IMG[x.key]}" alt="" loading="lazy">`;
+  return `<span class="stripes" aria-hidden="true">${x.sw.map(([c,w])=>`<i style="background:${c};flex:${w}"></i>`).join('')}</span>`;
+}
 function vNoInvite(){
-  setTimeout(fillLandColors, 0);
+  setTimeout(fillLand, 0);
   const ms = LAND_ORDER.map(k=>LANDING.find(x=>x.key===k)).filter(Boolean);
   return `<div class="L">
-  <section class="L-hero wrap" aria-labelledby="hero-h">
-    <div class="txt">
+  <section class="L-hero" aria-labelledby="hero-h">
+    <img src="img/hero-forest-keyring.jpg" alt="단풍 든 숲을 배경으로 손에 든 숲 키링" width="1400" height="1050">
+    <div class="wrap"><div class="txt">
       <p class="eyebrow">AN INVITATION TO SEE DIFFERENTLY</p>
-      <h1 id="hero-h"><span class="en" lang="en">Life is full<br>of <i>colors.</i></span><span class="ko">세상의 색을 발견하는 사람들</span></h1>
-      <p class="lead">길가의 꽃, 오래된 돌담, 오늘의 바다. 컬러헌터스는 일상의 장면에서 색을 찾아 키링에 견주고, 이름을 붙여 함께 아카이브하는 사람들입니다.</p>
-      <div class="btns"><button class="cta" data-scroll="become">컬러헌터 되기</button><button class="cta solid" data-scroll="missions">미션 참여하기 →</button></div>
-    </div>
-    <figure>
-      <img src="img/hero-forest-keyring.jpg" alt="단풍 든 숲을 배경으로 손에 든 숲 키링" width="1400" height="1050">
-      <figcaption><i aria-hidden="true"></i><span><b>노란 잎</b>곶자왈 · 숲 키링으로 보정한 색</span><code>#C8AE71</code></figcaption>
-    </figure>
+      <h1 id="hero-h">세상의 색을<br>발견하는 사람들</h1>
+      <p class="lead">지역의 빛, 사람들의 이야기, 계절의 변화 속에서 우리만의 색을 발견하고 기록합니다.</p>
+      <div class="btns"><button class="cta" data-scroll="missions">진행 중인 미션 보기 →</button><button class="cta line" data-scroll="journal"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 6.500C10 5 7 4.800 4 5.500v13c3-.7 6-.5 8 1 2-1.500 5-1.700 8-1v-13c-3-.7-6-.5-8 1zM12 6.500v13"/></svg>컬러저널 시작하기</button></div>
+    </div></div>
   </section>
 
-  <section id="missions" class="L-missions" aria-labelledby="missions-h"><div class="wrap">
-    <div class="head"><p class="eyebrow">THE CURRENT MISSION</p><h2 class="t" id="missions-h">지금 찾을 색</h2></div>
-    <div class="L-mlist">${ms.map(x=>`
+  <section id="missions" class="L-missions" aria-labelledby="missions-h"><div class="wrap sec">
+    <div class="bar"><div class="head"><p class="eyebrow">COLOR MISSIONS</p><h2 class="t" id="missions-h">지금, 열린 미션</h2><p class="lead">지금 참여할 수 있는 컬러헌팅 미션입니다.</p></div></div>
+    <div class="L-mlist">${ms.map(x=>{ const c=LAND_CARD[x.key]||{}; return `
       <button class="L-m" data-land="${x.key}" aria-label="${h(x.title)} 살펴보기">
-        ${x.color?`<span class="ph" style="background:${x.color}"><span class="badge">${h(x.badge)}</span></span>`:`<span class="ph soon" lang="en">coming soon</span>`}
-        <span class="meta">${h(x.meta)}</span><b>${h(x.title)}</b><span class="d">${h(x.card)}</span>
-      </button>`).join('')}</div>
+        <span class="ph">${landPhoto(x)}<span class="badge${c.soon?' soon':''}">${h(c.badge||'')}</span></span>
+        <span class="body"><b>${h(x.title)}</b><span class="d">${h(c.d||x.card)}</span></span>
+        <span class="acc">${LAND_ICON[c.icon]||''}${h(c.acc||'')}${c.note?` <small>${h(c.note)}</small>`:''}</span>
+      </button>`; }).join('')}</div>
   </div></section>
 
-  <section id="places" class="L-places wrap" aria-labelledby="places-h">
-    <div class="col">
-      <p class="eyebrow">COLORS OF PLACES</p>
-      <h2 class="t" id="places-h">지역의 색을 만나다</h2>
-      <p class="lead">컬러헌터들이 찾은 색이 모여 그 지역의 팔레트가 됩니다. 계절이 바뀌면 같은 자리의 색도 바뀝니다.</p>
-      <ul class="L-regions">
-        <li><b>제주</b><span>제주 동백의 색 · 제주블루스 진행 중</span></li>
-        <li><b>울릉</b><span>주민 기록이 쌓이는 중</span></li>
-        <li class="soon"><b>안동 · 덕유산</b><span>준비 중</span></li>
-      </ul>
+  <section id="journal" aria-labelledby="journal-h"><div class="wrap sec line L-journal">
+    <div class="head">
+      <p class="eyebrow">MY COLOR JOURNAL</p>
+      <h2 class="t" id="journal-h">나만의 컬러저널</h2>
+      <p class="lead">발견한 색, 사진, 장소, 이야기를 모아 나만의 컬러 스토리를 만들어보세요.</p>
+      <button class="cta" data-scroll="missions">첫 기록하기 →</button>
     </div>
-    <div class="col" id="lcolbox">
-      <div class="L-ctitle"><b>제주의 서른 가지 색</b><span>30색 컬러카드 · 측색값</span></div>
-      <ul class="L-colors" id="lcolors" aria-label="30색 컬러카드의 색"></ul>
-      <button class="L-more" id="lmore">서른 가지 모두 보기 →</button>
-      <p class="L-note">기록의 색은 키링에 견주어 남깁니다. 키링 없이 찍은 사진은 «보정 전 참고 기록»으로 따로 구분해요.</p>
+    <div class="L-jcard" role="img" aria-label="컬러저널 기록 예시: 곶자왈의 노란 잎">
+      <img src="img/hero-forest-keyring.jpg" alt="" loading="lazy">
+      <div class="j">
+        <p class="jt" lang="en">My Color Journal</p>
+        <p class="lab">기록 색 <small>(키링에 견준 색)</small></p>
+        <div class="one"><i style="background:#C8AE71"></i><span>노란 잎 · 곶자왈<code>#C8AE71</code></span></div>
+        <p class="lab">분위기 팔레트 <small>(참고)</small></p>
+        <div class="pal">${LAND_MOOD.map(c=>`<i style="background:${c}"></i>`).join('')}</div>
+      </div>
     </div>
-  </section>
-
-  <section id="become" class="L-become" aria-labelledby="become-h"><div class="wrap">
-    <div class="col">
-      <p class="eyebrow">BECOME A COLOR HUNTER</p>
-      <h2 id="become-h"><span class="en" lang="en">The world is your <i>palette.</i></span><span class="ko">가까이 보고, 견주고, 이름 붙이고, 함께 쌓습니다.</span></h2>
-      <div class="act"><button class="cta inv" data-scroll="missions">첫 미션 고르기 →</button><p class="mine">«나의 색»은 진단 결과가 아니라, 내가 찾아 이름 붙인 색입니다.</p></div>
-    </div>
-    <ol class="L-steps">${LAND_STEPS.map(([n,t,d])=>`<li><span class="n">${n}</span><span><b>${t}</b><span class="d">${d}</span></span></li>`).join('')}</ol>
   </div></section>
 
-  <section id="tools" class="L-tools wrap" aria-labelledby="tools-h">
-    <div class="bar"><div class="head"><p class="eyebrow">IN THE POCKET</p><h2 class="t" id="tools-h">주머니 속 도구</h2></div>
-      <a href="https://tutticolori.co.kr" target="_blank" rel="noopener">도구 구하기 — 뚜띠콜로리 ↗</a></div>
-    <div class="L-tlist">
-      <article class="L-t">
-        <svg width="88" height="88" viewBox="0 0 64 64" role="img" aria-label="톤파인더 키링 그림"><circle cx="32" cy="32" r="27" fill="none" stroke="#242A26"/><circle cx="32" cy="32" r="13" fill="none" stroke="#242A26"/><path d="M32 5A27 27 0 0 1 59 32L45 32A13 13 0 0 0 32 19Z" fill="#4F6B3E"/><path d="M59 32A27 27 0 0 1 32 59L32 45A13 13 0 0 0 45 32Z" fill="#A57139"/><path d="M32 59A27 27 0 0 1 5 32L19 32A13 13 0 0 0 32 45Z" fill="#1B86C1"/><path d="M5 32A27 27 0 0 1 32 5L32 19A13 13 0 0 0 19 32Z" fill="#CE2662"/></svg>
-        <h3>톤파인더 키링</h3><p>숲·바다·꽃. 실측한 서른 칸이 사진 속 빛을 되돌리는 기준이 됩니다.</p></article>
-      <article class="L-t">
-        <div class="dots" aria-hidden="true">${LAND_DOTS.map(c=>`<i style="background:${c}"></i>`).join('')}</div>
-        <h3>30색 컬러카드</h3><p>백서향 꽃술부터 오래된 고목까지, 제주 자연에서 이름 붙인 서른 가지 색.</p></article>
-      <article class="L-t">
-        <svg width="88" height="88" viewBox="0 0 64 64" role="img" aria-label="필드노트 다이어리 그림"><rect x="12" y="6" width="40" height="52" fill="none" stroke="#242A26"/><line x1="18" y1="20" x2="46" y2="20" stroke="#D8D6C9"/><line x1="18" y1="28" x2="46" y2="28" stroke="#D8D6C9"/><line x1="18" y1="36" x2="40" y2="36" stroke="#D8D6C9"/><rect x="18" y="42" width="10" height="10" fill="#C8AE71"/><rect x="30" y="42" width="10" height="10" fill="#BD6959"/></svg>
-        <h3>필드노트 다이어리</h3><p>찾은 색의 이름과 그날의 한 줄을 손으로 남기는 수첩.</p></article>
+  <section id="archive" aria-labelledby="archive-h"><div class="wrap sec line L-archive">
+    <div class="head">
+      <p class="eyebrow">COLOR ARCHIVE</p>
+      <h2 class="t" id="archive-h">지도로 만나는<br>컬러아카이브</h2>
+      <p class="lead">컬러헌터들이 기록한 지역의 색을 지도로 탐색해보세요.</p>
+      <p class="note">확인을 거친 기록은 각 미션의 «모인 기록»에 차례로 쌓입니다.</p>
     </div>
-  </section>
+    <div class="L-mapbox">
+      <div id="lmap" role="img" aria-label="미션이 열린 지역 지도: 제주, 울릉도. 곧 열리는 지역: 안동, 덕유산"></div>
+      <div class="L-legend"><span><i></i>기록이 있는 지역</span><span><i class="soon"></i>곧 열리는 지역 (준비 중)</span></div>
+    </div>
+  </div></section>
 
-  <section class="L-ways" aria-label="컬러헌터스의 세 가지 방식"><div class="wrap">
-    <div class="w"><b lang="en">A Way of Seeing</b><span>세상을 새롭게 바라보는 태도</span></div>
-    <div class="w"><b lang="en">A Way of Exploring</b><span>색을 따라 지역을 걷는 여행</span></div>
-    <div class="w"><b lang="en">A Way of Connecting</b><span>발견을 나누고 이어지는 사람들</span></div>
+  <section id="colors" aria-labelledby="colors-h"><div class="wrap sec line" id="lcolbox">
+    <div class="bar"><div class="head"><p class="eyebrow">COLORS OF JEJU</p><h2 class="t" id="colors-h">제주의 색 이야기 · 서른 가지 색</h2><p class="lead">백서향 꽃술부터 오래된 고목까지, 제주 자연에서 이름 붙인 30색 컬러카드의 색입니다.</p></div>
+      <button class="more" id="lmore">전체 보기 →</button></div>
+    <ul class="L-colors" id="lcolors" aria-label="30색 컬러카드의 색"></ul>
+    <p class="L-note">기록의 색은 키링에 견주어 남깁니다. 키링 없이 찍은 사진은 «보정 전 참고 기록»으로 따로 구분해요.</p>
+  </div></section>
+
+  <section id="become" aria-labelledby="become-h"><div class="wrap sec line">
+    <div class="head"><p class="eyebrow">BE A COLOR HUNTER</p><h2 class="t" id="become-h">컬러헌터가 된다는 것</h2><p class="lead">관찰하고, 발견하고, 기록하며 일상의 디테일을 새로운 라이프스타일로 만듭니다.</p></div>
+    <ol class="L-steps">${LAND_STEPS.map(([n,t,d])=>`<li><span class="n">${n}</span><b>${t}</b><span class="d">${d}</span></li>`).join('')}</ol>
+    <div class="L-links">
+      <a href="https://tutticolori.co.kr" target="_blank" rel="noopener"><svg width="48" height="48" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27" fill="none" stroke="#242A26"/><circle cx="32" cy="32" r="13" fill="none" stroke="#242A26"/><path d="M32 5A27 27 0 0 1 59 32L45 32A13 13 0 0 0 32 19Z" fill="#4F6B3E"/><path d="M59 32A27 27 0 0 1 32 59L32 45A13 13 0 0 0 45 32Z" fill="#A57139"/><path d="M32 59A27 27 0 0 1 5 32L19 32A13 13 0 0 0 32 45Z" fill="#1B86C1"/><path d="M5 32A27 27 0 0 1 32 5L32 19A13 13 0 0 0 19 32Z" fill="#CE2662"/></svg><span><b>톤파인더 키링</b><span>구매하기 →</span></span></a>
+      <a href="https://colorhunting.org" target="_blank" rel="noopener"><svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#242A26" stroke-width="1.300"><path d="M4 20V9l8-5 8 5v11M9 20v-6h6v6M2.500 20h19"/></svg><span><b>기관 프로그램 문의</b><span>colorhunting.org ↗</span></span></a>
+      <a href="https://www.instagram.com/colors_of_jeju/" target="_blank" rel="noopener"><svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#242A26" stroke-width="1.300"><rect x="4" y="4" width="16" height="16" rx="4.500"/><circle cx="12" cy="12" r="3.700"/><circle cx="16.600" cy="7.400" r=".6" fill="#242A26"/></svg><span><b>인스타그램</b><span>@colors_of_jeju · 새 소식 보기 ↗</span></span></a>
+    </div>
   </div></section>
 
   <footer class="L-foot wrap">
-    <div class="cols">
-      <div class="brand"><b>COLOR HUNTERS</b><i lang="en">Life is full of colors.</i><span>세상의 색을 발견하는 사람들</span></div>
-      <div><b>참여</b><button data-scroll="missions">미션</button><button data-scroll="places">지역의 색</button><a href="#/login">로그인</a></div>
-      <div><b>컬러헌팅</b><button data-scroll="become">컬러헌터 되기</button><a href="https://colorhunting.org" target="_blank" rel="noopener">기관·학교 문의 ↗</a><a href="https://tutticolori.co.kr" target="_blank" rel="noopener">도구 · 뚜띠콜로리 ↗</a></div>
-    </div>
-    <p class="legal">컬러헌팅™ 방법으로 기록합니다 · 운영 컬러랩제주</p>
+    <div class="row1"><b>COLOR HUNTERS</b><span>자연과 사람, 지역의 색을 기록하고 나누는 컬러 라이프스타일 플랫폼</span>
+      <a href="https://www.instagram.com/colors_of_jeju/" target="_blank" rel="noopener" aria-label="인스타그램"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#242A26" stroke-width="1.600"><rect x="4" y="4" width="16" height="16" rx="4.500"/><circle cx="12" cy="12" r="3.700"/><circle cx="16.600" cy="7.400" r=".7" fill="#242A26"/></svg></a></div>
+    <p class="legal">운영 컬러랩제주 · 컬러헌팅™ 방법으로 기록합니다 · 문의: <a href="https://colorhunting.org" target="_blank" rel="noopener">colorhunting.org</a></p>
   </footer>
 
   <nav class="L-tab" aria-label="아래 탭">
-    <button data-scroll="top"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z" fill="none" stroke="#242A26" stroke-width="1.5"/></svg>홈</button>
-    <button data-scroll="missions"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="#242A26" stroke-width="1.5"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="#242A26" stroke-width="1.5"/></svg>미션</button>
+    <button data-scroll="top"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z" fill="none" stroke="#242A26" stroke-width="1.500"/></svg>홈</button>
+    <button data-scroll="missions"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="#242A26" stroke-width="1.500"/><circle cx="12" cy="12" r="3.500" fill="none" stroke="#242A26" stroke-width="1.500"/></svg>미션</button>
     <button class="plus" data-scroll="missions"><i aria-hidden="true">＋</i>기록하기</button>
-    <button data-scroll="places"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" fill="none" stroke="#242A26" stroke-width="1.5"/><rect x="13" y="4" width="7" height="7" fill="none" stroke="#242A26" stroke-width="1.5"/><rect x="4" y="13" width="7" height="7" fill="none" stroke="#242A26" stroke-width="1.5"/><rect x="13" y="13" width="7" height="7" fill="#C8AE71" stroke="#242A26" stroke-width="1.5"/></svg>지역의 색</button>
-    <a href="#/login"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4" fill="none" stroke="#242A26" stroke-width="1.5"/><path d="M4.5 20c1-4 4-5.5 7.5-5.5s6.500 1.500 7.500 5.500" fill="none" stroke="#242A26" stroke-width="1.5"/></svg>로그인</a>
+    <button data-scroll="archive"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#242A26" stroke-width="1.500"><path d="M12 21s-6.500-5.800-6.500-10.500a6.500 6.500 0 0 1 13 0C18.500 15.200 12 21 12 21z"/><circle cx="12" cy="10.500" r="2.300"/></svg>둘러보기</button>
+    <a href="#/login"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.500" r="4" fill="none" stroke="#242A26" stroke-width="1.500"/><path d="M4.500 20c1-4 4-5.500 7.500-5.500s6.500 1.500 7.500 5.500" fill="none" stroke="#242A26" stroke-width="1.500"/></svg>로그인</a>
   </nav>
 </div>`;
 }
+function fillLand(){ fillLandColors(); fillLandMap(); }
 /* 30색 컬러카드 측색값은 tool_chips에서 읽는다 */
+function inkOn(hex){ const n=parseInt(String(hex).replace('#',''),16); const l=(.299*(n>>16&255)+.587*(n>>8&255)+.114*(n&255))/255; return l>.6 ? '#242A26' : '#fff'; }
 async function fillLandColors(){
   const ul = $('#lcolors'); if(!ul) return;
   let cs;
   try{ cs = await loadChips('card30'); }catch(e){ cs = []; }
   if(!$('#lcolors')) return;
   if(!cs.length){ const box=$('#lcolbox'); if(box) box.hidden = true; return; }
-  ul.innerHTML = cs.map(c=>`<li class="${LAND_PICK.includes(c.code)?'pick':''}"><i style="background:${h(c.hex)}"></i><span>${h(c.name_ko)}</span><code>${h(c.code.slice(1))} · ${h(c.hex)}</code></li>`).join('');
+  $('#lcolors').innerHTML = cs.map(c=>`<li class="${LAND_PICK.includes(c.code)?'pick':''}" style="background:${h(c.hex)};color:${inkOn(c.hex)}"><small>No.${h(c.code.slice(1))}</small><b>${h(c.name_ko)}</b><code>${h(c.hex)}</code></li>`).join('');
+}
+function fillLandMap(){
+  const el = $('#lmap'); if(!el || !window.L || el._leaflet_id) return;
+  try{
+    const m = L.map(el, {zoomControl:false, dragging:false, scrollWheelZoom:false, doubleClickZoom:false, touchZoom:false, boxZoom:false, keyboard:false, zoomSnap:.25});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:10, attribution:'© OpenStreetMap'}).addTo(m);
+    m.fitBounds([[33.0,125.3],[38.300,131.600]], {padding:[10,10]});
+    LAND_SPOTS.forEach(p=>{
+      L.circleMarker(p.at, {radius:7, stroke:true, color:'#fff', weight:2, fillColor:p.live?'#2F4A3E':'#B9BBB3', fillOpacity:1, interactive:false}).addTo(m)
+        .bindTooltip(`<b>${p.n}</b><span>${p.s}</span>`, {permanent:true, direction:p.dir, offset:[p.dir==='left'?-10:10,0], className:'L-tip'});
+    });
+  }catch(e){ el.hidden = true; }
 }
 document.addEventListener('click', e=>{
   const b = e.target.closest('[data-scroll]');
