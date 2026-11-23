@@ -604,7 +604,8 @@ function chipSVG(){
   return `<svg viewBox="0 0 64 72" aria-hidden="true"><g transform="rotate(-8 32 38)"><rect x="19" y="6" width="26" height="62" rx="3" fill="#FFFFFF" stroke="#CFCAB8"/>${cs.map((c,i)=>`<rect x="22" y="${9+i*14}" width="20" height="12.5" fill="${c}"/>`).join('')}</g></svg>`;
 }
 function frameSVG(){
-  return `<svg viewBox="0 0 64 72" aria-hidden="true"><rect x="16" y="3" width="32" height="66" rx="2" fill="#FFFFFF" stroke="#CFCAB8"/><rect x="21.5" y="9" width="21" height="21" fill="#EDEAE2" stroke="#CFCAB8"/><rect x="24" y="36" width="16" height="2" rx="1" fill="#8A8A8A"/></svg>`;
+  /* 위쪽 정사각 창은 뚫린 자리: 바깥 틀에서 창을 빼고(evenodd) 테두리만 그린다 */
+  return `<svg viewBox="0 0 64 72" aria-hidden="true"><path d="M18 3h28a2 2 0 0 1 2 2v62a2 2 0 0 1-2 2H18a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM21.5 9v21h21V9Z" fill="#FFFFFF" fill-rule="evenodd" stroke="#CFCAB8"/><rect x="24" y="36" width="16" height="2" rx="1" fill="#8A8A8A"/></svg>`;
 }
 /* short: 문장 속 이름, tap: ① 사진에서 먼저 누를 곳 */
 const TOOLS = {
@@ -2183,7 +2184,8 @@ function vDraft(){
         /* 색 잣대 묶음: 톤파인더 넷(2×2), 다른 색 잣대 둘 — 실물을 닮은 작은 그림으로 */
         ? CUR.tools.map(gr=>`<p class="small" style="margin:6px 0 -2px"><b>${h(gr.g)}</b></p>
             <div class="rings tools" style="grid-template-columns:repeat(2,minmax(0,1fr))">${gr.items.map(v=>{ const t=TOOLS[v];
-              return `<button class="ring tool" data-ring="${h(v)}" aria-pressed="${d.keyring===v}" aria-label="${h(t.name)} — ${h(t.ex)}">${toolSVG(v)}<b>${h(t.t)}</b><span>${h(t.ex)}</span></button>`; }).join('')}</div>`).join('')
+              /* 톤파인더는 이름만(기본·바다·숲·꽃), 다른 색 잣대는 한 줄 설명을 함께 */
+              return `<button class="ring tool" data-ring="${h(v)}" aria-pressed="${d.keyring===v}" aria-label="${h(t.name)} — ${h(t.ex)}">${toolSVG(v)}<b>${h(t.t)}</b>${t.g==='tf'?'':`<span>${h(t.ex)}</span>`}</button>`; }).join('')}</div>`).join('')
         : `<div class="rings" style="grid-template-columns:repeat(${CUR.rings.length},1fr)">${CUR.rings.map(x=>`<button class="ring" style="color:${x.c}" data-ring="${x.v}" aria-pressed="${d.keyring===x.v}"><i></i><b>${h(x.t||x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`);
     foot=`<button class="btn main block" id="next" ${d.keyring?'':'disabled'}>다음</button>`;
   } else if(k==='p1'){
