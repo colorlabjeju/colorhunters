@@ -37,6 +37,7 @@ a{color:var(--accent-text)}
 .top b{font-size:17px;letter-spacing:-.01em}
 .top small{font-size:13px;color:#B9C6CB}
 .top a{color:#F8FAFA;font-size:15px;text-decoration:none;border:1px solid #4A6B77;border-radius:10px;padding:6px 12px}
+.top #topright{display:flex;align-items:center;gap:6px;flex-shrink:0}
 main{max-width:560px;margin:0 auto;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 56px);display:flex;flex-direction:column;gap:16px}
 main.wide{max-width:1180px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
@@ -170,6 +171,9 @@ body{font-size:17px;letter-spacing:-.01em;color:var(--ink2)}
 .top{background:#fff;color:var(--ink);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top,0px) + 14px) 20px 14px;gap:10px;align-items:center}
 .top .logo{font-family:var(--display);font-size:20px;font-weight:500;letter-spacing:.06em;color:var(--ink);text-decoration:none;border:0;padding:0}
 .top small{font-size:13px;color:var(--ink3);letter-spacing:0}
+/* 머리글: 로고는 한 줄, 미션 이름은 남는 자리만큼 (좁으면 말줄임), 오른쪽 버튼은 줄지 않게 */
+body:not(.ed) .top .logo{white-space:nowrap}
+body:not(.ed) .top small{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top #topright a{color:var(--ink);border:1px solid var(--ink);border-radius:0;font-size:13px;letter-spacing:.06em;padding:6px 12px}
 .display{font-family:var(--display);font-size:44px;line-height:1.05;font-weight:500;color:var(--accent);letter-spacing:.01em}
 .section-label{font-family:var(--display);font-size:15px;letter-spacing:.14em;color:var(--ink);margin-top:14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
@@ -966,16 +970,25 @@ window.addEventListener('hashchange', ()=>{ S.textEdit=S.openEdit||null; S.openE
 
 function topRight(){
   const r = sub();
-  let s='';
-  if(S.me && S.me.role==='admin' && !isAnonUser()) s = r.startsWith('admin') ? `<a href="#/">기록 화면</a>` : `<a href="#/admin">관리</a>`;
-  else if(CUR.mode==='invite' && (!S.me) && r!=='login' && r!=='signup') s = `<a href="#/login">로그인</a>`;
+  /* 아이디로 로그인한 사람(개인 링크로만 들어온 임시 계정 제외)에게는 어느 화면에서나 «로그아웃», 로그인 전에는 «로그인» */
+  const permanent = !!(S.me && !isAnonUser());
+  const admin = permanent && S.me.role==='admin';
+  const acct = permanent && (CUR.mode==='invite' || admin) ? `<a href="#/" data-logout>로그아웃</a>`
+    : (!S.me && CUR.mode==='invite' && r!=='login' && r!=='signup') ? `<a href="#/login">로그인</a>` : '';
+  const parts=[];
+  if(admin) parts.push(r.startsWith('admin') ? `<a href="#/">기록 화면</a>` : `<a href="#/admin">관리</a>`);
   const about = r.startsWith('about/');
   /* 로그인 없이 보는 랜딩·미션 소개는 에디토리얼 모양(body.ed) */
   const land = !about && CUR.mode==='invite' && ((!S.me && r!=='login' && r!=='signup') || r==='home');
   document.body.classList.toggle('ed', land || about);
   document.body.classList.toggle('land', land);
-  if(land) s = S.me ? `<a class="pill" href="#/">내 기록</a>` : `<a class="pill" href="#/login">로그인</a>`;
-  else if(about && LANDING.some(x=>x.key===r.slice(6))) s += `<button class="pill" data-rec="${h(r.slice(6))}">＋ 기록하기</button>`;
+  let s;
+  if(land) s = (S.me ? `<a class="pill" href="#/">내 기록</a>` : `<a class="pill" href="#/login">로그인</a>`) + (permanent ? `<a href="#/" data-logout>로그아웃</a>` : '');
+  else {
+    if(about && LANDING.some(x=>x.key===r.slice(6))) parts.push(`<button class="pill" data-rec="${h(r.slice(6))}">＋ 기록하기</button>`);
+    if(acct) parts.push(acct);
+    s = parts.join('');
+  }
   $('#topright').innerHTML = s;
   $('#topnav').innerHTML = land ? [['missions','미션'],['journal','컬러저널'],['archive','둘러보기'],['colors','제주의 색'],['become','소개']].map(([k,t])=>`<button data-scroll="${k}">${t}</button>`).join('') : '';
   $('#topsub').textContent = (hasId() && !about && !land) ? CUR.name : '';
