@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
 
   let q = scoped(sb
     .from("records")
-    .select("id,author,status,category,use_herb,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy,light,taken_at,taken_src,time_note,d1:exif1->>DateTimeOriginal,d2:exif2->>DateTimeOriginal"));
+    .select("id,author,status,category,subcat,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy,light,taken_at,taken_src,time_note,d1:exif1->>DateTimeOriginal,d2:exif2->>DateTimeOriginal"));
   if (category) q = q.eq("category", category);
   const { data, error } = await q.order("created_at", { ascending: false }).order("id").range(offset, offset + limit - 1);
   if (error) return json({ error: "load failed" }, 500);
@@ -147,8 +147,8 @@ Deno.serve(async (req: Request) => {
       id: r.id,
       ...(group ? { status: r.status } : {}),
       category: r.category,
-      // 식물·꽃·열매 가운데 먹거나 약으로 쓰는 것 (예전 분류 «나물·약초» 포함)
-      herb: r.use_herb === true || r.category === "나물·약초",
+      // 세부 분류: 식물·꽃·열매의 «나물·약초», 바다의 «갯바위·해조류» (예전 분류 값 «나물·약초»도 같은 뜻)
+      sub: r.subcat || (r.category === "나물·약초" ? "나물·약초" : ""),
       name: r.local_name || r.color_name,
       usage: r.usage,
       story: r.story,
