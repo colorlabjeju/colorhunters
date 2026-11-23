@@ -331,16 +331,24 @@ main.land{max-width:none;padding:0;gap:0}
 /* 컬러아카이브 지도 */
 .L .L-archive{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(24px,5vw,64px);align-items:center}
 .L-mapbox{display:flex;flex-direction:column;gap:12px}
-#lmap{height:clamp(300px,34vw,400px);border-radius:10px;border:1px solid var(--e-line);background:#EEF0EC;z-index:0}
-#lmap .leaflet-tile-pane{filter:grayscale(1) brightness(1.1) contrast(.75);opacity:.4}
-.L-tip{background:none;border:0;box-shadow:none;padding:0;font-family:var(--font);color:var(--e-ink);line-height:1.35}
-.L-tip::before{display:none}
-.L-tip{text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 6px #fff}
-.L-tip b{display:block;font-size:14px;font-weight:600}
-.L-tip span{font-size:12px;color:var(--e-ink2)}
-.L-legend{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;color:var(--e-ink2)}
-.L-legend span{display:flex;align-items:center;gap:8px}
-.L-legend i{width:10px;height:10px;border-radius:50%;background:var(--e-green)}
+/* 지도: 해안선 그림(img/korea-map.svg, Natural Earth 1:10m) 위에 지역 표시를 % 좌표로 올린다 */
+.L-mapbox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end}
+#lmap{position:relative;width:100%;max-width:500px;aspect-ratio:700/651;margin:0 auto}
+#lmap>img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.spot{position:absolute;width:0;height:0;font-family:var(--font);color:var(--e-ink);line-height:1.3;white-space:nowrap}
+.spot i{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#B9BBB3;box-shadow:0 0 0 2px #FBFAF7}
+.spot.live i{left:-6px;top:-6px;width:12px;height:12px;background:var(--e-green)}
+.spot span{position:absolute;display:flex;flex-direction:column}
+.spot b{font-size:15px;font-weight:600}
+.spot small{font-size:12px;color:var(--e-ink2)}
+.spot.live span{left:16px;top:-11px}
+.spot.live.left span{left:auto;right:-8px;top:auto;bottom:12px;text-align:right}
+.spot:not(.live) span{left:0;top:9px;transform:translateX(-50%);text-align:center}
+.spot.up:not(.live) span{top:auto;bottom:9px}
+.L-legend{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border:1px solid var(--e-line);border-radius:10px;background:#fff;font-size:13px;color:var(--e-ink);font-weight:600}
+.L-legend>span{display:flex;align-items:center;gap:10px}
+.L-legend small{display:block;font-weight:400;font-size:11px;color:var(--e-mute)}
+.L-legend i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--e-green)}
 .L-legend i.soon{background:#B9BBB3}
 .L-archive .note{font-size:13px;color:var(--e-mute)}
 /* 제주의 색 */
@@ -383,6 +391,9 @@ main.land{max-width:none;padding:0;gap:0}
   .L-hero .txt{width:100%;padding:28px 0 24px}
   .L-mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
   .L .L-journal,.L .L-archive{grid-template-columns:1fr}
+  .L-mapbox{grid-template-columns:1fr}
+  .L-legend{flex-direction:row;flex-wrap:wrap;gap:10px 22px}
+  .spot b{font-size:14px}.spot small{font-size:11px}
   .L-colors{grid-template-columns:repeat(3,minmax(0,1fr))}
   .L-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
   .L-links{grid-template-columns:1fr}
@@ -986,11 +997,18 @@ const LAND_PICK = ['C02','C05','C11','C14','C21','C26']; /* 먼저 보이는 6�
 const LAND_MOOD = ['#E2C987','#C8AE71','#A9772F','#7A5A33','#5E6B3A'];
 /* 지도: 미션이 열린 곳과 준비 중인 곳. 건수는 공개 기록이 쌓이면 붙인다. */
 const LAND_SPOTS = [
-  {n:'제주', s:'동백 · 제주블루스 진행 중', at:[33.38,126.55], dir:'right', live:true},
-  {n:'울릉도', s:'주민 기록이 쌓이는 중', at:[37.5,130.86], dir:'left', live:true},
-  {n:'안동', s:'곧 열림', at:[36.568,128.729], dir:'right'},
-  {n:'덕유산', s:'곧 열림', at:[35.86,127.746], dir:'left'}
+  {n:'제주', s:'동백 · 제주블루스 진행 중', at:[33.38,126.55], live:true},
+  {n:'울릉도', s:'주민 기록이 쌓이는 중', at:[37.5,130.86], live:true, left:true},
+  {n:'태백', s:'(곧 열림)', at:[37.164,128.986], up:true},
+  {n:'홍성', s:'(곧 열림)', at:[36.601,126.661]},
+  {n:'안동', s:'(곧 열림)', at:[36.568,128.729]},
+  {n:'덕유산', s:'(곧 열림)', at:[35.86,127.746]}
 ];
+/* korea-map.svg 와 같은 투영(메르카토르, 경도 124.4–132.1 · 위도 32.95–38.75) */
+function landSpotPos([lat,lon]){
+  const m = la=>Math.log(Math.tan(Math.PI/4 + la*Math.PI/360)), T=m(38.75), B=m(32.95);
+  return `left:${((lon-124.4)/7.7*100).toFixed(2)}%;top:${((T-m(lat))/(T-B)*100).toFixed(2)}%`;
+}
 function landPhoto(x){
   if(LANDING_IMG[x.key]) return `<img src="${LANDING_IMG[x.key]}" alt="" loading="lazy">`;
   return `<span class="stripes" aria-hidden="true">${x.sw.map(([c,w])=>`<i style="background:${c};flex:${w}"></i>`).join('')}</span>`;
@@ -1045,8 +1063,8 @@ function vNoInvite(){
       <p class="note">확인을 거친 기록은 각 미션의 «모인 기록»에 차례로 쌓입니다.</p>
     </div>
     <div class="L-mapbox">
-      <div id="lmap" role="img" aria-label="미션이 열린 지역 지도: 제주, 울릉도. 곧 열리는 지역: 안동, 덕유산"></div>
-      <div class="L-legend"><span><i></i>기록이 있는 지역</span><span><i class="soon"></i>곧 열리는 지역 (준비 중)</span></div>
+      <div id="lmap" role="img" aria-label="미션이 열린 지역 지도: 제주, 울릉도. 곧 열리는 지역: 태백, 홍성, 안동, 덕유산"><img src="img/korea-map.svg" alt="">${LAND_SPOTS.map(p=>`<span class="spot${p.live?' live':''}${p.left?' left':''}${p.up?' up':''}" style="${landSpotPos(p.at)}"><i></i><span><b>${h(p.n)}</b><small>${h(p.s)}</small></span></span>`).join('')}</div>
+      <div class="L-legend"><span><i></i><span>기록이 있는 지역</span></span><span><i class="soon"></i><span>곧 열리는 지역<small>(준비 중)</small></span></span></div>
     </div>
   </div></section>
 
@@ -1082,7 +1100,7 @@ function vNoInvite(){
   </nav>
 </div>`;
 }
-function fillLand(){ fillLandColors(); fillLandMap(); }
+function fillLand(){ fillLandColors(); }
 /* 30색 컬러카드 측색값은 tool_chips에서 읽는다 */
 function inkOn(hex){ const n=parseInt(String(hex).replace('#',''),16); const l=(.299*(n>>16&255)+.587*(n>>8&255)+.114*(n&255))/255; return l>.6 ? '#242A26' : '#fff'; }
 async function fillLandColors(){
@@ -1092,18 +1110,6 @@ async function fillLandColors(){
   if(!$('#lcolors')) return;
   if(!cs.length){ const box=$('#lcolbox'); if(box) box.hidden = true; return; }
   $('#lcolors').innerHTML = cs.map(c=>`<li class="${LAND_PICK.includes(c.code)?'pick':''}" style="background:${h(c.hex)};color:${inkOn(c.hex)}"><small>No.${h(c.code.slice(1))}</small><b>${h(c.name_ko)}</b><code>${h(c.hex)}</code></li>`).join('');
-}
-function fillLandMap(){
-  const el = $('#lmap'); if(!el || !window.L || el._leaflet_id) return;
-  try{
-    const m = L.map(el, {zoomControl:false, dragging:false, scrollWheelZoom:false, doubleClickZoom:false, touchZoom:false, boxZoom:false, keyboard:false, zoomSnap:.25});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:10, attribution:'© OpenStreetMap'}).addTo(m);
-    m.fitBounds([[33.0,125.3],[38.300,131.600]], {padding:[10,10]});
-    LAND_SPOTS.forEach(p=>{
-      L.circleMarker(p.at, {radius:7, stroke:true, color:'#fff', weight:2, fillColor:p.live?'#2F4A3E':'#B9BBB3', fillOpacity:1, interactive:false}).addTo(m)
-        .bindTooltip(`<b>${p.n}</b><span>${p.s}</span>`, {permanent:true, direction:p.dir, offset:[p.dir==='left'?-10:10,0], className:'L-tip'});
-    });
-  }catch(e){ el.hidden = true; }
 }
 document.addEventListener('click', e=>{
   const b = e.target.closest('[data-scroll]');
