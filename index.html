@@ -902,15 +902,15 @@ function topRight(){
   else if(CUR.mode==='invite' && (!S.me) && r!=='login' && r!=='signup') s = `<a href="#/login">로그인</a>`;
   const about = r.startsWith('about/');
   /* 로그인 없이 보는 랜딩·미션 소개는 에디토리얼 모양(body.ed) */
-  const land = !about && CUR.mode==='invite' && !S.me && r!=='login' && r!=='signup';
+  const land = !about && CUR.mode==='invite' && ((!S.me && r!=='login' && r!=='signup') || r==='home');
   document.body.classList.toggle('ed', land || about);
   document.body.classList.toggle('land', land);
-  if(land) s = `<a class="pill" href="#/login">로그인</a>`;
+  if(land) s = S.me ? `<a class="pill" href="#/">내 기록</a>` : `<a class="pill" href="#/login">로그인</a>`;
   else if(about && LANDING.some(x=>x.key===r.slice(6))) s += `<button class="pill" data-rec="${h(r.slice(6))}">＋ 기록하기</button>`;
   $('#topright').innerHTML = s;
   $('#topnav').innerHTML = land ? [['missions','미션'],['journal','컬러저널'],['archive','둘러보기'],['colors','제주의 색'],['become','소개']].map(([k,t])=>`<button data-scroll="${k}">${t}</button>`).join('') : '';
-  $('#topsub').textContent = (hasId() && !about) ? CUR.name : '';
-  document.title = (hasId() && !about) ? '컬러헌터스 · '+CUR.name : '컬러헌터스 · 오늘, 이 자리의 색을 찾다';
+  $('#topsub').textContent = (hasId() && !about && !land) ? CUR.name : '';
+  document.title = (hasId() && !about && !land) ? '컬러헌터스 · '+CUR.name : '컬러헌터스 · 오늘, 이 자리의 색을 찾다';
   $('main').className = land ? 'land' : r.startsWith('admin') ? 'wide' : '';
 }
 
@@ -925,6 +925,7 @@ async function render(){
   if(CUR.mode==='public'){
     if(!S.part[CUR.slug]){ v.innerHTML = vJoin(); bindJoin(); return; }
   } else {
+    if(r==='home'){ v.innerHTML = vNoInvite(); return; } // 컬러헌터스 랜딩 — 로그인 여부와 상관없이
     const permanent = S.me && !isAnonUser();
     if(r==='login'){ if(permanent){ go(''); return; } v.innerHTML = vLogin(); bindLogin(); return; }
     if(r==='signup'){ if(permanent){ go(''); return; } v.innerHTML = vSignup(); bindSignup(); return; }
@@ -1097,7 +1098,7 @@ function vNoInvite(){
     <button data-scroll="missions"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="#242A26" stroke-width="1.500"/><circle cx="12" cy="12" r="3.500" fill="none" stroke="#242A26" stroke-width="1.500"/></svg>미션</button>
     <button class="plus" data-scroll="missions"><i aria-hidden="true">＋</i>기록하기</button>
     <button data-scroll="archive"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#242A26" stroke-width="1.500"><path d="M12 21s-6.500-5.800-6.500-10.500a6.500 6.500 0 0 1 13 0C18.500 15.200 12 21 12 21z"/><circle cx="12" cy="10.500" r="2.300"/></svg>둘러보기</button>
-    <a href="#/login"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.500" r="4" fill="none" stroke="#242A26" stroke-width="1.500"/><path d="M4.500 20c1-4 4-5.500 7.500-5.500s6.500 1.500 7.500 5.500" fill="none" stroke="#242A26" stroke-width="1.500"/></svg>로그인</a>
+    <a href="${S.me?'#/':'#/login'}"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.500" r="4" fill="none" stroke="#242A26" stroke-width="1.500"/><path d="M4.500 20c1-4 4-5.500 7.500-5.500s6.500 1.500 7.500 5.500" fill="none" stroke="#242A26" stroke-width="1.500"/></svg>${S.me?'내 기록':'로그인'}</a>
   </nav>
 </div>`;
 }
@@ -1346,7 +1347,7 @@ function vHome(){
         <span>${tag(r.status)}${r.status==='held'&&r.review_memo?` <span class="small" style="color:var(--warn-ink)">${h(r.review_memo)}</span>`:''}</span></div></button>`).join('')
       : (S.queue.length?'':`<div class="card muted">아직 올린 기록이 없어요. 위 버튼으로 첫 기록을 남겨 보세요.</div>`)}
   </div>
-  <p class="small" style="text-align:center"><a href="#/about/${CUR.about}">모인 기록 둘러보기 →</a></p>
+  <p class="small" style="text-align:center"><a href="#/about/${CUR.about}">모인 기록 둘러보기 →</a>${CUR.mode==='invite'?` · <a href="#/home">컬러헌터스 둘러보기 →</a>`:''}</p>
   <p class="xs muted" style="text-align:center">${h(CUR.foot)}</p>
   ${CUR.mode==='invite' && S.me && S.me.login_id ? `<p class="xs muted" style="text-align:center">아이디 <b>${h(S.me.login_id)}</b> · <a href="#/" data-logout>로그아웃</a></p>` : ''}`;
 }
