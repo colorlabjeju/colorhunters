@@ -945,7 +945,9 @@ const LANDING = [
    sw:[['#2C2B29',2],['#5B4A3A',3],['#8C6A4A',3],['#C7A27A',2],['#ECE4D3',3],['#B23A2E',2],['#1F5A7A',2],['#D9A62E',1]]}
 ];
 // 사진이 생기면 img/프로젝트키.jpg 로 넣고 여기에 경로를 적는다. 없으면 색띠 이미지를 보여 준다.
-const LANDING_IMG = {};
+/* 임시 사진(위키미디어 공용, 2026-11-23). 대표 사진이 오면 같은 파일 이름으로 바꾸고 LAND_CREDIT에서 해당 줄을 지운다. */
+const LANDING_IMG = {camellia:'img/camellia.jpg', ulleung:'img/ulleung.jpg', jejublues:'img/jejublues.jpg', tradition:'img/tradition.jpg'};
+const LAND_CREDIT = '사진: 동백 — 국립생태원(공공누리 1유형) · 울릉 — Korea.net/KOCIS(CC BY-SA 2.0) · 제주 바다 — lumoplank(CC0) · 안동 — Robert(CC BY 3.0), 위키미디어 공용';
 function projImage(x){
   if(LANDING_IMG[x.key]) return `<img src="${LANDING_IMG[x.key]}" alt="${h(x.title)}">`;
   return `<div class="swatch" aria-hidden="true">${x.sw.map(([c,w])=>`<i style="background:${c};flex:${w}"></i>`).join('')}</div>`;
@@ -1059,7 +1061,7 @@ function vNoInvite(){
   <footer class="L-foot wrap">
     <div class="row1"><b>COLOR HUNTERS</b><span>자연과 사람, 지역의 색을 기록하고 나누는 컬러 라이프스타일 플랫폼</span>
       <a href="https://www.instagram.com/colors_of_jeju/" target="_blank" rel="noopener" aria-label="인스타그램"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#242A26" stroke-width="1.600"><rect x="4" y="4" width="16" height="16" rx="4.500"/><circle cx="12" cy="12" r="3.700"/><circle cx="16.600" cy="7.400" r=".7" fill="#242A26"/></svg></a></div>
-    <p class="legal">운영 컬러랩제주 · 컬러헌팅™ 방법으로 기록합니다 · 문의: <a href="https://colorhunting.org" target="_blank" rel="noopener">colorhunting.org</a></p>
+    <p class="legal">운영 컬러랩제주 · 컬러헌팅™ 방법으로 기록합니다 · 문의: <a href="https://colorhunting.org" target="_blank" rel="noopener">colorhunting.org</a><br>${h(LAND_CREDIT)}</p>
   </footer>
 
   <nav class="L-tab" aria-label="아래 탭">
