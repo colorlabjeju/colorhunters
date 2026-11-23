@@ -975,7 +975,9 @@ function edOf(r){ return Object.values(ED).find(e=>underBase(r, e)) || ED.ulleun
 function sub(){ const r=route(); const e=Object.values(ED).find(x=>underBase(r, x)); return e ? r.slice(e.base.length) : r; }
 function go(r){ location.hash = '#/'+CUR.base+r; }
 const homeHref = () => '#/'+CUR.base;
-window.addEventListener('hashchange', ()=>{ S.textEdit=S.openEdit||null; S.openEdit=null; render(); window.scrollTo(0,0); });
+/* 앱 안에서 화면을 옮긴 횟수 — «← 이전으로»가 사이트 밖으로 나가지 않게, 앱 안에서 옮겨 온 경우에만 뒤로 가기를 쓴다 */
+let NAV=0;
+window.addEventListener('hashchange', ()=>{ NAV++; S.textEdit=S.openEdit||null; S.openEdit=null; render(); window.scrollTo(0,0); });
 
 function topRight(){
   const r = sub();
@@ -1664,7 +1666,7 @@ function steps(d){ if(CUR.chips) return ['what','p1','p2','chip','where','words'
 function vDraft(){
   const d=S.draft; const st=steps(d); const k=st[d.step-1];
   const prog=`<div class="progress">${st.map((_,i)=>`<i class="${i<d.step?'on':''}"></i>`).join('')}</div>`;
-  const head=`<div class="row between"><button class="link" id="back">← 이전</button><span class="small muted">${d.step} / ${st.length}</span></div>${prog}
+  const head=`<div class="row between"><button class="link" id="back">← 이전으로</button><span class="small muted">${d.step} / ${st.length}</span></div>${prog}
     ${d.mode==='edit'?`<div class="notice small"><b>보완 요청</b> ${h(d.memo||'')} ${h((d.reasons||[]).join(', '))}</div>`:''}`;
   let body='', foot='';
   if(k==='what'){
@@ -1759,7 +1761,15 @@ function locMsg(d){
 let pickTarget=1, mapObj=null, marker=null;
 function bindDraft(){
   const d=S.draft; const st=steps(d); const k=st[d.step-1];
-  $('#back').onclick=()=>{ if(d.step>1){ d.step--; render(); } else { if(confirm('이 기록을 그만둘까요? 입력한 내용은 사라져요.')){ S.draft=null; go(''); } } };
+  /* «← 이전으로»: 2단계부터는 앞 단계로, 1단계에서는 기록하기를 누르기 전 화면으로.
+     사진이나 글을 이미 넣었다면 사라진다고 한 번 묻는다 (분류만 고른 상태는 묻지 않음) */
+  $('#back').onclick=()=>{
+    if(d.step>1){ d.step--; render(); return; }
+    const typed = d.mode==='new' && !!(d.p1 || d.p2 || d.area || d.local_name || d.usage || d.story || d.tod || d.weather || d.chip);
+    if(typed && !confirm('앞 화면으로 돌아갈까요? 넣은 사진과 글은 사라져요.')) return;
+    S.draft=null;
+    if(NAV>0) history.back(); else go(d.mode==='edit' ? 'rec/'+d.id : '');
+  };
   document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ d.category=b.dataset.cat; render(); });
   document.querySelectorAll('[data-ring]').forEach(b=>b.onclick=()=>{ d.keyring=b.dataset.ring; if(noRing(d)) d.p1=null; render(); });
   document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ pickTarget=+b.dataset.pick; (b.dataset.cap==='1'?$('#fcam'):$('#fgal')).click(); });
