@@ -154,7 +154,12 @@ td{padding:8px;border-bottom:1px solid var(--line2);vertical-align:top}
 .gal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .gcard{display:flex;flex-direction:column;padding:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);text-align:left;cursor:pointer;font:inherit;color:inherit}
 .gimg{aspect-ratio:1;background:#DCE2E5;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px}
-.gimg img{width:100%;height:100%;object-fit:cover;display:block}
+.gimg{position:relative;overflow:hidden}
+.gimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+.gcard.mine{cursor:default}
+.gacts{display:flex;gap:8px;padding:0 12px 12px;flex-wrap:wrap}
+.gacts .btn{flex:1;min-height:40px;padding:6px 10px;font-size:14px}
+.gacts .small{flex-basis:100%}
 .gtxt{display:flex;flex-direction:column;gap:2px;padding:10px 12px}
 .gtxt b{color:var(--ink);font-size:16px}
 .gtxt span{color:var(--ink3);font-size:13px}
@@ -1018,6 +1023,7 @@ async function render(){
   if(r==='new'){ if(!S.draft) S.draft = newDraft(); v.innerHTML = vDraft(); bindDraft(); return; }
   if(r.startsWith('edit/')){ const id=r.slice(5); if(!S.draft || S.draft.id!==id){ const rec=S.records.find(x=>x.id===id); if(!rec){ go(''); return; } S.draft = draftFrom(rec); } v.innerHTML=vDraft(); bindDraft(); return; }
   if(r.startsWith('rec/')){ v.innerHTML = vRecord(r.slice(4)); return; }
+  if(r==='mine'){ v.innerHTML = vMine(); return; }
   if(r==='done'){ v.innerHTML = vDone(); return; }
   if(r.startsWith('admin')){ if(!S.me || S.me.role!=='admin'){ go(''); return; } await renderAdmin(); return; }
   v.innerHTML = vHome();
@@ -1308,10 +1314,13 @@ async function loadGallery(edition){
   if(S.galScope[edition]==='group') delete S.gallery[edition]; else S.gallery[edition] = j.records || [];
   return j.records || [];
 }
+/* 이 미션에 내 기록 화면이 있는 사람: 울릉은 아이디로 로그인한 주민, 누구나 참여 미션은 참여한 사람 */
+const canSeeMine = ed => !!ED[ed] && (ED[ed].mode==='public' ? !!S.part[ed] : !!S.me && !isAnonUser());
 function galleryShell(edition){
   setTimeout(()=>fillGallery(edition), 0);
   return `<section class="stack" style="gap:10px">
     <div class="row between"><p class="h3">모인 기록</p><span class="small muted" id="gcount"></span></div>
+    ${canSeeMine(edition)?`<p class="small"><a href="#/${ED[edition].base}mine">내 기록 보기 →</a> <span class="muted">내가 올린 기록만 모아 보고, 고치거나 지울 수 있어요.</span></p>`:''}
     <p class="small muted" id="gnote" hidden></p>
     <div id="gallery"><div class="card muted small">불러오는 중…</div></div></section>`;
 }
@@ -1443,7 +1452,7 @@ function vHome(){
         <span>${tag(r.status)}${r.status==='held'&&r.review_memo?` <span class="small" style="color:var(--warn-ink)">${h(r.review_memo)}</span>`:''}</span></div></button>`).join('')
       : (S.queue.length?'':`<div class="card muted">아직 올린 기록이 없어요. 위 버튼으로 첫 기록을 남겨 보세요.</div>`)}
   </div>
-  <p class="small" style="text-align:center"><a href="#/about/${CUR.about}">모인 기록 둘러보기 →</a>${CUR.mode==='invite'?` · <a href="#/home">컬러헌터스 둘러보기 →</a>`:''}</p>
+  <p class="small" style="text-align:center"><a href="#/about/${CUR.about}">모인 기록 둘러보기 →</a> · <a href="${homeHref()}mine">내 기록 모아 보기 →</a>${CUR.mode==='invite'?` · <a href="#/home">컬러헌터스 둘러보기 →</a>`:''}</p>
   <p class="xs muted" style="text-align:center">${h(CUR.foot)}</p>
   ${CUR.mode==='invite' && S.me && S.me.login_id ? `<p class="xs muted" style="text-align:center">아이디 <b>${h(S.me.login_id)}</b> · <a href="#/" data-rename>이름 바꾸기</a> · <a href="#/" data-logout>로그아웃</a></p>` : ''}`;
 }
@@ -1499,6 +1508,41 @@ document.addEventListener('click', async e=>{
   await loadContact().catch(()=>{}); toast('추첨 응모를 마쳤어요'); render();
 });
 
+/* ---------- 내 기록 (모아 보기 · 고치기 · 지우기) ---------- */
+/* 지우기는 확인 중인 기록만 (DB 규칙). 인정·보완 요청·반려 기록은 지울 수 없다 */
+const canDelete = r => r && r.status==='pending';
+const delWhy = r => r.status==='approved' ? '인정된 기록은 지울 수 없어요. 감추려면 열어서 공개를 꺼 주세요.' : r.status==='held' ? '보완 요청을 받은 기록은 고쳐서 다시 내 주세요.' : r.status==='rejected' ? '반려된 기록은 고치거나 지울 수 없어요.' : '';
+function vMine(){
+  const list=S.records;
+  return `<a class="link" href="#/about/${CUR.about}">← 모인 기록 둘러보기</a>
+  <div class="stack" style="gap:4px"><p class="eyebrow">${h(CUR.name)}</p><h1 class="h1">내 기록</h1>
+    <p class="small muted">내가 올린 기록 ${list.length}건이에요. 비공개로 둔 기록도 여기서는 보여요.</p></div>
+  ${list.length ? `<div class="gal">${list.map(r=>`
+    <div class="gcard mine">
+      <button class="gimg" data-open="${h(r.id)}" data-th="${h(r.id)}" style="border:0;padding:0;cursor:pointer;width:100%" aria-label="${h(r.local_name||r.color_name)} 열기">${S.thumbs[r.id]?`<img src="${h(S.thumbs[r.id])}" alt="">`:`<span>${r.is_memory?'기억 카드':''}</span>`}</button>
+      <div class="gtxt"><b>${h(r.local_name||r.color_name)}</b><span>${h(r.category)}${(r.area||r.place_name)?' · '+h(r.area||r.place_name):''} · ${fmt(r.created_at)}</span><span>${tag(r.status)}${r.share?'':' <span class="tag">비공개</span>'}</span></div>
+      <div class="gacts">${r.status==='rejected'?'':`<button class="btn light" data-medit="${h(r.id)}">고치기</button>`}${canDelete(r)?`<button class="btn light" data-mdel="${h(r.id)}" style="color:var(--bad-ink)">지우기</button>`:''}${delWhy(r)?`<span class="small muted">${delWhy(r)}</span>`:''}</div>
+    </div>`).join('')}</div>` : `<div class="card muted">아직 올린 기록이 없어요.</div>`}
+  <a class="btn main block" href="${homeHref()}new" id="mnew">＋ 기록 남기기</a>`;
+}
+async function deleteRecord(id){
+  const r=S.records.find(x=>x.id===id); if(!r || !canDelete(r)) return false;
+  if(!confirm(`«${r.local_name||r.color_name}» 기록을 지울까요?\n사진과 글이 모두 지워지고 되돌릴 수 없어요.`)) return false;
+  const {data, error}=await sb.from('records').delete().eq('id', id).eq('status','pending').select('id');
+  if(error || !data || !data.length){ toast('지우지 못했어요. 이미 확인이 끝난 기록일 수 있어요. 새로고침해 주세요.'); return false; }
+  const paths=[r.photo1_path, r.photo1_preview, r.photo1_keyring_path, r.photo2_path, r.photo2_preview].filter(Boolean);
+  if(paths.length) await sb.storage.from(BUCKET).remove(paths).catch(()=>{});
+  S.records=S.records.filter(x=>x.id!==id); delete S.thumbs[id]; delete S.gallery[CUR.slug];
+  toast('기록을 지웠어요'); return true;
+}
+document.addEventListener('click', async e=>{
+  const ed=e.target.closest('[data-medit]');
+  if(ed){ const r=S.records.find(x=>x.id===ed.dataset.medit); if(!r) return;
+    if(r.status==='held'){ S.draft=draftFrom(r); go('edit/'+r.id); } else { S.openEdit=r.id; S.tedit=null; go('rec/'+r.id); } return; }
+  const dl=e.target.closest('[data-mdel]');
+  if(dl){ dl.disabled=true; const ok=await deleteRecord(dl.dataset.mdel); if(ok && sub()==='mine') render(); else dl.disabled=false; return; }
+  if(e.target.id==='rdel'){ const id=sub().slice(4); e.target.disabled=true; if(await deleteRecord(id)) go('mine'); else e.target.disabled=false; }
+});
 function vRecord(id){
   const r=S.records.find(x=>x.id===id); if(!r) return `<div class="card">기록을 찾을 수 없어요. <a href="${homeHref()}">돌아가기</a></div>`;
   setTimeout(async ()=>{ for(const k of ['photo1_path','photo2_path']){ if(!r[k]) continue; const {data}=await sb.storage.from(BUCKET).createSignedUrl(r[k],3600); const el=document.querySelector(`[data-ph="${k}"]`); if(el&&data) el.innerHTML=`<img src="${h(data.signedUrl)}" alt="">`; } },0);
@@ -1510,6 +1554,7 @@ function vRecord(id){
     <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${fmt(r.photo1_taken_at||r.taken_at||r.created_at)}${condText(r.light,r.weather)?' · '+h(condText(r.light,r.weather)):''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
     ${canEditText(r)?(S.textEdit===r.id?vTextForm(r):`<button class="btn light block" id="tedit">✎ ${canEditFields(r)?'고치기 (이름·분류·동네·이야기)':CUR.usage?'이름·쓰임·이야기 고치기':'색 이름·이야기 고치기'}</button>`):''}
     <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.mode==='invite'?'끄면 이 기록은 나와 컬러랩제주만 봐요.':'끄면 이 기록은 공개하지 않아요.'}</span></span></label>
+    ${canDelete(r)?`<button class="btn light block" id="rdel" style="color:var(--bad-ink)">이 기록 지우기</button>`:''}
   </div>`;
 }
 /* ---------- 이름(제목)·쓰임·이야기 고치기 ---------- */
