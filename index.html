@@ -332,9 +332,11 @@ main.land{max-width:none;padding:0;gap:0}
 .L .L-archive{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(24px,5vw,64px);align-items:center}
 .L-mapbox{display:flex;flex-direction:column;gap:12px}
 /* 지도: 해안선 그림(img/korea-map.svg, Natural Earth 1:10m) 위에 지역 표시를 % 좌표로 올린다 */
-.L-mapbox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end}
-#lmap{position:relative;width:100%;max-width:500px;aspect-ratio:700/651;margin:0 auto}
-#lmap>img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.L-mapbox{position:relative;width:100%;max-width:600px;margin:0 auto}
+/* 지도를 1.45배로 키워 위쪽(북위 38° 위)과 서해 먼 섬 쪽을 잘라 보여 준다 */
+#lmap{position:relative;width:100%;aspect-ratio:100/116;overflow:hidden}
+#lmap .mapin{position:absolute;left:-29%;top:-14.5%;width:145%;aspect-ratio:700/651}
+#lmap .mapin>img{position:absolute;inset:0;width:100%;height:100%;display:block}
 .spot{position:absolute;width:0;height:0;font-family:var(--font);color:var(--e-ink);line-height:1.3;white-space:nowrap}
 .spot i{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#B9BBB3;box-shadow:0 0 0 2px #FBFAF7}
 .spot.live i{left:-6px;top:-6px;width:12px;height:12px;background:var(--e-green)}
@@ -345,7 +347,7 @@ main.land{max-width:none;padding:0;gap:0}
 .spot.live.left span{left:auto;right:-8px;top:auto;bottom:12px;text-align:right}
 .spot:not(.live) span{left:0;top:9px;transform:translateX(-50%);text-align:center}
 .spot.up:not(.live) span{top:auto;bottom:9px}
-.L-legend{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border:1px solid var(--e-line);border-radius:10px;background:#fff;font-size:13px;color:var(--e-ink);font-weight:600}
+.L-legend{position:absolute;right:0;bottom:6%;display:flex;flex-direction:column;gap:12px;padding:16px 18px;border:1px solid var(--e-line);border-radius:10px;background:#fff;font-size:13px;color:var(--e-ink);font-weight:600}
 .L-legend>span{display:flex;align-items:center;gap:10px}
 .L-legend small{display:block;font-weight:400;font-size:11px;color:var(--e-mute)}
 .L-legend i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--e-green)}
@@ -391,8 +393,7 @@ main.land{max-width:none;padding:0;gap:0}
   .L-hero .txt{width:100%;padding:28px 0 24px}
   .L-mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
   .L .L-journal,.L .L-archive{grid-template-columns:1fr}
-  .L-mapbox{grid-template-columns:1fr}
-  .L-legend{flex-direction:row;flex-wrap:wrap;gap:10px 22px}
+  .L-legend{position:static;margin-top:8px;flex-direction:row;flex-wrap:wrap;gap:10px 22px}
   .spot b{font-size:14px}.spot small{font-size:11px}
   .L-colors{grid-template-columns:repeat(3,minmax(0,1fr))}
   .L-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -998,7 +999,7 @@ const LAND_MOOD = ['#E2C987','#C8AE71','#A9772F','#7A5A33','#5E6B3A'];
 /* 지도: 미션이 열린 곳과 준비 중인 곳. 건수는 공개 기록이 쌓이면 붙인다. */
 const LAND_SPOTS = [
   {n:'제주', s:'동백 · 제주블루스 진행 중', at:[33.38,126.55], live:true},
-  {n:'울릉도', s:'주민 기록이 쌓이는 중', at:[37.5,130.86], live:true, left:true},
+  {n:'울릉도', s:'주민 기록 진행 중', at:[37.5,130.86], live:true, left:true},
   {n:'태백', s:'(곧 열림)', at:[37.164,128.986], up:true},
   {n:'홍성', s:'(곧 열림)', at:[36.601,126.661]},
   {n:'안동', s:'(곧 열림)', at:[36.568,128.729]},
@@ -1063,7 +1064,7 @@ function vNoInvite(){
       <p class="note">확인을 거친 기록은 각 미션의 «모인 기록»에 차례로 쌓입니다.</p>
     </div>
     <div class="L-mapbox">
-      <div id="lmap" role="img" aria-label="미션이 열린 지역 지도: 제주, 울릉도. 곧 열리는 지역: 태백, 홍성, 안동, 덕유산"><img src="img/korea-map.svg" alt="">${LAND_SPOTS.map(p=>`<span class="spot${p.live?' live':''}${p.left?' left':''}${p.up?' up':''}" style="${landSpotPos(p.at)}"><i></i><span><b>${h(p.n)}</b><small>${h(p.s)}</small></span></span>`).join('')}</div>
+      <div id="lmap" role="img" aria-label="미션이 열린 지역 지도: 제주, 울릉도. 곧 열리는 지역: 태백, 홍성, 안동, 덕유산"><div class="mapin"><img src="img/korea-map.svg" alt="">${LAND_SPOTS.map(p=>`<span class="spot${p.live?' live':''}${p.left?' left':''}${p.up?' up':''}" style="${landSpotPos(p.at)}"><i></i><span><b>${h(p.n)}</b><small>${h(p.s)}</small></span></span>`).join('')}</div></div>
       <div class="L-legend"><span><i></i><span>기록이 있는 지역</span></span><span><i class="soon"></i><span>곧 열리는 지역<small>(준비 중)</small></span></span></div>
     </div>
   </div></section>
