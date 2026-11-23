@@ -487,6 +487,16 @@ const ED = {
     placeLabel:'동네', wordsTitle:'울릉 이름과 이야기', nameQ:'울릉에서는 뭐라고 부르나요?', nameLabel:'울릉 이름', namePh:'예: 명이, 부지깽이',
     nameHint:'따로 부르는 이름이 없으면 보이는 대로 적어도 돼요. 예: 도동항 아침 바다',
     usage:true, usagePh:'예: 봄에 따서 장아찌로 담가요', storyPh:'언제 따서 어떻게 먹는지, 얽힌 기억 무엇이든 한두 문장이면 돼요',
+    /* 분류마다 두 번째 질문을 바꾼다: [질문, 예시, 이야기 칸 예시, 짧은 이름]. 답은 모두 usage 칸에 저장 — 분류로 어떤 질문의 답인지 안다 */
+    usageBy:{
+      '나물·약초':['어디에 쓰나요?','예: 봄에 따서 장아찌로 담가요','언제 따서 어떻게 먹는지, 얽힌 기억 무엇이든 한두 문장이면 돼요','쓰임'],
+      '농작물·먹거리':['어떻게 먹나요?','예: 늦가을 호박으로 엿을 고아요','언제 거두어 어떻게 먹는지, 얽힌 기억 무엇이든 한두 문장이면 돼요','먹는 법'],
+      '생업 재료':['어디에 쓰나요?','예: 오징어를 덕장에 걸어 말려요','어떤 일에 어떻게 쓰는지, 얽힌 기억 무엇이든 한두 문장이면 돼요','쓰임'],
+      '식물·꽃·열매':['언제 이 색을 볼 수 있나요?','예: 10월, 바닷가 바위틈에 피어요','어디서 자라는지, 얽힌 기억 무엇이든 한두 문장이면 돼요','보이는 때'],
+      '바다':['언제 이런 색이 되나요?','예: 바람 잔 아침, 물이 맑을 때','그날의 바다, 이곳 이름의 유래, 얽힌 기억 무엇이든 한두 문장이면 돼요','보이는 때'],
+      '기타':['언제 이 색이 가장 잘 보이나요?','예: 해 질 녘 절벽이 붉게 물들 때','이곳 이름의 유래나 얽힌 기억, 무엇이든 한두 문장이면 돼요','보이는 때']
+    },
+    conditions:true,
     homeTitle:'님의 기록', homeNote:'같은 자원이라도 자리나 때(계절·날·말리기 전과 후)가 다르면 각각 한 건입니다. 다른 분이 이미 올린 대상이어도 괜찮아요. 보호종이나 남의 밭은 들어가지 말고 보이는 곳에서만 찍어 주세요.',
     foot:'문의: 색채수집단 단톡방 · 컬러랩제주', reasons:REASONS, about:'ulleung'},
   jejublues:{slug:'jejublues', base:'jb/', mode:'public', name:'제주블루스', cats:JB_CATS, rings:JB_RINGS, center:[33.37,126.55], zoom:9, consentVer:'jb-2026-11',
@@ -1152,7 +1162,7 @@ async function vAbout(key){
       ${CATS.map(c=>`<div><b>${h(c.v)}</b> <span class="small muted">— ${h(c.ex)}</span></div>`).join('')}</div>
     ${STEPS}
     <div class="card stack" style="gap:6px"><p class="h3">함께하는 곳</p><p class="small">한동대학교 IRIS 리빙랩 · 컬러랩제주 · 울릉 색채수집단</p>
-      <p class="small muted">정확한 채취지와 사유지는 공개 지도에 나오지 않도록 흐리게 표시합니다.</p></div>`);
+      <p class="small muted">정확한 위치와 사유지는 공개 지도에 나오지 않도록 흐리게 표시합니다.</p></div>`);
   }
   const eds = await loadAllEditions().catch(()=>({}));
   if(key==='camellia'){
@@ -1246,7 +1256,7 @@ function openRecord(r){
     <button class="link" data-close style="align-self:flex-end">닫기 ✕</button>
     ${r.photo?`<div class="shot" style="aspect-ratio:auto;max-height:60vh;background:#1B3640"><img src="${h(r.photo)}" alt="${h(r.name)}" style="object-fit:contain;max-height:60vh"></div>`:''}
     <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(r.keyring)+' 키링':''}</p><h2 class="h2">${h(r.name)}</h2>
-      ${r.usage?`<p><b>쓰임</b> ${h(r.usage)}</p>`:''}
+      ${r.usage?`<p><b>${h(usageQ(CUR, r.category).label)}</b> ${h(r.usage)}</p>`:''}
       ${r.story?`<p style="white-space:pre-wrap">${h(r.story)}</p>`:''}
       <p class="small muted">${[r.area, r.by?`기록 ${r.by}`:'', fmt(r.at)].filter(Boolean).map(h).join(' · ')}</p></div></div>`;
   const close = ()=>{ d.remove(); document.removeEventListener('keydown', onKey); };
@@ -1417,7 +1427,7 @@ function vTextForm(r){
   return `<div class="card stack" style="gap:12px;background:var(--paper,#F4F6F7)">
     <p class="h3">${CUR.usage?'이름·쓰임·이야기':'색 이름·이야기'} 고치기</p>
     <div class="field"><label for="ln2">${h(CUR.nameLabel)} <span style="color:var(--bad-ink)">*</span></label><input id="ln2" class="input" maxlength="40" value="${h(r.local_name||r.color_name||'')}"></div>
-    ${CUR.usage?`<div class="field"><label for="us2">어디에 쓰나요?</label><input id="us2" class="input" maxlength="500" value="${h(r.usage||'')}"></div>`:''}
+    ${CUR.usage&&!r.is_memory?`<div class="field"><label for="us2">${h(usageQ(CUR,r.category).q)}</label><input id="us2" class="input" maxlength="500" value="${h(r.usage||'')}"></div>`:''}
     <div class="field"><label for="sto2">들려줄 이야기 ${r.is_memory?'<span style="color:var(--bad-ink)">*</span>':''}</label><textarea id="sto2" class="input" maxlength="1000">${h(r.story||'')}</textarea>
       <span class="hint">🎤 키보드의 마이크 버튼을 누르고 말하면 글로 바뀌어요.</span></div>
     ${r.status==='approved'?'<p class="xs muted">이미 인정된 기록이에요. 고친 글은 공개 기록에도 바로 반영되고, 컬러랩제주에 고친 시각이 함께 표시돼요.</p>':''}
@@ -1453,11 +1463,25 @@ document.addEventListener('change', async e=>{
 });
 
 /* ---------- 기록 남기기 ---------- */
+/* 분류별 두 번째 질문 (설정이 없으면 «어디에 쓰나요?») */
+function usageQ(cfg, cat){
+  const u=((cfg||{}).usageBy||{})[cat];
+  return u ? {q:u[0], ph:u[1], story:u[2], label:u[3]} : {q:'어디에 쓰나요?', ph:(cfg||{}).usagePh||'', story:(cfg||{}).storyPh||'', label:'쓰임'};
+}
+/* 찍은 때(시간대)와 날씨 — 색은 빛에 따라 달라지므로 함께 남긴다. 시간대는 light 칸, 날씨는 weather 칸에 저장 */
+const TODS=['새벽','아침','한낮','오후','해 질 녘','밤'];
+const WEATHERS=['맑음','구름 조금','흐림','비·눈','안개'];
+function todFromIso(iso){
+  if(!iso) return ''; const t=new Date(iso); if(isNaN(t)) return '';
+  const hr=t.getHours()+t.getMinutes()/60;
+  return hr<4?'밤':hr<7?'새벽':hr<10?'아침':hr<14?'한낮':hr<17?'오후':hr<19?'해 질 녘':'밤';
+}
+const condText = (tod, wx) => [tod, wx].filter(Boolean).join(' · ');
 /* 동네 목록에 없는 곳은 «기타 (직접 적기)»로 고르고 이름을 적는다 — area에 적은 이름이 그대로 들어간다 */
 const OTHER_AREA='__other';
 const areaIsOther = d => !!d.areaOther || (!!d.area && !S.places.some(p=>p.name===d.area));
-function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', areaOther:false, local_name:'', usage:'', story:'', share:true, chip:'', noMatch:false, error:''}; }
-function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], chip:r.chip_code||'', noMatch:!!r.no_match, error:''}; }
+function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', areaOther:false, local_name:'', usage:'', story:'', tod:'', todAuto:false, weather:'', share:true, chip:'', noMatch:false, error:''}; }
+function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', tod:r.light||'', todAuto:false, weather:r.weather||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], chip:r.chip_code||'', noMatch:!!r.no_match, error:''}; }
 const isMemory = d => d.category==='기억 카드';
 const noRing = d => d.keyring==='없음';
 function steps(d){ if(CUR.chips) return ['what','p1','p2','chip','where','words','check']; return isMemory(d) ? ['what','where','words','check'] : noRing(d) ? ['what','ring','p2','where','words','check'] : ['what','ring','p1','p2','where','words','check']; }
@@ -1510,27 +1534,35 @@ function vDraft(){
   } else if(k==='where'){
     const opts=S.places.map(p=>`<option value="${h(p.name)}" ${d.area===p.name?'selected':''}>${h(p.name)}</option>`).join('');
     const other=areaIsOther(d);
-    body=`<h1 class="h2">어디에서 찍었나요?</h1>
+    if(CUR.conditions && !isMemory(d) && !d.tod){ const iso=(d.p1&&d.p1.exif.taken)||(d.p2&&d.p2.exif.taken); const t=todFromIso(iso); if(t){ d.tod=t; d.todAuto=true; } }
+    const shotAt=(d.p1&&d.p1.exif.taken)||(d.p2&&d.p2.exif.taken);
+    const conds = (CUR.conditions && !isMemory(d)) ? `
+      <div class="field"><span class="label" style="font-weight:600">찍은 때</span><div style="display:flex;flex-wrap:wrap;gap:8px">${TODS.map(t=>`<button type="button" class="chip" data-tod="${h(t)}" aria-pressed="${d.tod===t}">${h(t)}</button>`).join('')}</div>
+        <span class="hint">${d.todAuto&&shotAt?`사진 찍은 시각 ${new Date(shotAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}을 보고 골라 두었어요. 다르면 바꿔 주세요.`:'색은 빛에 따라 달라져요. 찍은 때를 골라 주세요.'}</span></div>
+      <div class="field"><span class="label" style="font-weight:600">날씨</span><div style="display:flex;flex-wrap:wrap;gap:8px">${WEATHERS.map(w=>`<button type="button" class="chip" data-wx="${h(w)}" aria-pressed="${d.weather===w}">${h(w)}</button>`).join('')}</div></div>` : '';
+    body=`<h1 class="h2">${conds?'어디서, 언제 찍었나요?':'어디에서 찍었나요?'}</h1>
       ${CUR.stamps?'<p class="small muted">참여 장소에서 찍었다면 그 장소를 골라 주세요. 장소마다 스탬프가 하나씩 찍혀요.</p>':''}
       <div class="field"><label for="area">${h(CUR.placeLabel)}</label><select id="area" class="input"><option value="">${h(CUR.placeLabel)} 고르기</option>${opts}<option value="${OTHER_AREA}" ${other?'selected':''}>기타 (직접 적기)</option></select></div>
       ${other?`<div class="field"><label for="areatxt">어디인가요? <span style="color:var(--bad-ink)">*</span></label><input id="areatxt" class="input" maxlength="30" value="${h(d.area)}" placeholder="예: 내수전 약수터, 성인봉 가는 길"><span class="hint">목록에 없는 곳은 여기에 적어 주세요. 알려 주시면 목록에 넣을게요.</span></div>`:''}
+      ${conds}
       <div class="stack"><div class="row between"><b>지도 위치</b><button class="btn light sm" id="gps">지금 위치 쓰기</button></div>
       <p class="small muted" id="locmsg">${locMsg(d)}</p>
       <div class="map" id="map"></div>
       <p class="xs muted">지도를 눌러 핀을 옮길 수 있어요. 인터넷이 약해 지도가 안 보이면 ${h(CUR.placeLabel)}만 골라도 됩니다.</p></div>`;
     foot=`<button class="btn main block" id="next" ${d.area?'':'disabled'}>다음</button>`;
   } else if(k==='words'){
+    const uq=usageQ(CUR, d.category);
     body=`<h1 class="h2">${h(CUR.wordsTitle)}</h1>
       <div class="field"><label for="ln">${h(CUR.nameQ)} <span style="color:var(--bad-ink)">*</span></label><input id="ln" class="input" maxlength="40" value="${h(d.local_name)}" placeholder="${h(CUR.namePh)}">${CUR.nameHint?`<span class="hint">${h(CUR.nameHint)}</span>`:''}</div>
-      ${CUR.usage?`<div class="field"><label for="us">어디에 쓰나요?</label><input id="us" class="input" maxlength="500" value="${h(d.usage)}" placeholder="${h(CUR.usagePh)}"></div>`:''}
-      <div class="field"><label for="sto">들려줄 이야기 ${isMemory(d)?'<span style="color:var(--bad-ink)">*</span>':''}</label><textarea id="sto" class="input" maxlength="1000" placeholder="${h(CUR.storyPh)}">${h(d.story)}</textarea>
+      ${CUR.usage&&!isMemory(d)?`<div class="field"><label for="us">${h(uq.q)}</label><input id="us" class="input" maxlength="500" value="${h(d.usage)}" placeholder="${h(uq.ph)}"></div>`:''}
+      <div class="field"><label for="sto">들려줄 이야기 ${isMemory(d)?'<span style="color:var(--bad-ink)">*</span>':''}</label><textarea id="sto" class="input" maxlength="1000" placeholder="${h(isMemory(d)?CUR.storyPh:uq.story)}">${h(d.story)}</textarea>
       <span class="hint">🎤 키보드의 마이크 버튼을 누르고 말하면 글로 바뀌어요.</span></div>`;
     foot=`<button class="btn main block" id="next" ${wordsOk(d)?'':'disabled'}>다음</button>`;
   } else if(k==='check'){
     body=`<h1 class="h2">이렇게 올릴게요</h1>
       ${isMemory(d)?'':noRing(d)?`<div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}</div>`:`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">①</span></div><div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:`<span class="small muted">${d.oldP2?'이전 사진':'건너뜀'}</span>`}<span class="badge">②</span></div></div>`}
-      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':d.keyring)}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd><dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage?`<dt>쓰임</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
-      <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">${CUR.usage?'정확한 채취지는 흐리게 표시해요.':'공개 지도에는 약 100m 단위로 흐리게 표시해요.'}</span></span></label>
+      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':d.keyring)}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd>${CUR.conditions&&!isMemory(d)?`<dt>찍은 때</dt><dd>${h(condText(d.tod,d.weather)||'—')}</dd>`:''}<dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage&&!isMemory(d)?`<dt>${h(usageQ(CUR,d.category).label)}</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
+      <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">${CUR.usage?'정확한 위치는 흐리게 표시해요.':'공개 지도에는 약 100m 단위로 흐리게 표시해요.'}</span></span></label>
       ${d.error?`<div class="err">${h(d.error)}</div>`:''}`;
     foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?`<span class="spinner"></span> 올리는 중…${(d.p1||d.p2)?' ('+mb((d.p1?d.p1.sent:0)+(d.p2?d.p2.sent:0))+')':''}`:(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
   }
@@ -1577,6 +1609,8 @@ function bindDraft(){
       $('#next').disabled=!d.area;
     };
     const at=$('#areatxt'); if(at) at.oninput=e=>{ d.area=e.target.value.trim().slice(0,30); $('#next').disabled=!d.area; };
+    document.querySelectorAll('[data-tod]').forEach(b=>b.onclick=()=>{ const v=b.dataset.tod; d.tod=(d.tod===v)?'':v; d.todAuto=false; document.querySelectorAll('[data-tod]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.tod===d.tod))); });
+    document.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>{ const v=b.dataset.wx; d.weather=(d.weather===v)?'':v; document.querySelectorAll('[data-wx]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.wx===d.weather))); });
     $('#gps').onclick=()=>tryGps(false);
     initMap();
   }
@@ -1617,6 +1651,7 @@ async function submitDraft(){
     lat:d.lat, lng:d.lng, gps_accuracy_m:d.acc, loc_method:d.locMethod||'none',
     share:!!d.share, user_agent:navigator.userAgent.slice(0,200), device_id:deviceId()
   };
+  if(CUR.conditions && !isMemory(d)){ row.light=d.tod||null; row.weather=d.weather||null; }
   if(CUR.tool){ row.tool=CUR.tool; row.chip_code=d.chip||null; row.no_match=!!d.noMatch && !d.chip; }
   if(d.p1){ row.photo1_taken_at=d.p1.exif.taken; row.exif1=d.p1.exif.raw; row.taken_at=d.p1.exif.taken; }
   if(d.p2){ row.photo2_taken_at=d.p2.exif.taken; row.exif2=d.p2.exif.raw; if(!row.taken_at) row.taken_at=d.p2.exif.taken; }
@@ -1712,7 +1747,7 @@ function admDetail(r){
     ${r.is_memory?'<p><span class="tag">기억 카드 — 사진 없음</span></p>':`<div class="pics"><figure><div class="ph" data-big="${h(r.photo1_path||'')}">${r.photo1_path?'불러오는 중':'키링 사진 없음'}</div><figcaption class="xs muted">① 키링과 함께 · ${h(r.keyring||'키링 없음')} · ${fmt(r.photo1_taken_at)}</figcaption></figure><figure><div class="ph" data-big="${h(r.photo2_path||'')}">${r.photo2_path?'불러오는 중':'없음'}</div><figcaption class="xs muted">② 키링 없이 · ${fmt(r.photo2_taken_at)}</figcaption></figure></div>`}
     ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
     <dl><dt>분류</dt><dd>${admCatField(r)}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(ED[A.ed].placeLabel)}</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
-      <dt>쓰임</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
+      <dt>찍은 때</dt><dd>${h(condText(r.light, r.weather)||'—')}</dd><dt>${h(usageQ(ED[A.ed], r.category).label)}</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
       <dt>기기</dt><dd class="small">${h([ex.Make,ex.Model].filter(Boolean).join(' ')||'—')}</dd><dt>공개</dt><dd>${r.share?'동의':'비공개'}</dd></dl>
     ${r.review_memo?`<div class="small muted">이전 검수 메모: ${h(r.review_memo)} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
     <div class="stack"><b>보완 사유</b><div class="row">${ED[A.ed].reasons.map(x=>`<button class="chip" data-rs="${h(x)}" aria-pressed="${A.reasons.includes(x)}">${h(x)}</button>`).join('')}</div>
@@ -1836,7 +1871,7 @@ async function admExport(){
   $('#admbody').innerHTML=`<div class="card stack"><p>기록 ${A.list.length}건을 엑셀에서 열 수 있는 CSV로 내려받습니다. 사진은 경로만 들어갑니다.</p>
     <div class="row"><button class="btn main" id="csvall">전체 CSV</button><button class="btn" id="csvok">인정 기록만 CSV</button></div></div>`;
   const dl=(rows, name)=>{
-    const cols=['id','status','nickname','category','local_name','usage','story','keyring','tool','chip_code','chip_hex','no_match','area','place_id','lat','lng','loc_method','photo1_taken_at','photo2_taken_at','created_at','share','review_memo','photo1_path','photo2_path'];
+    const cols=['id','status','nickname','category','local_name','usage','story','keyring','tool','chip_code','chip_hex','no_match','area','place_id','lat','lng','loc_method','light','weather','photo1_taken_at','photo2_taken_at','created_at','share','review_memo','photo1_path','photo2_path'];
     const esc=v=>{ const s=v==null?'':String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
     const csv='﻿'+cols.join(',')+'\n'+rows.map(r=>cols.map(c=>esc(c==='nickname'?A.authors[r.author]:r[c])).join(',')).join('\n');
     const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=name; a.click();
