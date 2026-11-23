@@ -54,11 +54,12 @@ Deno.serve(async (req: Request) => {
   if (error) return json({ error: "load failed" }, 500);
   const rows = data ?? [];
 
-  // 사진: 키링 없이 찍은 장면 사진을 우선, 없으면 키링 사진. 확인 전(인정 아님) 기록은 작은 미리보기만.
+  // 사진: 키링 없이 찍은 장면 사진을 우선, 없으면 키링 사진. 확인 전(인정 아님) 기록은 작은 미리보기를 쓴다.
+  // 미리보기를 만들기 전에 올라온 예전 기록은 미리보기가 없으므로 원래 사진으로 대신한다.
   const photoOf = (r: Record<string, any>) =>
     r.status === "approved"
       ? r.photo2_path || r.photo1_path
-      : r.photo2_preview || r.photo1_preview || null;
+      : r.photo2_preview || r.photo1_preview || r.photo2_path || r.photo1_path || null;
   const paths = [...new Set(rows.map(photoOf).filter(Boolean))] as string[];
   const signed: Record<string, string> = {};
   if (paths.length) {

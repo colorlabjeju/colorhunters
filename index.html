@@ -1339,7 +1339,7 @@ function openRecord(r){
     <button class="link" data-close style="align-self:flex-end">닫기 ✕</button>
     ${r.photo?`<div class="shot" style="aspect-ratio:auto;max-height:60vh;background:#1B3640"><img src="${h(r.photo)}" alt="${h(r.name)}" style="object-fit:contain;max-height:60vh"></div>`:''}
     <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(r.keyring)+' 키링':''}</p><h2 class="h2">${h(r.name)}</h2>
-      ${r.status&&r.status!=='approved'?`<p class="small">${tag(r.status)} <span class="muted">컬러랩제주가 아직 확인하지 않은 기록이에요. 작은 사진으로만 보여요.</span></p>`:''}
+      ${r.status&&r.status!=='approved'?`<p class="small">${tag(r.status)} <span class="muted">컬러랩제주가 아직 확인하지 않은 기록이에요.</span></p>`:''}
       ${r.usage?`<p><b>${h(usageQ(CUR, r.category).label)}</b> ${h(r.usage)}</p>`:''}
       ${r.story?`<p style="white-space:pre-wrap">${h(r.story)}</p>`:''}
       <p class="small muted">${[r.area, r.by?`기록 ${r.by}`:'', fmt(r.at)].filter(Boolean).map(h).join(' · ')}</p></div></div>`;
