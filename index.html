@@ -97,6 +97,8 @@ main.wide{max-width:1180px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-weight:700;color:var(--ink);font-size:18px}
 .field .hint{font-size:14px;color:var(--ink3)}
+.whenform{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1.3fr) minmax(0,1fr);gap:6px}
+.whenform .input{min-width:0;padding-left:8px;padding-right:8px}
 .input{width:100%;min-height:54px;padding:10px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:18px}
 textarea.input{min-height:120px;line-height:1.55;resize:vertical}
 .input:focus{border-color:var(--accent);outline:none}
@@ -603,7 +605,7 @@ async function readExif(file){
       out.raw = JSON.parse(JSON.stringify(raw));
     }
   }catch(e){}
-  if(!out.taken && file.lastModified) out.taken = new Date(file.lastModified).toISOString();
+  /* 사진에 찍은 시각이 없으면 비워 둔다 — 파일 시각(lastModified)은 받은 때·옮긴 때라 믿을 수 없다 */
   return out;
 }
 /* 사진 자동 축소 — 색 비교에 충분한 크기만 남기고 용량을 줄여 올린다.
@@ -1525,6 +1527,7 @@ function openRecord(r){
         <div class="stack" style="gap:6px">
           ${r.usage?`<p><b>${h(usageQ(CUR, r.category).label)}</b> ${h(r.usage)}</p>`:''}
           ${r.story?`<p style="white-space:pre-wrap">${h(r.story)}</p>`:''}
+          ${(r.tod||r.time_note)?`<p><b>찍은 때</b> ${h([r.tod, r.time_note].filter(Boolean).join(' · '))}</p>`:''}
           <p class="small muted">${[r.area, r.by?`기록 ${r.by}`:'', fmt(r.at)].filter(Boolean).map(h).join(' · ')}</p></div>
       </div>
     </div></div>`;
@@ -1742,7 +1745,7 @@ function vRecord(id){
     ${r.status==='held'?`<div class="notice">보완 요청: ${h(r.review_memo||'')} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
     ${r.is_memory?'<p class="tag">기억 카드</p>':(r.photo1_path&&r.photo2_path?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div><div class="shot" data-ph="photo2_path"><span class="badge">② 키링 없이</span></div></div>`:r.photo1_path?`<div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div>`:`<div class="shot" data-ph="photo2_path"><span class="badge">사진</span></div>`)}
     ${colorBlock(r.colors)}
-    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${fmt(r.photo1_taken_at||r.taken_at||r.created_at)}${condText(r.light,r.weather)?' · '+h(condText(r.light,r.weather)):''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
+    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${h([r.taken_src==='unknown'?'시각 모름':timeUnsure(r)&&CUR.conditions?'':(fmtWhen(r.taken_src?r.taken_at:(r.photo1_taken_at||r.taken_at||r.created_at))), whenLine(r), r.weather].filter(Boolean).join(' · ')||'—')}${timeUnsure(r)&&CUR.conditions&&canEditFields(r)?' <span class="xs muted">사진에 찍은 시각이 없어요. «고치기»에서 알려 주세요.</span>':''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
     ${canEditText(r)?(S.textEdit===r.id?vTextForm(r):`<button class="btn light block" id="tedit">✎ ${canEditFields(r)?'고치기 (이름·분류·동네·이야기)':CUR.usage?'이름·쓰임·이야기 고치기':'색 이름·이야기 고치기'}</button>`):''}
     <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.mode==='invite'?'끄면 이 기록은 나와 컬러랩제주만 봐요.':'끄면 이 기록은 공개하지 않아요.'}</span></span></label>
     ${canDelete(r)?`<button class="btn light block" id="rdel" style="color:var(--bad-ink)">이 기록 지우기</button>`:''}
@@ -1753,7 +1756,7 @@ const canEditText = r => r && r.status!=='rejected' && r.status!=='held';
 /* 확인 중·인정 기록: 현장에서 빨리 올리고 나중에 컴퓨터로 분류·동네·찍은 때·날씨까지 고친다 (울릉) */
 const canEditFields = r => canEditText(r) && CUR.conditions && !r.is_memory;
 function teditState(r){
-  if(!S.tedit || S.tedit.id!==r.id){ const known=S.places.some(p=>p.name===r.area); S.tedit={id:r.id, cat:r.category, area:r.area||'', areaOther:!!r.area&&!known, tod:r.light||'', wx:r.weather||''}; }
+  if(!S.tedit || S.tedit.id!==r.id){ const known=S.places.some(p=>p.name===r.area); S.tedit={id:r.id, cat:r.category, area:r.area||'', areaOther:!!r.area&&!known, when:whenFrom(r), wx:r.weather||''}; }
   return S.tedit;
 }
 function vEditFields(r){
@@ -1764,7 +1767,7 @@ function vEditFields(r){
       ${CUR.catHint?`<span class="hint">${h(CUR.catHint)}</span>`:''}</div>
     <div class="field"><label for="earea">${h(CUR.placeLabel)}</label><select id="earea" class="input">${S.places.map(p=>`<option value="${h(p.name)}" ${!other&&t.area===p.name?'selected':''}>${h(p.name)}</option>`).join('')}<option value="${OTHER_AREA}" ${other?'selected':''}>기타 (직접 적기)</option></select>
       ${other?`<input id="eareatxt" class="input" maxlength="30" style="margin-top:8px" value="${h(t.area)}" placeholder="예: 내수전 약수터" aria-label="어디인가요?">`:''}</div>
-    <div class="field"><span class="label" style="font-weight:600">찍은 때</span><div style="display:flex;flex-wrap:wrap;gap:8px">${TODS.map(x=>`<button type="button" class="chip" data-etod="${h(x)}" aria-pressed="${t.tod===x}">${h(x)}</button>`).join('')}</div></div>
+    ${vWhen(t.when, r.lat, r.lng)}
     <div class="field"><span class="label" style="font-weight:600">날씨</span><div style="display:flex;flex-wrap:wrap;gap:8px">${WEATHERS.map(x=>`<button type="button" class="chip" data-ewx="${h(x)}" aria-pressed="${t.wx===x}">${h(x)}</button>`).join('')}</div></div>`;
 }
 function vTextForm(r){
@@ -1790,10 +1793,16 @@ async function saveText(id){
   const upd={local_name:ln, color_name:ln.slice(0,30), usage:us, story:st};
   if(canEditFields(r) && S.tedit && S.tedit.id===id){
     const t=S.tedit; if(!t.area){ toast(CUR.placeLabel+'을 적어 주세요'); return; }
-    Object.assign(upd, {category:t.cat, area:t.area, place_id:(S.places.find(p=>p.name===t.area)||{}).id||'', light:t.tod||'', weather:t.wx||''});
+    Object.assign(upd, {category:t.cat, area:t.area, place_id:(S.places.find(p=>p.name===t.area)||{}).id||'', weather:t.wx||'', time_note:(t.when.note||'').trim().slice(0,40)||null});
+    /* 찍은 시각은 손댔을 때만 보낸다 — 예전 기록의 저장값을 그대로 두기 위해 */
+    const w=t.when;
+    if(w.dirty){
+      if(w.src==='unknown') Object.assign(upd, {taken_at:null, taken_src:'unknown', sun_elev:null, light:''});
+      else if(w.taken){ const sp=sunOf(w.taken, r.lat, r.lng); Object.assign(upd, {taken_at:w.taken, taken_src:'person', sun_elev:sp.elev, light:sunLabel(sp)}); }
+    }
   }
   const {data, error}=await sb.from('records').update(upd).eq('id', id).select().single();
-  const same = data && data.local_name===ln && (data.story||'')===st && (data.usage||'')===us && (!upd.category || (data.category===upd.category && data.area===upd.area && (data.light||'')===upd.light && (data.weather||'')===upd.weather));
+  const same = data && data.local_name===ln && (data.story||'')===st && (data.usage||'')===us && (!upd.category || (data.category===upd.category && data.area===upd.area && (upd.light===undefined || (data.light||'')===upd.light) && (data.weather||'')===upd.weather && (data.time_note||null)===upd.time_note));
   if(error || !same){
     b.disabled=false; b.textContent='저장하기'; toast('저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'); return;
   }
@@ -1802,9 +1811,8 @@ async function saveText(id){
 document.addEventListener('click', e=>{
   if(!sub().startsWith('rec/')) return;
   const id=sub().slice(4);
-  const et=e.target.closest('[data-etod],[data-ewx]');
-  if(et && S.tedit){ if(et.dataset.etod){ S.tedit.tod = S.tedit.tod===et.dataset.etod?'':et.dataset.etod; document.querySelectorAll('[data-etod]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.etod===S.tedit.tod))); }
-    else { S.tedit.wx = S.tedit.wx===et.dataset.ewx?'':et.dataset.ewx; document.querySelectorAll('[data-ewx]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.ewx===S.tedit.wx))); } return; }
+  const et=e.target.closest('[data-ewx]');
+  if(et && S.tedit){ S.tedit.wx = S.tedit.wx===et.dataset.ewx?'':et.dataset.ewx; document.querySelectorAll('[data-ewx]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.ewx===S.tedit.wx))); return; }
   if(e.target.id==='tedit'){ S.textEdit=id; S.tedit=null; render(); setTimeout(()=>{ const x=$('#ln2'); if(x) x.focus(); },50); }
   else if(e.target.id==='tcancel'){ S.textEdit=null; S.tedit=null; render(); }
   else if(e.target.id==='tsave'){ saveText(id); }
@@ -1833,21 +1841,115 @@ function usageQ(cfg, cat){
   return u ? {q:u[0], ph:u[1], story:u[2], label:u[3]} : {q:'어디에 쓰나요?', ph:(cfg||{}).usagePh||'', story:(cfg||{}).storyPh||'', label:'쓰임'};
 }
 /* 찍은 때(시간대)와 날씨 — 색은 빛에 따라 달라지므로 함께 남긴다. 시간대는 light 칸, 날씨는 weather 칸에 저장 */
-const TODS=['새벽','아침','한낮','오후','해 질 녘','밤'];
+const TODS=['새벽','아침','오전','한낮','오후','해 질 녘','밤'];
 const WEATHERS=['맑음','구름 조금','흐림','비·눈','안개'];
-function todFromIso(iso){
-  if(!iso) return ''; const t=new Date(iso); if(isNaN(t)) return '';
-  const hr=t.getHours()+t.getMinutes()/60;
-  return hr<4?'밤':hr<7?'새벽':hr<10?'아침':hr<14?'한낮':hr<17?'오후':hr<19?'해 질 녘':'밤';
+const NOTE_EX=['썰물 때','비 갠 뒤','배 들어오기 전','일 나가는 길에'];
+/* 해 높이(NOAA 근사식) — 찍은 시각(UTC)과 위치로 고도(도)와 남중까지의 분(진태양시 기준, 음수면 오전)을 구한다 */
+function sunPos(iso, lat, lng){
+  const t=new Date(iso); if(!iso || isNaN(t) || lat==null || lng==null) return null;
+  const rad=Math.PI/180, y=t.getUTCFullYear(), leap=(y%4===0&&y%100!==0)||y%400===0;
+  const doy=Math.floor((Date.UTC(y,t.getUTCMonth(),t.getUTCDate())-Date.UTC(y,0,0))/864e5);
+  const hr=t.getUTCHours()+t.getUTCMinutes()/60+t.getUTCSeconds()/3600;
+  const g=2*Math.PI/(leap?366:365)*(doy-1+(hr-12)/24);
+  const eq=229.18*(0.000075+0.001868*Math.cos(g)-0.032077*Math.sin(g)-0.014615*Math.cos(2*g)-0.040849*Math.sin(2*g));
+  const dec=0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)-0.006758*Math.cos(2*g)+0.000907*Math.sin(2*g)-0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
+  let tst=(hr*60+eq+4*lng)%1440; if(tst<0) tst+=1440;
+  const ha=(tst/4-180)*rad, la=lat*rad;
+  const cz=Math.sin(la)*Math.sin(dec)+Math.cos(la)*Math.cos(dec)*Math.cos(ha);
+  return {elev:Math.round((90-Math.acos(Math.max(-1,Math.min(1,cz)))/rad)*10)/10, fromNoon:tst-720};
 }
+/* 이름표: 밤(<-6°) / 새벽(-6~0°) / 아침(0~15°) / 오전(15° 이상, 남중 1시간 전까지) / 한낮(남중 ±1시간) / 오후 / 해 질 녘(오후 15° 아래 ~ -6°) */
+function sunLabel(sp){
+  if(!sp) return ''; const e=sp.elev, m=sp.fromNoon;
+  if(e<-6) return '밤';
+  if(Math.abs(m)<=60 && e>0) return '한낮';
+  if(m<0) return e<0?'새벽':e<15?'아침':'오전';
+  return e>=15?'오후':'해 질 녘';
+}
+/* 위치가 없으면 미션 중심 좌표로 (섬 안에서는 해 높이 차이가 0.1°쯤) */
+const sunAt = (lat, lng, cfg) => (lat!=null && lng!=null) ? [lat,lng] : ((cfg||CUR).center||[37.505,130.865]);
+const sunOf = (iso, lat, lng, cfg) => { const a=sunAt(lat,lng,cfg); return sunPos(iso, a[0], a[1]); };
+const fmtWhen = iso => { if(!iso) return ''; const t=new Date(iso); if(isNaN(t)) return ''; const hh=t.getHours(); return `${t.getMonth()+1}월 ${t.getDate()}일 ${hh<12?'오전':'오후'} ${hh%12||12}:${pad(t.getMinutes())}`; };
+/* 예전 기록(taken_src 없음): 사진에 찍은 시각이 없었으면 taken_at은 파일 시각이라 믿을 수 없다 */
+const hasExifTime = r => !!((r.exif1&&r.exif1.DateTimeOriginal)||(r.exif2&&r.exif2.DateTimeOriginal));
+const timeUnsure = r => !!r && !r.is_memory && !r.taken_src && !hasExifTime(r);
+/* 보여 줄 이름표: 새 기록은 저장된 light, 예전 기록은 저장값을 바꾸지 않고 화면에서 계산 */
+function todOf(r, cfg){
+  if(!r || r.is_memory) return (r&&r.light)||'';
+  if(r.taken_src) return r.taken_src==='unknown' ? '' : (r.light||'');
+  if(!(cfg||CUR).conditions || timeUnsure(r) || !r.taken_at) return r.light||'';
+  return sunLabel(sunOf(r.taken_at, r.lat, r.lng, cfg)) || r.light || '';
+}
+const whenLine = (r, cfg) => [todOf(r,cfg), r.time_note].filter(Boolean).join(' · ');
+/* 찍은 때 칸(기록하기·고치기 공용). w = {taken, src, edit, note, dirty} */
+const newWhen = () => ({taken:null, src:'', edit:false, note:'', dirty:false});
+const whenFrom = r => ({taken:(r.taken_src==='unknown'||timeUnsure(r))?null:(r.taken_at||null), src:r.taken_src||(timeUnsure(r)||!r.taken_at?'':'exif'), edit:false, note:r.time_note||'', dirty:false});
+const whenOk = w => !!w.taken || w.src==='unknown';
+function whenOut(w, lat, lng){ if(!w.taken) return ''; const lab=sunLabel(sunOf(w.taken, lat, lng)); return fmtWhen(w.taken)+(lab?' · '+lab:''); }
+function vWhen(w, lat, lng){
+  const t=w.taken?new Date(w.taken):null, asking=!w.taken && w.src!=='unknown';
+  const dv=t?`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`:'', hv=t?t.getHours():-1, mv=t?Math.floor(t.getMinutes()/10)*10:0;
+  const form=(w.edit||asking)?`<div class="whenform"><input type="date" class="input" data-wdate value="${dv}" aria-label="찍은 날짜">
+      <select class="input" data-whour aria-label="시"><option value="">시</option>${Array.from({length:24},(_, i)=>`<option value="${i}" ${i===hv?'selected':''}>${i<12?'오전':'오후'} ${i%12||12}시</option>`).join('')}</select>
+      <select class="input" data-wmin aria-label="분">${[0,10,20,30,40,50].map(m=>`<option value="${m}" ${m===mv?'selected':''}>${pad(m)}분</option>`).join('')}</select></div>`:'';
+  let head;
+  if(w.src==='unknown') head=`<p>찍은 시각을 정확히 몰라요 <button type="button" class="link" data-wfix>시각 적기</button></p><span class="hint">아래 «그때를 내 말로»에 기억나는 대로 적어 주세요.</span>`;
+  else if(asking) head=`<p><b>사진에 찍은 시각이 없어요. 언제 찍었나요?</b></p><span class="hint">메신저로 받은 사진은 시각과 위치가 지워져요. 앨범의 원본으로 올려 주세요.</span>${form}
+      <p class="small" data-wout></p><button type="button" class="link" data-wunk style="align-self:flex-start">정확히 모르겠어요</button>`;
+  else head=`<p><b data-wout>${h(whenOut(w,lat,lng))}</b> <button type="button" class="link" data-wfix>${w.edit?'닫기':'고치기'}</button></p>${form}
+      <span class="hint">${w.src==='exif'?'사진에 담긴 시각과 위치로 해 높이를 계산해 붙였어요.':'적어 주신 시각과 위치로 해 높이를 계산해 붙였어요.'}</span>`;
+  return `<div class="field" data-when><span class="label" style="font-weight:600">찍은 때</span>${head}</div>
+    <div class="field" data-when><label for="wnote">그때를 내 말로 <span class="muted" style="font-weight:400">(선택)</span></label><input id="wnote" class="input" maxlength="40" value="${h(w.note||'')}" placeholder="예: 썰물 때">
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${NOTE_EX.map(x=>`<button type="button" class="chip" data-wex="${h(x)}">${h(x)}</button>`).join('')}</div></div>`;
+}
+/* 지금 화면의 찍은 때 칸이 어느 기록 것인지 */
+function whenCtx(){
+  const sb_=sub();
+  if(sb_.startsWith('rec/') && S.tedit && S.tedit.when){ const r=S.records.find(x=>x.id===S.tedit.id)||{}; return {w:S.tedit.when, lat:r.lat, lng:r.lng, redraw:keepTextAndRender}; }
+  if((sb_==='new'||sb_.startsWith('edit/')) && S.draft && S.draft.when) return {w:S.draft.when, lat:S.draft.lat, lng:S.draft.lng, d:S.draft, redraw:render};
+  return null;
+}
+function whenChanged(c){ const nx=$('#next'); if(nx && c.d && steps(c.d)[c.d.step-1]==='where') nx.disabled=!whereOk(c.d); }
+document.addEventListener('click', e=>{
+  const b=e.target.closest('[data-wfix],[data-wunk],[data-wex]'); if(!b) return; const c=whenCtx(); if(!c) return; const w=c.w;
+  if(b.dataset.wex!=null){ w.note=b.dataset.wex; const el=$('#wnote'); if(el){ el.value=w.note; el.focus(); } return; }
+  if(b.hasAttribute('data-wunk')){ w.src='unknown'; w.taken=null; w.edit=false; w.dirty=true; }
+  else if(w.src==='unknown'){ w.src=''; w.dirty=true; }
+  else w.edit=!w.edit;
+  c.redraw();
+});
+document.addEventListener('input', e=>{ if(e.target.id==='wnote'){ const c=whenCtx(); if(c) c.w.note=e.target.value.slice(0,40); } });
+document.addEventListener('change', e=>{
+  if(!e.target.matches('[data-wdate],[data-whour],[data-wmin]')) return; const c=whenCtx(); if(!c) return; const w=c.w;
+  const box=e.target.closest('.whenform'), dv=box.querySelector('[data-wdate]').value, hv=box.querySelector('[data-whour]').value, mv=box.querySelector('[data-wmin]').value;
+  if(!dv || hv===''){ return; }
+  const [yy,mm,dd]=dv.split('-').map(Number); const t=new Date(yy,mm-1,dd,+hv,+mv,0);
+  if(isNaN(t)) return;
+  if(t.getTime()>Date.now()+6e5){ toast('아직 오지 않은 때예요. 날짜와 시각을 다시 봐 주세요.'); return; }
+  w.taken=t.toISOString(); w.src='person'; w.dirty=true; w.edit=true; w.nightOk=false;
+  const out=document.querySelector('[data-wout]'); if(out) out.textContent=(out.tagName==='P'?'→ ':'')+whenOut(w, c.lat, c.lng);
+  whenChanged(c);
+});
+/* 계산은 «밤»인데 사진이 밝으면 한 번 되묻는다 (미리보기 평균 밝기 L* 50 이상) */
+async function meanL(blob){
+  try{ const im=await previewPixels(blob), px=im.data; let sum=0, n=0; const step=Math.max(1, Math.floor(px.length/4/20000));
+    for(let i=0;i<px.length;i+=4*step){ sum+=rgb2lab(px[i],px[i+1],px[i+2])[0]; n++; } return n?sum/n:null; }catch(e){ return null; }
+}
+async function nightLooksWrong(d){
+  const w=d.when; if(!w || !w.taken || w.nightOk) return false;
+  if(sunLabel(sunOf(w.taken, d.lat, d.lng))!=='밤') return false;
+  const p=d.p2||d.p1; if(!p) return false;
+  const L=await meanL(p.sblob||p.blob); return L!=null && L>=50;
+}
+const whereOk = d => !!d.area && (!(CUR.conditions && !isMemory(d)) || whenOk(d.when));
 const condText = (tod, wx) => [tod, wx].filter(Boolean).join(' · ');
 /* 동네 목록에 없는 곳은 «기타 (직접 적기)»로 고르고 이름을 적는다 — area에 적은 이름이 그대로 들어간다 */
 const OTHER_AREA='__other';
 /* ① 단계를 넘어가려면: 새 사진이면 키링·대상을 모두 짚어야 하고, 고치기에서 예전 사진을 그대로 두면 바로 넘어간다 */
 const p1Ready = d => d.p1 ? (!CUR.taps || !!(d.p1.kxy && d.p1.txy)) : !!d.oldP1;
 const areaIsOther = d => !!d.areaOther || (!!d.area && !S.places.some(p=>p.name===d.area));
-function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', areaOther:false, local_name:'', usage:'', story:'', tod:'', todAuto:false, weather:'', share:true, chip:'', noMatch:false, error:''}; }
-function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', tod:r.light||'', todAuto:false, weather:r.weather||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], chip:r.chip_code||'', noMatch:!!r.no_match, error:''}; }
+function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', areaOther:false, local_name:'', usage:'', story:'', when:newWhen(), weather:'', share:true, chip:'', noMatch:false, error:''}; }
+function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', when:whenFrom(r), weather:r.weather||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], chip:r.chip_code||'', noMatch:!!r.no_match, error:''}; }
 const isMemory = d => d.category==='기억 카드';
 const noRing = d => d.keyring==='없음';
 function steps(d){ if(CUR.chips) return ['what','p1','p2','chip','where','words','check']; return isMemory(d) ? ['what','where','words','check'] : noRing(d) ? ['what','ring','p2','where','words','check'] : ['what','ring','p1','p2','where','words','check']; }
@@ -1911,11 +2013,12 @@ function vDraft(){
   } else if(k==='where'){
     const opts=S.places.map(p=>`<option value="${h(p.name)}" ${d.area===p.name?'selected':''}>${h(p.name)}</option>`).join('');
     const other=areaIsOther(d);
-    if(CUR.conditions && !isMemory(d) && !d.tod){ const iso=(d.p1&&d.p1.exif.taken)||(d.p2&&d.p2.exif.taken); const t=todFromIso(iso); if(t){ d.tod=t; d.todAuto=true; } }
-    const shotAt=(d.p1&&d.p1.exif.taken)||(d.p2&&d.p2.exif.taken);
+    /* 찍은 때: 사진에 담긴 시각이 있으면 그대로(손으로 고친 값은 지킨다), 없으면 묻는다 */
+    if(CUR.conditions && !isMemory(d)){ const w=d.when, iso=(d.p1&&d.p1.exif.taken)||(d.p2&&d.p2.exif.taken);
+      if(iso){ if(w.src!=='person' && w.src!=='unknown'){ w.taken=iso; w.src='exif'; } }
+      else if((d.p1||d.p2) && w.src==='exif'){ w.taken=null; w.src=''; } }
     const conds = (CUR.conditions && !isMemory(d)) ? `
-      <div class="field"><span class="label" style="font-weight:600">찍은 때</span><div style="display:flex;flex-wrap:wrap;gap:8px">${TODS.map(t=>`<button type="button" class="chip" data-tod="${h(t)}" aria-pressed="${d.tod===t}">${h(t)}</button>`).join('')}</div>
-        <span class="hint">${d.todAuto&&shotAt?`사진 찍은 시각 ${new Date(shotAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}을 보고 골라 두었어요. 다르면 바꿔 주세요.`:'색은 빛에 따라 달라져요. 찍은 때를 골라 주세요.'}</span></div>
+      ${vWhen(d.when, d.lat, d.lng)}
       <div class="field"><span class="label" style="font-weight:600">날씨</span><div style="display:flex;flex-wrap:wrap;gap:8px">${WEATHERS.map(w=>`<button type="button" class="chip" data-wx="${h(w)}" aria-pressed="${d.weather===w}">${h(w)}</button>`).join('')}</div></div>` : '';
     body=`<h1 class="h2">${conds?'어디서, 언제 찍었나요?':'어디에서 찍었나요?'}</h1>
       ${CUR.stamps?'<p class="small muted">참여 장소에서 찍었다면 그 장소를 골라 주세요. 장소마다 스탬프가 하나씩 찍혀요.</p>':''}
@@ -1926,7 +2029,7 @@ function vDraft(){
       <p class="small muted" id="locmsg">${locMsg(d)}</p>
       <div class="map" id="map"></div>
       <p class="xs muted">지도를 눌러 핀을 옮길 수 있어요. 인터넷이 약해 지도가 안 보이면 ${h(CUR.placeLabel)}만 골라도 됩니다.</p></div>`;
-    foot=`<button class="btn main block" id="next" ${d.area?'':'disabled'}>다음</button>`;
+    foot=`<button class="btn main block" id="next" ${whereOk(d)?'':'disabled'}>다음</button>`;
   } else if(k==='words'){
     const uq=usageQ(CUR, d.category);
     body=`<h1 class="h2">${h(CUR.wordsTitle)}</h1>
@@ -1938,7 +2041,7 @@ function vDraft(){
   } else if(k==='check'){
     body=`<h1 class="h2">이렇게 올릴게요</h1>
       ${isMemory(d)?'':noRing(d)?`<div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}</div>`:`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">①</span></div><div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:`<span class="small muted">${d.oldP2?'이전 사진':'건너뜀'}</span>`}<span class="badge">②</span></div></div>`}
-      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':d.keyring)}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd>${CUR.conditions&&!isMemory(d)?`<dt>찍은 때</dt><dd>${h(condText(d.tod,d.weather)||'—')}</dd>`:''}<dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage&&!isMemory(d)?`<dt>${h(usageQ(CUR,d.category).label)}</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
+      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':d.keyring)}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd>${CUR.conditions&&!isMemory(d)?`<dt>찍은 때</dt><dd>${h([d.when.src==='unknown'?'시각 모름':whenOut(d.when,d.lat,d.lng), d.when.note, d.weather].filter(Boolean).join(' · ')||'—')}</dd>`:''}<dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage&&!isMemory(d)?`<dt>${h(usageQ(CUR,d.category).label)}</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
       <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.usage?'정확한 위치는 흐리게 표시해요.':'공개 지도에는 약 100m 단위로 흐리게 표시해요.'}</span></span></label>
       ${d.error?`<div class="err">${h(d.error)}</div>`:''}`;
     foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?`<span class="spinner"></span> 올리는 중…${(d.p1||d.p2)?' ('+mb((d.p1?d.p1.sent:0)+(d.p2?d.p2.sent:0))+')':''}`:(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
@@ -1988,7 +2091,11 @@ function bindDraft(){
   };
   const rt2=$('#retap2'); if(rt2) rt2.onclick=()=>{ if(d.p2){ d.p2.txy=null; d.p2.cx=null; d.p2.cmain=null; } render(); };
   document.querySelectorAll('#cpick [data-cmain]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; const v=b.dataset.cmain; p.cmain = v==='point' ? 'point' : +v; render(); });
-  const nx=$('#next'); if(nx) nx.onclick=()=>{ d.step++; render(); window.scrollTo(0,0); };
+  const nx=$('#next'); if(nx) nx.onclick=async()=>{
+    if(k==='where' && CUR.conditions && !isMemory(d) && await nightLooksWrong(d)){
+      if(!confirm('밤에 찍은 사진이 맞나요?\n사진은 밝은데, 적힌 시각으로는 해가 진 뒤예요.\n맞으면 «확인», 시각을 고치려면 «취소»를 눌러 주세요.')){ d.when.edit=true; render(); return; }
+      d.when.nightOk=true; }
+    d.step++; render(); window.scrollTo(0,0); };
   const sk=$('#skip'); if(sk) sk.onclick=()=>{ d.p2=null; d.step++; render(); window.scrollTo(0,0); };
   document.querySelectorAll('[data-chip]').forEach(b=>b.onclick=()=>{ d.chip=b.dataset.chip; d.noMatch=false;
     document.querySelectorAll('[data-chip]').forEach(x=>x.setAttribute('aria-pressed', x===b)); $('#nomatch').setAttribute('aria-pressed', false); $('#next').disabled=false; });
@@ -1999,10 +2106,10 @@ function bindDraft(){
       if(v===OTHER_AREA){ d.areaOther=true; d.area=''; render(); setTimeout(()=>{ const t=$('#areatxt'); if(t) t.focus(); }, 50); return; }
       const was=areaIsOther(d); d.areaOther=false; d.area=v;
       if(was){ render(); return; }
-      $('#next').disabled=!d.area;
+      $('#next').disabled=!whereOk(d);
     };
-    const at=$('#areatxt'); if(at) at.oninput=e=>{ d.area=e.target.value.trim().slice(0,30); $('#next').disabled=!d.area; };
-    document.querySelectorAll('[data-tod]').forEach(b=>b.onclick=()=>{ const v=b.dataset.tod; d.tod=(d.tod===v)?'':v; d.todAuto=false; document.querySelectorAll('[data-tod]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.tod===d.tod))); });
+    const at=$('#areatxt'); if(at) at.oninput=e=>{ d.area=e.target.value.trim().slice(0,30); $('#next').disabled=!whereOk(d); };
+
     document.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>{ const v=b.dataset.wx; d.weather=(d.weather===v)?'':v; document.querySelectorAll('[data-wx]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.wx===d.weather))); });
     $('#gps').onclick=()=>tryGps(false);
     initMap();
@@ -2044,7 +2151,7 @@ async function submitDraft(){
     lat:d.lat, lng:d.lng, gps_accuracy_m:d.acc, loc_method:d.locMethod||'none',
     share:!!d.share, user_agent:navigator.userAgent.slice(0,200), device_id:deviceId()
   };
-  if(CUR.conditions && !isMemory(d)){ row.light=d.tod||''; row.weather=d.weather||''; }
+  if(CUR.conditions && !isMemory(d)){ row.weather=d.weather||''; }
   if(CUR.tool){ row.tool=CUR.tool; row.chip_code=d.chip||null; row.no_match=!!d.noMatch && !d.chip; }
   if(d.p1){ row.photo1_taken_at=d.p1.exif.taken; row.exif1=d.p1.exif.raw; row.taken_at=d.p1.exif.taken;
     if(d.p1.kxy) row.keyring_xy=Object.assign({}, d.p1.kxy, d.p1.kbox?{crop:d.p1.kbox}:{});
@@ -2052,7 +2159,13 @@ async function submitDraft(){
     const c1=draftColors(d.p1, 1); if(c1) row.colors=c1; }
   if(d.p2 && d.p2.txy && !d.p1){ row.target_xy=d.p2.txy; const c2=draftColors(d.p2, 2); if(c2) row.colors=c2; }
   if(d.p2){ row.photo2_taken_at=d.p2.exif.taken; row.exif2=d.p2.exif.raw; if(!row.taken_at) row.taken_at=d.p2.exif.taken; }
-  if(!row.taken_at && d.mode==='new') row.taken_at=new Date().toISOString();
+  if(CUR.conditions && !isMemory(d)){
+    /* 찍은 때: 시각·위치로 해 높이를 계산해 이름표(light)를 붙인다. 시각을 모르면 내 말(time_note)만 */
+    const w=d.when; row.time_note=(w.note||'').trim().slice(0,40)||null;
+    const sp=(w.src!=='unknown' && w.taken) ? sunOf(w.taken, d.lat, d.lng) : null;
+    if(sp){ row.taken_at=w.taken; row.sun_elev=sp.elev; row.light=sunLabel(sp); row.taken_src=w.src||'person'; }
+    else { row.taken_at=null; row.sun_elev=null; row.light=''; row.taken_src='unknown'; }
+  } else if(!row.taken_at && d.mode==='new') row.taken_at=new Date().toISOString();
   const item={id:d.id, mode:d.mode, row, p1:d.p1?d.p1.blob:null, p2:d.p2?d.p2.blob:null,
     k:d.p1?d.p1.kblob:null, s1:d.p1?d.p1.sblob:null, s2:d.p2?d.p2.sblob:null, created:Date.now(), thumb:null};
   try{ await idb.put(item); }catch(e){}
@@ -2141,6 +2254,16 @@ const admMatch = r => { const f=S.adm.filter; return f==='all' || (f==='edited' 
 /* 미리보기·색 채우기 — 미리보기와 색이 생기기 전에 올라온 기록을 운영진이 채운다.
    짚은 곳이 있으면 ① 사진의 그 자리, 없으면(예전 기록) 키링이 없는 ② 사진의 가운데에서 색을 뽑는다.
    미리보기 파일은 운영진 자기 폴더에 올린다(다른 사람 폴더에는 올릴 수 없음). 원래 사진·글은 건드리지 않는다. */
+/* 찍은 때: 시각 · 이름표(해 높이) · 내 말 · 날씨. 사진에 시각이 없던 예전 기록은 «시각 확인 필요» */
+function admWhen(r){
+  const cfg=ED[S.adm.ed]; if(r.is_memory) return '—';
+  if(!cfg.conditions) return h([fmtWhen(r.taken_at), condText(r.light, r.weather)].filter(Boolean).join(' · ')||'—');
+  if(timeUnsure(r)) return `<span class="tag" style="background:var(--warn-bg,#FFF3D6);color:var(--warn-ink,#7A4B00)">시각 확인 필요</span> <span class="xs muted">사진에 찍은 시각이 없어요 (저장된 파일 시각: ${h(fmtWhen(r.taken_at)||'없음')})</span>${[r.time_note, r.weather].filter(Boolean).length?' · '+h([r.time_note, r.weather].filter(Boolean).join(' · ')):''}`;
+  if(r.taken_src==='unknown') return h(['시각 모름', r.time_note, r.weather].filter(Boolean).join(' · '));
+  const sp=sunOf(r.taken_at, r.lat, r.lng, cfg), el=r.sun_elev!=null?+r.sun_elev:(sp?sp.elev:null);
+  const src={exif:'사진', person:'올린 사람이 적음', file:'파일 시각'}[r.taken_src]||'사진 · 화면에서 계산';
+  return h([fmtWhen(r.taken_at), todOf(r,cfg)+(el!=null?` (해 높이 ${el}°)`:''), r.time_note, r.weather].filter(Boolean).join(' · '))+` <span class="xs muted">${h(src)}${r.lat==null?' · 위치 없음, 섬 중심 기준':''}</span>`;
+}
 const needsFill = r => !r.is_memory && (r.photo1_path||r.photo2_path) && (!okColors(r.colors) || (r.photo1_path&&!r.photo1_preview) || (r.photo2_path&&!r.photo2_preview));
 async function fillRecord(r){
   const upd={}, pv={};
@@ -2175,7 +2298,7 @@ function admDetail(r){
     ${r.is_memory?'<p><span class="tag">기억 카드 — 사진 없음</span></p>':`<div class="pics"><figure><div class="ph" data-big="${h(r.photo1_path||'')}">${r.photo1_path?'불러오는 중':'키링 사진 없음'}</div><figcaption class="xs muted">① 키링과 함께 · ${h(r.keyring||'키링 없음')} · ${fmt(r.photo1_taken_at)}</figcaption></figure><figure><div class="ph" data-big="${h(r.photo2_path||'')}">${r.photo2_path?'불러오는 중':'없음'}</div><figcaption class="xs muted">② 키링 없이 · ${fmt(r.photo2_taken_at)}</figcaption></figure></div>`}
     ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
     <dl><dt>분류</dt><dd>${admCatField(r)}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(ED[A.ed].placeLabel)}</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
-      <dt>찍은 때</dt><dd>${h(condText(r.light, r.weather)||'—')}</dd><dt>${h(usageQ(ED[A.ed], r.category).label)}</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
+      <dt>찍은 때</dt><dd>${admWhen(r)}</dd><dt>${h(usageQ(ED[A.ed], r.category).label)}</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
       <dt>색</dt><dd>${okColors(r.colors)?`${colorBand(r.colors, 18)}<span class="xs muted">${okColors(r.colors).colors.map(x=>h(x.hex)).join(' · ')} · ${r.colors.calibrated?'보정됨':'보정 전'}${r.colors.at==='center'?' · 사진 가운데 기준':''}</span>`:'없음'}${needsFill(r)?` <button class="btn light" id="fillone" style="min-height:34px;padding:2px 10px;font-size:13px">미리보기·색 채우기</button>`:''}</dd>
       <dt>기기</dt><dd class="small">${h([ex.Make,ex.Model].filter(Boolean).join(' ')||'—')}</dd><dt>공개</dt><dd>${r.share?'동의':'비공개'}</dd></dl>
     ${r.review_memo?`<div class="small muted">이전 검수 메모: ${h(r.review_memo)} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
@@ -2317,7 +2440,7 @@ async function admExport(){
   $('#admbody').innerHTML=`<div class="card stack"><p>기록 ${A.list.length}건을 엑셀에서 열 수 있는 CSV로 내려받습니다. 사진은 경로만 들어갑니다.</p>
     <div class="row"><button class="btn main" id="csvall">전체 CSV</button><button class="btn" id="csvok">인정 기록만 CSV</button></div></div>`;
   const dl=(rows, name)=>{
-    const cols=['id','status','nickname','category','local_name','usage','story','keyring','tool','chip_code','chip_hex','no_match','area','place_id','lat','lng','loc_method','light','weather','photo1_taken_at','photo2_taken_at','created_at','share','review_memo','photo1_path','photo2_path'];
+    const cols=['id','status','nickname','category','local_name','usage','story','keyring','tool','chip_code','chip_hex','no_match','area','place_id','lat','lng','loc_method','taken_at','taken_src','sun_elev','light','time_note','weather','photo1_taken_at','photo2_taken_at','created_at','share','review_memo','photo1_path','photo2_path'];
     const esc=v=>{ const s=v==null?'':String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
     const csv='﻿'+cols.join(',')+'\n'+rows.map(r=>cols.map(c=>esc(c==='nickname'?A.authors[r.author]:r[c])).join(',')).join('\n');
     const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=name; a.click();

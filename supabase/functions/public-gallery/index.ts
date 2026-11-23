@@ -29,6 +29,35 @@ function colorsOf(c: any) {
   };
 }
 
+// 찍은 때 이름표 — 해 높이(NOAA 근사식). 화면(index.html)의 sunPos·sunLabel과 같은 계산
+const SUN_CENTER: Record<string, [number, number]> = { ulleung: [37.505, 130.865] };
+function sunLabel(iso: string, lat: number, lng: number): string {
+  const t = new Date(iso);
+  if (isNaN(t.getTime())) return "";
+  const rad = Math.PI / 180, y = t.getUTCFullYear(), leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const doy = Math.floor((Date.UTC(y, t.getUTCMonth(), t.getUTCDate()) - Date.UTC(y, 0, 0)) / 864e5);
+  const hr = t.getUTCHours() + t.getUTCMinutes() / 60 + t.getUTCSeconds() / 3600;
+  const g = (2 * Math.PI / (leap ? 366 : 365)) * (doy - 1 + (hr - 12) / 24);
+  const eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+  const dec = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+  let tst = (hr * 60 + eq + 4 * lng) % 1440;
+  if (tst < 0) tst += 1440;
+  const cz = Math.sin(lat * rad) * Math.sin(dec) + Math.cos(lat * rad) * Math.cos(dec) * Math.cos((tst / 4 - 180) * rad);
+  const e = 90 - Math.acos(Math.max(-1, Math.min(1, cz))) / rad, m = tst - 720;
+  if (e < -6) return "밤";
+  if (Math.abs(m) <= 60 && e > 0) return "한낮";
+  if (m < 0) return e < 0 ? "새벽" : e < 15 ? "아침" : "오전";
+  return e >= 15 ? "오후" : "해 질 녘";
+}
+// 새 기록은 저장된 이름표(light). 예전 기록(taken_src 없음)은 사진에 찍은 시각이 있었을 때만 계산해 보여 준다
+function todOf(r: Record<string, any>, edition: string): string {
+  if (r.is_memory) return "";
+  if (r.taken_src) return r.taken_src === "unknown" ? "" : (r.light || "");
+  const c = SUN_CENTER[edition];
+  if (!c || !r.taken_at || !(r.d1 || r.d2)) return r.light || "";
+  return sunLabel(r.taken_at, r.lat ?? c[0], r.lng ?? c[1]) || r.light || "";
+}
+
 function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -61,7 +90,7 @@ Deno.serve(async (req: Request) => {
 
   let q = sb
     .from("records")
-    .select("id,author,status,category,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy")
+    .select("id,author,status,category,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy,light,taken_at,taken_src,time_note,d1:exif1->>DateTimeOriginal,d2:exif2->>DateTimeOriginal")
     .eq("edition", edition)
     .eq("share", true);
   q = group ? q.in("status", ["pending", "held", "approved"]) : q.eq("status", "approved").eq("public_pick", true);
@@ -94,7 +123,7 @@ Deno.serve(async (req: Request) => {
     (par ?? []).forEach((p) => { if (p.user_id) nick[p.user_id] = p.nickname; });
   }
 
-  const out = rows.map((r) => {
+  const out = rows.map((r: Record<string, any>) => {
     const hide = HIDE_COORDS.has(r.category) || r.lat == null;
     const ph = photosOf(r).map((x) => ({ kind: x.kind, url: signed[x.path] ?? null })).filter((x) => x.url);
     return {
@@ -112,6 +141,9 @@ Deno.serve(async (req: Request) => {
       // 뽑은 색(보정 전 표시 포함)과, 정사각 카드로 자를 때 기준이 되는 짚은 곳
       colors: colorsOf(r.colors),
       focus: xy(r.target_xy) ?? xy(r.colors?.roi),
+      // 찍은 때: 이름표와 «그때를 내 말로»만 (정확한 시각은 내보내지 않는다)
+      tod: todOf(r, edition),
+      time_note: r.time_note || "",
       by: nick[r.author] ?? "",
       at: r.created_at,
       // 좌표: 민감 분류는 없음, 나머지는 약 100m 단위로 뭉갬
