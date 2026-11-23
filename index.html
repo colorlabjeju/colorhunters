@@ -677,6 +677,24 @@ async function loadMe(){
 const ACCOUNT_FN = SUPABASE_URL + '/functions/v1/account';
 const ID_DOMAIN = 'id.colorhunters.app';
 const isAnonUser = () => !!(S.user && S.user.is_anonymous);
+/* «수집단 7번»처럼 번호로 받은 별칭이면 이름을 정하도록 권한다 */
+const isNumberNick = n => !n || /^(수집단|참여자)\s*\d+\s*번?$/.test(String(n).trim());
+async function saveNick(n){
+  const v=String(n||'').trim();
+  if(v.length<1 || v.length>20) throw new Error('이름은 1~20자로 적어 주세요.');
+  const {error}=await sb.rpc('set_my_nickname', {p_nickname:v}); if(error) throw new Error('이름을 저장하지 못했어요. 잠시 뒤 다시 해 주세요.');
+  if(S.me){ S.me.nickname=v; try{ localStorage.setItem('ch_me', JSON.stringify(S.me)); }catch(e){} }
+  return v;
+}
+function vNickForm(title){
+  const cur=(S.me&&S.me.nickname)||'';
+  return `<div class="card stack" style="gap:10px" id="nickcard">
+    <b>${h(title)}</b>
+    <div class="field" style="margin:0"><label for="nickin">이름 또는 별명</label><input id="nickin" class="input" maxlength="20" value="${isNumberNick(cur)?'':h(cur)}" placeholder="예: 도동 김씨, 나리분지 할머니">
+      <span class="hint">지금은 «${h(cur||'이름 없음')}»(으)로 되어 있어요. 도감에 기록한 사람 이름으로 실려요. 실명이 싫으면 별명으로 적어 주세요.</span></div>
+    <div id="nickerr" class="err" role="alert" hidden></div>
+    <button class="btn dark block" id="nickgo" type="button">이름 저장</button></div>`;
+}
 const normId = s => String(s||'').trim().toLowerCase();
 const ACC_ERR = {
   bad_code:'참여 코드가 맞지 않아요. 설명회나 단톡방에서 받은 코드를 다시 확인해 주세요.',
@@ -804,10 +822,12 @@ function bindSignup(){
 function vUpgrade(){
   const n = S.records.length;
   return `<div class="stack" style="gap:14px">
-    <div class="stack" style="gap:4px"><p class="eyebrow">울릉 색채수집단 · 한 번만</p><h1 class="h1">${h(S.me.nickname||'')}님, 아이디를 만들어 주세요</h1>
+    <div class="stack" style="gap:4px"><p class="eyebrow">울릉 색채수집단 · 한 번만</p><h1 class="h1">아이디를 만들고, 이름을 정해 주세요</h1>
       <p>이제 개인 링크 대신 <b>아이디와 비밀번호</b>로 들어와요. 휴대폰을 바꾸거나 다른 브라우저에서 열어도 내 기록이 그대로 보여요.</p></div>
     ${n?`<div class="ok small">지금까지 올린 기록 <b>${n}건</b>은 새 아이디로 그대로 옮겨져요.</div>`:''}
     <form id="upf" class="card stack" style="gap:12px" novalidate>
+      <div class="field" style="margin:0"><label for="unick">이름 또는 별명 <span style="color:var(--bad-ink)">*</span></label><input id="unick" class="input" maxlength="20" autocomplete="nickname" value="${isNumberNick(S.me.nickname)?'':h(S.me.nickname)}" placeholder="예: 도동 김씨, 나리분지 할머니">
+        <span class="hint">지금은 «${h(S.me.nickname||'')}»(으)로 되어 있어요. 도감에 기록한 사람 이름으로 실려요. 실명이 싫으면 별명으로 적어 주세요.</span></div>
       ${idField('uid','영문 소문자·숫자 4~20자. 휴대폰 번호(숫자만)도 돼요.')}
       ${pwField('upw','비밀번호','new-password','6자 이상. 숫자만 써도 돼요.')}
       ${pwField('upw2','비밀번호 한 번 더','new-password')}
@@ -820,7 +840,8 @@ function vUpgrade(){
 function bindUpgrade(){
   $('#upf').addEventListener('submit', async e=>{
     e.preventDefault(); const b=$('#ugo'); showErr('');
-    const id=normId($('#uid').value), pw=$('#upw').value;
+    const id=normId($('#uid').value), pw=$('#upw').value, nick=$('#unick').value.trim();
+    if(nick.length<1 || nick.length>20) return showErr('이름 또는 별명을 1~20자로 적어 주세요.');
     if(!/^[a-z0-9_]{4,20}$/.test(id)) return showErr(ACC_ERR.bad_id);
     if(pw.length < 6) return showErr(ACC_ERR.weak_password);
     if(pw !== $('#upw2').value) return showErr('두 비밀번호가 달라요. 다시 적어 주세요.');
@@ -828,7 +849,8 @@ function bindUpgrade(){
     try{
       const r = await accountCall({action:'upgrade', login_id:id, password:pw});
       await passwordLogin(id, pw);
-      toast(`아이디를 만들었어요${r.moved?` · 기록 ${r.moved}건 옮김`:''}`, 4000); location.hash='#/'; render(); processQueue();
+      let nickOk=true; try{ await saveNick(nick); }catch(e){ nickOk=false; }
+      toast(`아이디를 만들었어요${r.moved?` · 기록 ${r.moved}건 옮김`:''}${nickOk?'':' · 이름은 첫 화면에서 다시 정해 주세요'}`, 4000); location.hash='#/'; render(); processQueue();
     }catch(err){ showErr(err.message); busyBtn(b, false, '아이디 만들기'); }
   });
 }
@@ -1379,6 +1401,7 @@ function vHome(){
   ${q?`<div class="notice"><b>보내지 못한 기록 ${q}건</b>이 휴대폰에 남아 있어요. 인터넷이 잡히는 곳에서 아래 버튼을 눌러 주세요.<div style="margin-top:10px"><button class="btn dark sm" id="retry">지금 보내기</button></div></div>`:''}
   ${held.length?`<div class="notice"><b>보완 요청 ${held.length}건</b> — 아래 노란 칸을 눌러 고쳐서 다시 내 주세요.</div>`:''}
   ${CUR.stamps?vStamps():''}
+  ${CUR.mode==='invite' && S.me && !isAnonUser() && (S.renaming || (isNumberNick(S.me.nickname) && S.me.role!=='admin')) ? vNickForm(S.renaming?'이름 바꾸기':'이름을 정해 주세요 — 지금은 번호로 되어 있어요') : ''}
   <button class="btn main block" style="min-height:64px;font-size:20px" id="start">＋ 기록 남기기</button>
   <details class="card"><summary class="h3" style="cursor:pointer">무엇을 기록하나요?</summary>
     <div class="stack" style="margin-top:10px">${CUR.cats.map(x=>`<div><b>${h(x.v)}</b> <span class="muted small">— ${h(x.ex)}</span></div>`).join('')}
@@ -1396,11 +1419,15 @@ function vHome(){
   </div>
   <p class="small" style="text-align:center"><a href="#/about/${CUR.about}">모인 기록 둘러보기 →</a>${CUR.mode==='invite'?` · <a href="#/home">컬러헌터스 둘러보기 →</a>`:''}</p>
   <p class="xs muted" style="text-align:center">${h(CUR.foot)}</p>
-  ${CUR.mode==='invite' && S.me && S.me.login_id ? `<p class="xs muted" style="text-align:center">아이디 <b>${h(S.me.login_id)}</b> · <a href="#/" data-logout>로그아웃</a></p>` : ''}`;
+  ${CUR.mode==='invite' && S.me && S.me.login_id ? `<p class="xs muted" style="text-align:center">아이디 <b>${h(S.me.login_id)}</b> · <a href="#/" data-rename>이름 바꾸기</a> · <a href="#/" data-logout>로그아웃</a></p>` : ''}`;
 }
 document.addEventListener('click', e=>{
   const t=e.target.closest('[data-open]'); if(t){ const id=t.dataset.open; const rec=S.records.find(x=>x.id===id); if(rec && rec.status==='held'){ S.draft=draftFrom(rec); go('edit/'+id);} else go('rec/'+id); return; }
   if(e.target.id==='start'){ S.draft=newDraft(); go('new'); }
+  if(e.target.closest('[data-rename]')){ e.preventDefault(); S.renaming=!S.renaming; render(); setTimeout(()=>{ const n=$('#nickin'); if(n){ n.scrollIntoView({block:'center'}); n.focus(); } }, 60); return; }
+  if(e.target.id==='nickgo'){ const b=e.target, err=$('#nickerr'); b.disabled=true; if(err) err.hidden=true;
+    saveNick($('#nickin').value).then(v=>{ S.renaming=false; toast(`이름을 «${v}»(으)로 정했어요`); render(); })
+      .catch(x=>{ b.disabled=false; if(err){ err.textContent=x.message; err.hidden=false; } }); }
   if(e.target.id==='retry'){ e.target.disabled=true; e.target.textContent='보내는 중…'; processQueue().then(()=>toast(S.queue.length?'아직 보내지 못한 기록이 있어요':'모두 보냈어요')); }
 });
 
