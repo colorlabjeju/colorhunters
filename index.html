@@ -288,13 +288,11 @@ main.land{max-width:none;padding:0;gap:0}
 .L .cta.line{background:#fff;color:var(--e-ink);border-color:var(--e-ink)}
 .L .cta:hover{filter:brightness(1.12)}
 /* 표지 */
-.L-hero{position:relative;background:#B5D9F5;overflow:hidden}
-.L-hero>img{position:absolute;top:0;left:-14%;width:114%;height:100%;object-fit:cover;object-position:50% 30%}
-.L-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0) 50%,rgba(255,255,255,.5) 72%,rgba(255,255,255,.62) 100%)}
-.L-hero .wrap{position:relative;z-index:1;min-height:clamp(460px,46vw,640px);display:flex;align-items:center;justify-content:flex-end}
-.L-hero .txt{width:min(100%,400px);display:flex;flex-direction:column;gap:18px;padding:40px 0}
-.L-hero h1{font-weight:300;font-size:clamp(32px,3.9vw,48px);line-height:1.25;letter-spacing:-.025em;color:var(--e-ink)}
-.L-hero .eyebrow,.L-hero .lead{color:var(--e-ink)}
+.L-hero .wrap{display:flex;flex-direction:column;align-items:center;gap:clamp(24px,3.4vw,44px);padding-top:clamp(32px,4.4vw,56px);padding-bottom:clamp(8px,1.5vw,20px)}
+.L-hero .txt{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.L-hero h1{font-weight:400;font-size:clamp(30px,3.6vw,46px);line-height:1.2;letter-spacing:-.02em;color:var(--e-ink)}
+.L-hero .sub{font-size:clamp(17px,1.9vw,24px);font-weight:300;letter-spacing:-.01em;color:var(--e-ink)}
+.L-hero img{display:block;width:100%;height:auto}
 /* 미션 */
 .L-mlist{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 .L-m{display:flex;flex-direction:column;padding:0;border:1px solid var(--e-line);border-radius:10px;overflow:hidden;background:#fff;text-align:left;font:inherit;color:inherit;cursor:pointer}
@@ -385,12 +383,8 @@ main.land{max-width:none;padding:0;gap:0}
 /* 아래 탭 (폰) */
 .L-tab{display:none}
 .L [hidden]{display:none!important}
-@media(min-width:900px) and (max-width:1139px){.L-hero>img{left:-26%;width:126%}}
 @media(max-width:899px){
-  .L-hero>img{inset:auto 0 0 0;width:100%;height:64%;object-position:57% 50%;-webkit-mask-image:linear-gradient(#0000,#000 22%);mask-image:linear-gradient(#0000,#000 22%)}
-  .L-hero::after{display:none}
-  .L-hero .wrap{min-height:min(128vw,560px);align-items:stretch;justify-content:flex-start}
-  .L-hero .txt{width:100%;padding:28px 0 24px}
+  .L-hero img{aspect-ratio:4/3;object-fit:cover;object-position:52% 50%}
   .L-mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
   .L .L-journal,.L .L-archive{grid-template-columns:1fr}
   .L-legend{position:static;margin-top:8px;flex-direction:row;flex-wrap:wrap;gap:10px 22px}
@@ -1018,13 +1012,14 @@ function vNoInvite(){
   setTimeout(fillLand, 0);
   const ms = LAND_ORDER.map(k=>LANDING.find(x=>x.key===k)).filter(Boolean);
   return `<div class="L">
-  <section class="L-hero" aria-labelledby="hero-h">
-    <img src="img/hero-sea-keyring.jpg" alt="바다를 배경으로 푸른 색 키링을 들어 올린 사람의 뒷모습" width="1578" height="882">
-    <div class="wrap"><div class="txt">
+  <section class="L-hero" aria-labelledby="hero-h"><div class="wrap">
+    <div class="txt">
       <p class="eyebrow">AN INVITATION TO SEE DIFFERENTLY</p>
-      <h1 id="hero-h">세상의 색을<br>발견하는 사람들</h1>
-      <p class="lead">지역의 빛, 사람들의 이야기, 계절의 변화 속에서 우리만의 색을 발견하고 기록합니다.</p>
-    </div></div>
+      <h1 id="hero-h" lang="en">Life is full of colors.</h1>
+      <p class="sub">세상의 색을 발견하는 사람들</p>
+    </div>
+    <img src="img/hero-sea-keyring.jpg" alt="바다를 배경으로 푸른 색 키링을 들어 올린 사람의 뒷모습" width="1578" height="882">
+  </div>
   </section>
 
   <section id="missions" class="L-missions" aria-labelledby="missions-h"><div class="wrap sec">
