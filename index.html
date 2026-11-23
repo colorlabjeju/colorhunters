@@ -587,17 +587,17 @@ const TF = {
          i:['#F2E8CB','#FEFBF5','#FFFFFF','#FAEFF0','#FCF4F8','#F5DCDD','#F0CAD5','#EAC4BB','#E0C3D3','#ECBCD2','#E8BECE','#E3B1B3','#E8ADC2','#DBAFC0','#E0A2A9','#EAD77B']}
 };
 /* 단순한 벡터 그림 (64×72). 0°=12시, 시계 방향 */
+/* 흰 바탕에 칸 사이도 흰 선, 위쪽 고리는 그리지 않는다. 12시 쪽 바깥 칸이 빈 자리는 «Color Hunters» 글자 자리(작은 회색 줄로 표시) */
 function tfSVG(p){
-  const cx=32, cy=40, pt=(r,a)=>{ const t=(a-90)*Math.PI/180; return [(cx+r*Math.cos(t)).toFixed(2), (cy+r*Math.sin(t)).toFixed(2)]; };
+  const cx=32, cy=36, pt=(r,a)=>{ const t=(a-90)*Math.PI/180; return [(cx+r*Math.cos(t)).toFixed(2), (cy+r*Math.sin(t)).toFixed(2)]; };
+  /* 흰색에 가까운 칸은 흰 바탕에 묻히지 않게 아주 옅은 테두리 */
+  const light = c => { const n=parseInt(c.slice(1),16); return ((n>>16&255)*0.299+(n>>8&255)*0.587+(n&255)*0.114) > 238; };
   const wedge=(r0,r1,a0,a1,fill)=>{ const [x1,y1]=pt(r1,a0),[x2,y2]=pt(r1,a1),[x3,y3]=pt(r0,a1),[x4,y4]=pt(r0,a0);
-    return `<path d="M${x1} ${y1}A${r1} ${r1} 0 0 1 ${x2} ${y2}L${x3} ${y3}A${r0} ${r0} 0 0 0 ${x4} ${y4}Z" fill="${fill}" stroke="#575757" stroke-width=".6"/>`; };
-  let s=`<svg viewBox="0 0 64 72" aria-hidden="true"><path d="M${cx} ${cy-29.5}a29.5 29.5 0 1 1 0 59a29.5 29.5 0 1 1 0-59ZM${cx} ${cy-10}a10 10 0 1 0 0 20a10 10 0 1 0 0-20Z" fill="#575757" fill-rule="evenodd"/>`;
-  p.o.forEach((c,k)=>{ s+=wedge(20.5,28.5,22.5*(k+1),22.5*(k+2),c); });
-  p.i.forEach((c,k)=>{ s+=wedge(11,19,22.5*k,22.5*(k+1),c); });
-  /* 위쪽 흰 이름표와 고리 */
-  s+=wedge(20.5,29.5,-22.5,22.5,'#FFFFFF')+`<circle cx="${cx}" cy="9" r="5.2" fill="#FFFFFF" stroke="#575757" stroke-width=".6"/><circle cx="${cx}" cy="9" r="1.9" fill="#575757"/>`
-    +`<rect x="${cx-7}" y="${cy-25.6}" width="14" height="1.6" rx=".8" fill="#9A9A9A"/>`;
-  return s+'</svg>';
+    return `<path d="M${x1} ${y1}A${r1} ${r1} 0 0 1 ${x2} ${y2}L${x3} ${y3}A${r0} ${r0} 0 0 0 ${x4} ${y4}Z" fill="${fill}" stroke="${light(fill)?'#E2DFD6':'#FFFFFF'}" stroke-width="${light(fill)?.6:1.1}"/>`; };
+  let s=`<svg viewBox="0 0 64 72" aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="31.5" fill="#FFFFFF"/>`;
+  p.o.forEach((c,k)=>{ s+=wedge(23.4,30.3,22.5*(k+1),22.5*(k+2),c); });
+  p.i.forEach((c,k)=>{ s+=wedge(12.5,19.3,22.5*k,22.5*(k+1),c); });
+  return s+`<rect x="${cx-7}" y="${cy-27.6}" width="14" height="1.8" rx=".9" fill="#8C8C8C"/></svg>`;
 }
 function chipSVG(){
   const cs=['#C6DB91','#A9C769','#85AD4E','#698447'];
