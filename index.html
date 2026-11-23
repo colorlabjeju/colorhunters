@@ -1529,10 +1529,10 @@ async function saveText(id){
   const upd={local_name:ln, color_name:ln.slice(0,30), usage:us, story:st};
   if(canEditFields(r) && S.tedit && S.tedit.id===id){
     const t=S.tedit; if(!t.area){ toast(CUR.placeLabel+'을 적어 주세요'); return; }
-    Object.assign(upd, {category:t.cat, area:t.area, place_id:(S.places.find(p=>p.name===t.area)||{}).id||'', light:t.tod||null, weather:t.wx||null});
+    Object.assign(upd, {category:t.cat, area:t.area, place_id:(S.places.find(p=>p.name===t.area)||{}).id||'', light:t.tod||'', weather:t.wx||''});
   }
   const {data, error}=await sb.from('records').update(upd).eq('id', id).select().single();
-  const same = data && data.local_name===ln && (data.story||'')===st && (data.usage||'')===us && (!upd.category || (data.category===upd.category && data.area===upd.area && (data.light||null)===upd.light && (data.weather||null)===upd.weather));
+  const same = data && data.local_name===ln && (data.story||'')===st && (data.usage||'')===us && (!upd.category || (data.category===upd.category && data.area===upd.area && (data.light||'')===upd.light && (data.weather||'')===upd.weather));
   if(error || !same){
     b.disabled=false; b.textContent='저장하기'; toast('저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'); return;
   }
@@ -1769,7 +1769,7 @@ async function submitDraft(){
     lat:d.lat, lng:d.lng, gps_accuracy_m:d.acc, loc_method:d.locMethod||'none',
     share:!!d.share, user_agent:navigator.userAgent.slice(0,200), device_id:deviceId()
   };
-  if(CUR.conditions && !isMemory(d)){ row.light=d.tod||null; row.weather=d.weather||null; }
+  if(CUR.conditions && !isMemory(d)){ row.light=d.tod||''; row.weather=d.weather||''; }
   if(CUR.tool){ row.tool=CUR.tool; row.chip_code=d.chip||null; row.no_match=!!d.noMatch && !d.chip; }
   if(d.p1){ row.photo1_taken_at=d.p1.exif.taken; row.exif1=d.p1.exif.raw; row.taken_at=d.p1.exif.taken;
     if(d.p1.kxy) row.keyring_xy=Object.assign({}, d.p1.kxy, d.p1.kbox?{crop:d.p1.kbox}:{});
