@@ -16,6 +16,7 @@ const HIDE_COORDS = new Set(["나물·약초", "식물·꽃·열매", "기억 �
 
 // 색·짚은 곳은 올린 사람이 보낸 값이라, 모양이 맞는 것만 골라 내보낸다
 const HEX = /^#[0-9A-Fa-f]{6}$/;
+const ROLES = new Set(["main", "accent", "sub"]);
 const unit = (v: unknown) => (typeof v === "number" && v >= 0 && v <= 1 ? v : null);
 const xy = (o: any) => (o && unit(o.x) != null && unit(o.y) != null ? { x: o.x, y: o.y } : null);
 function colorsOf(c: any) {
@@ -24,7 +25,8 @@ function colorsOf(c: any) {
   const at = xy(c.roi);
   return {
     calibrated: c.calibrated === true,
-    colors: list.map((x: any) => ({ hex: x.hex.toUpperCase(), share: unit(x.share) })),
+    // role: main(내가 본 색) · accent(포인트 색) · sub(함께 보인 색). 없거나 모르는 값이면 순서로 정한다
+    colors: list.map((x: any, i: number) => ({ hex: x.hex.toUpperCase(), share: unit(x.share), role: ROLES.has(x.role) ? x.role : (i ? "sub" : "main") })),
     roi: at ? { ...at, photo: c.roi.photo === 2 ? 2 : 1, r: unit(c.roi.r) ?? 0.24 } : null,
   };
 }
