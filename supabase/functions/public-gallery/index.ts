@@ -71,6 +71,11 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const edition = url.searchParams.get("edition") ?? "";
   if (!/^[a-z][a-z0-9]{1,23}$/.test(edition)) return json({ error: "bad edition" }, 400);
+  // 나눠 받기: limit(1~100)·offset. limit이 없으면 예전 화면처럼 한 번에 300건까지. category로 분류 하나만 고를 수 있다
+  const int = (k: string) => { const v = url.searchParams.get(k); return v != null && /^\d{1,6}$/.test(v) ? parseInt(v, 10) : null; };
+  const limit = int("limit") != null ? Math.min(100, Math.max(1, int("limit")!)) : 300;
+  const offset = int("offset") ?? 0;
+  const category = (url.searchParams.get("category") ?? "").slice(0, 40);
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false },
@@ -88,13 +93,23 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  let q = sb
+  // 보여 줄 수 있는 기록의 조건 (건수 세기와 목록에 똑같이 쓴다)
+  const scoped = (q: any) => {
+    q = q.eq("edition", edition).eq("share", true);
+    return group ? q.in("status", ["pending", "held", "approved"]) : q.eq("status", "approved").eq("public_pick", true);
+  };
+  // 전체 건수와 분류별 건수 — 분류 칩에 쓴다 (사진 서명 없이 분류 칸만 읽는다)
+  const { data: cats, error: cErr } = await scoped(sb.from("records").select("category")).limit(5000);
+  if (cErr) return json({ error: "load failed" }, 500);
+  const counts: Record<string, number> = {};
+  (cats ?? []).forEach((c: any) => { counts[c.category] = (counts[c.category] ?? 0) + 1; });
+  const total = (cats ?? []).length;
+
+  let q = scoped(sb
     .from("records")
-    .select("id,author,status,category,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy,light,taken_at,taken_src,time_note,d1:exif1->>DateTimeOriginal,d2:exif2->>DateTimeOriginal")
-    .eq("edition", edition)
-    .eq("share", true);
-  q = group ? q.in("status", ["pending", "held", "approved"]) : q.eq("status", "approved").eq("public_pick", true);
-  const { data, error } = await q.order("created_at", { ascending: false }).limit(300);
+    .select("id,author,status,category,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy,light,taken_at,taken_src,time_note,d1:exif1->>DateTimeOriginal,d2:exif2->>DateTimeOriginal"));
+  if (category) q = q.eq("category", category);
+  const { data, error } = await q.order("created_at", { ascending: false }).order("id").range(offset, offset + limit - 1);
   if (error) return json({ error: "load failed" }, 500);
   const rows = data ?? [];
 
@@ -107,14 +122,14 @@ Deno.serve(async (req: Request) => {
     ([[2, "scene"], [1, "keyring"]] as const)
       .map(([n, kind]) => ({ kind, path: pathOf(r, n) }))
       .filter((x) => x.path) as { kind: string; path: string }[];
-  const paths = [...new Set(rows.flatMap((r) => photosOf(r).map((x) => x.path)))] as string[];
+  const paths = [...new Set(rows.flatMap((r: any) => photosOf(r).map((x) => x.path)))] as string[];
   const signed: Record<string, string> = {};
   if (paths.length) {
     const { data: s } = await sb.storage.from("record-photos").createSignedUrls(paths, 60 * 60 * 6);
     (s ?? []).forEach((x) => { if (x.path && x.signedUrl) signed[x.path] = x.signedUrl; });
   }
   // 기여자 별칭: 공개 에디션 참여 별칭 우선, 없으면 초대 별칭
-  const authors = [...new Set(rows.map((r) => r.author))];
+  const authors = [...new Set(rows.map((r: any) => r.author))];
   const nick: Record<string, string> = {};
   if (authors.length) {
     const { data: inv } = await sb.from("invites").select("user_id,nickname").in("user_id", authors);
@@ -151,7 +166,7 @@ Deno.serve(async (req: Request) => {
       lng: hide ? null : Math.round(r.lng * 1000) / 1000,
     };
   });
-  return json({ edition, scope: group ? "group" : "public", count: out.length, records: out }, 200, {
+  return json({ edition, scope: group ? "group" : "public", count: out.length, total, counts, offset, limit, records: out }, 200, {
     "Cache-Control": group ? "private, no-store" : "public, max-age=120",
   });
 });

@@ -154,6 +154,73 @@ td{padding:8px;border-bottom:1px solid var(--line2);vertical-align:top}
 .aboutimg{position:relative;height:150px;overflow:hidden;background:var(--birch)}
 .aboutimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .gal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+/* 미션 소개 — 탭(소개 | 모인 기록 | 내 기록), 좁은 화면은 아래 고정 줄, 넓은 화면은 왼쪽 단 고정 */
+main.about{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 104px)}
+.ab{display:flex;flex-direction:column;gap:16px}
+.ab-side,.ab-main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ab-side>*{flex:none}
+.ab-acts,.ab-fold{display:none}
+.ab:not([data-tab=intro]) .ab-hero,.ab:not([data-tab=intro]) .ab-lead{display:none}
+.ab-pane{display:none;flex-direction:column;gap:14px}
+.ab[data-tab=intro] .pane-intro,.ab[data-tab=records] .pane-records{display:flex}
+.abtabs{display:flex;gap:22px;border-bottom:1px solid var(--e-line,var(--line))}
+.abtabs a{padding:10px 0;text-decoration:none;color:var(--e-mute,var(--ink3));border-bottom:2px solid transparent;margin-bottom:-1px;font-size:15px;white-space:nowrap}
+.abtabs a[aria-current=page]{color:var(--e-ink,var(--ink));border-bottom-color:currentColor;font-weight:600}
+.abtabs a b,.ab-bar .mine b{color:var(--e-clay,#A6503F);font-weight:600;font-size:13px}
+.gbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap-reverse;justify-content:flex-end}
+.gchips{display:flex;gap:6px;overflow-x:auto;flex:1 1 100%;min-width:0;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.gchips::-webkit-scrollbar{display:none}
+.gchips button{flex:none;border:1px solid var(--e-line,var(--line));background:#fff;border-radius:999px;padding:6px 13px;font-size:14px;min-height:36px;cursor:pointer;white-space:nowrap;color:inherit;font-family:inherit}
+.gchips button[aria-pressed=true]{background:var(--e-green,#2F4A3E);border-color:var(--e-green,#2F4A3E);color:#fff}
+.seg{display:inline-flex;flex:none;border:1px solid var(--e-line,var(--line));border-radius:999px;overflow:hidden;background:#fff}
+.seg[hidden]{display:none}
+.seg button{border:0;background:none;padding:6px 14px;font-size:14px;min-height:36px;cursor:pointer;color:inherit;font-family:inherit}
+.seg button[aria-pressed=true]{background:var(--e-ink,#242A26);color:#fff}
+.gal.colors{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 8px}
+.ctile{display:flex;flex-direction:column;gap:1px;padding:0;border:0;background:none;text-align:left;cursor:pointer;font:inherit;color:inherit;min-width:0}
+.ctile .cq{display:grid;grid-template-rows:64% 36%;grid-template-columns:1fr 1fr;aspect-ratio:1;width:100%;background:#DCE2E5}
+.ctile .cq.none{display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink3)}
+.ctile .cq i{display:block}
+.ctile .cq i:first-child{grid-column:1/3}
+.ctile b{font-size:13px;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctile .s{font-size:12px;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rec4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.rec4 button{padding:0;border:0;background:#DCE2E5;aspect-ratio:1;position:relative;overflow:hidden;cursor:pointer}
+.rec4 img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rec4 .cband{position:absolute;left:0;right:0;bottom:0;gap:0}
+.fold{border-top:1px solid var(--e-line,var(--line));padding:12px 2px}
+.fold:last-child{border-bottom:1px solid var(--e-line,var(--line))}
+.fold summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary::after{content:'▸';font-size:12px;color:var(--ink3)}
+.fold[open] summary::after{content:'▾'}
+.fold[open] summary{margin-bottom:8px}
+.ab-mine{display:flex;justify-content:space-between;text-decoration:none}
+.ab-bar{position:fixed;left:0;right:0;bottom:0;z-index:18;display:flex;gap:8px;padding:10px 16px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(246,243,236,.97);border-top:1px solid var(--e-line,var(--line))}
+.ab-bar .btn{min-height:48px;text-decoration:none}
+.ab-bar .mine{flex:none;background:#fff}
+.ab-bar .btn,.ab-acts .btn{display:flex;align-items:center;justify-content:center;text-align:center}
+.ab-acts .ab-mine{justify-content:space-between}
+.ab-bar .rec{flex:1}
+.ab-bar .btn.main.rec,body.ed .ab-bar .btn.main.rec,body.ed .ab-acts .btn.main.block{background:var(--e-green,#2F4A3E);border-color:var(--e-green,#2F4A3E);color:#fff}
+@media(min-width:700px){
+  main.about{max-width:1240px;padding-left:32px;padding-right:32px;padding-bottom:56px}
+  .ab{display:grid;grid-template-columns:340px minmax(0,1fr);gap:36px;align-items:start}
+  .ab-side{position:sticky;top:84px;max-height:calc(100vh - 100px);overflow-y:auto;padding-right:2px}
+  .ab .ab-side .ab-hero,.ab .ab-side .ab-lead{display:block}
+  .ab-acts{display:flex;flex-direction:column;gap:8px}
+  .ab-fold{display:block}
+  .abtabs .tab-intro{display:none}
+  .ab[data-tab] .pane-intro{display:none}
+  .ab[data-tab] .pane-records{display:flex}
+  .ab[data-tab=intro] .abtabs .tab-records{color:var(--e-ink,var(--ink));border-bottom-color:currentColor;font-weight:600}
+  .gbar{flex-wrap:nowrap}
+  .gchips{flex:1 1 auto;flex-wrap:wrap;overflow:visible}
+  .ab .gal{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  .ab .gal.colors{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .ab-bar{display:none}
+}
+@media(min-width:700px) and (max-width:999px){.ab{grid-template-columns:280px minmax(0,1fr);gap:24px}.ab .gal{grid-template-columns:repeat(3,minmax(0,1fr))}.ab .gal.colors{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .gcard{display:flex;flex-direction:column;padding:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);text-align:left;cursor:pointer;font:inherit;color:inherit}
 .gimg{aspect-ratio:1;background:#DCE2E5;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px}
 .gimg{position:relative;overflow:hidden}
@@ -245,6 +312,8 @@ a{color:var(--accent-text)}
 
 /* ===== 휴대폰 비율 ===== */
 html,body{overflow-x:hidden}
+/* 미션 소개: body가 스크롤 상자가 되면 position:sticky(왼쪽 단·머리글)가 듣지 않아서, 이 화면에서는 자르기만 한다 */
+html.about body{overflow-x:clip}
 .actionbar{position:sticky;bottom:0;z-index:15;display:flex;flex-direction:column;gap:6px;margin:4px -16px 0;padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 12px);background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .actionbar p{text-align:center}
 @media(max-width:420px){
@@ -1156,13 +1225,13 @@ function topRight(){
   const land = !about && CUR.mode==='invite' && ((!S.me && r!=='login' && r!=='signup') || r==='home');
   document.body.classList.toggle('ed', land || about);
   document.body.classList.toggle('land', land);
+  document.documentElement.classList.toggle('about', about);
   if(land) s = S.me ? `<a class="pill" href="#/">내 기록</a>`+outLink : `<a class="pill" href="#/login">로그인</a>`;
-  else if(about && LANDING.some(x=>x.key===r.slice(6))) s += `<button class="pill" data-rec="${h(r.slice(6))}">＋ 기록하기</button>`;
   $('#topright').innerHTML = s;
   $('#topnav').innerHTML = land ? [['missions','미션'],['journal','컬러저널'],['archive','둘러보기'],['colors','제주의 색'],['become','소개']].map(([k,t])=>`<button data-scroll="${k}">${t}</button>`).join('') : '';
   $('#topsub').textContent = (hasId() && !about && !land) ? CUR.name : '';
   document.title = (hasId() && !about && !land) ? '컬러헌터스 · '+CUR.name : '컬러헌터스 · 오늘, 이 자리의 색을 찾다';
-  $('main').className = land ? 'land' : r.startsWith('admin') ? 'wide' : '';
+  $('main').className = land ? 'land' : about ? 'about' : r.startsWith('admin') ? 'wide' : '';
 }
 
 async function render(){
@@ -1381,37 +1450,24 @@ async function loadAllEditions(){
   const {data} = await sb.from('editions').select('slug,name,partner,period,intro,tool,tool_where,places,status,question,reward,mission_need');
   S.allEd = {}; (data||[]).forEach(e=>S.allEd[e.slug]=e); return S.allEd;
 }
-function aboutShell(x, inner){
-  return `<button class="link" id="aboutback" style="align-self:flex-start">← 컬러헌터스</button>
-  <div class="aboutimg">${projImage(x)}</div>
-  <section class="stack" style="gap:8px">
-    <span class="ptag" style="align-self:flex-start">${h(x.tag)}</span>
-    <h1 class="h1">${h(x.title)}</h1>
-    <p>${h(x.text)}</p>
-    <button class="btn main block" data-rec="${x.key}" style="margin-top:6px">기록하기</button>
-  </section>${galleryShell(x.key)}${inner}`;
-}
 const STEPS = `<div class="card stack" style="gap:10px"><p class="h3">이렇게 기록해요</p>
   <ol class="tips" style="gap:8px"><li><b>키링을 대고 한 장</b> — 대상 바로 옆, 같은 빛 아래에서</li><li><b>키링을 빼고 한 장</b> — 같은 자리에서 바로 이어서</li><li><b>장소와 시간</b> — 휴대폰 위치로 자동 기록</li><li><b>이름과 이야기</b> — 그 자리에서 본 것, 한두 문장</li></ol>
   <p class="small muted">키링의 색 조각은 원래 색값을 알고 있는 기준색입니다. 함께 찍으면 빛과 휴대폰이 바꾼 색을 되돌려 대상의 색을 숫자로 남길 수 있어요.</p></div>`;
-async function vAbout(key){
-  const x = LANDING.find(l=>l.key===key); if(!x) return vNoInvite();
-  if(key==='ulleung'){
-    return aboutShell(x, `
+/* 미션마다 안내 카드 묶음 (좁은 화면은 «소개» 탭의 카드, 넓은 화면은 왼쪽 단의 접힌 안내로 같은 내용을 쓴다) */
+function aboutInner(key, eds){
+  if(key==='ulleung') return `
     <div class="card stack" style="gap:10px"><p class="h3">함께 만드는 것</p>
       <dl><dt>도감</dt><dd>「색채기반 울릉자원도감」 — 자원의 울릉 이름, 쓰임, 이야기, 색</dd><dt>지도</dt><dd>울릉 자원 지도 — 어느 동네에서 무엇이 나고 쓰이는지</dd><dt>기록</dt><dd>이번 겨울에 시작해 사계절 기록으로 이어갑니다</dd></dl></div>
     <div class="card stack" style="gap:10px"><p class="h3">기록하는 자원</p>
       ${CATS.map(c=>`<div><b>${h(c.v)}</b> <span class="small muted">— ${h(c.ex)}</span></div>`).join('')}</div>
     ${STEPS}
     <div class="card stack" style="gap:6px"><p class="h3">함께하는 곳</p><p class="small">한동대학교 IRIS 리빙랩 · 컬러랩제주 · 울릉 색채수집단</p>
-      <p class="small muted">정확한 위치와 사유지는 공개 지도에 나오지 않도록 흐리게 표시합니다.</p></div>`);
-  }
-  const eds = await loadAllEditions().catch(()=>({}));
+      <p class="small muted">정확한 위치와 사유지는 공개 지도에 나오지 않도록 흐리게 표시합니다.</p></div>`;
   if(key==='camellia'){
     const e = eds.camellia || {};
     const places = (e.places||[]).map(p=>p.name).filter(Boolean);
     const need = e.mission_need || 5;
-    return aboutShell(x, `
+    return `
     <div class="card stack" style="gap:10px"><p class="h3">미션</p>
       <dl><dt>질문</dt><dd>${h(e.question||'오늘 동백은 무슨 색인가요?')}</dd><dt>기간</dt><dd>${h(e.period||'11.22 – 12.11')}</dd><dt>준비물</dt><dd>동백 키링<br><span class="small muted">${h(e.tool_where||'카멜리아힐·뚜띠콜로리에서 받아요')}</span></dd>
       ${places.length?`<dt>참여 장소</dt><dd>${places.map(h).join(' · ')}</dd>`:''}
@@ -1421,17 +1477,15 @@ async function vAbout(key){
       <ol class="tips" style="gap:8px"><li><b>키링을 대고 한 장</b> — 대상 바로 옆, 같은 빛 아래에서</li><li><b>키링을 빼고 한 장</b> — 같은 자리에서 바로 이어서 (건너뛸 수 있어요)</li><li><b>가장 가까운 칸 고르기</b> — 키링 30칸 중 대상과 가장 비슷한 칸. 맞는 칸이 없어도 괜찮아요</li><li><b>참여 장소와 이름·이야기</b> — 위치는 휴대폰으로 자동 기록</li></ol>
       <p class="small muted">키링의 색 조각은 실제로 색을 재어 둔 기준색입니다. 함께 찍으면 빛과 휴대폰이 바꾼 색을 되돌려 대상의 색을 숫자로 남길 수 있어요.</p></div>
     <div class="card stack" style="gap:6px"><p class="h3">함께하는 곳</p><p class="small">${h(e.partner||'나우다 × 카멜리아힐')} · 컬러랩제주</p>
-      <p class="small muted">올린 기록은 컬러랩제주가 확인한 뒤 이 페이지에 공개합니다.</p></div>`);
+      <p class="small muted">올린 기록은 컬러랩제주가 확인한 뒤 이 페이지에 공개합니다.</p></div>`;
   }
-  if(key==='tradition'){
-    return aboutShell(x, `
+  if(key==='tradition') return `
     <div class="card stack" style="gap:10px"><p class="h3">무엇을 찾나요</p>
       <dl><dt>지붕</dt><dd>기와, 처마, 서까래</dd><dt>벽과 문</dt><dd>흙벽, 회벽, 창호지, 문살</dd><dt>나무</dt><dd>기둥, 마루, 오래된 나뭇결</dd><dt>장식</dt><dd>단청, 장석, 생활 도구</dd></dl></div>
     ${STEPS}
     <div class="card stack" style="gap:6px"><p class="h3">시작하는 곳</p><p class="small">안동 수졸당에서 시작해 한옥이 있는 지역으로 넓혀 갑니다.</p></div>
-    <div class="notice">곧 열려요. 한옥 컬러헌팅 프로그램과 함께 시작합니다.</div>`);
-  }
-  return aboutShell(x, `
+    <div class="notice">곧 열려요. 한옥 컬러헌팅 프로그램과 함께 시작합니다.</div>`;
+  return `
     <div class="card stack" style="gap:10px"><p class="h3">미션</p>
       <dl><dt>질문</dt><dd>오늘, 이 바다는 무슨 색인가요?</dd><dt>장소</dt><dd>제주 해안 어디서나</dd><dt>준비물</dt><dd>휴대폰<br><span class="small muted">제주블루스 키링이 있으면 더 좋아요 — 뚜띠콜로리·컬러헌팅 프로그램에서 받을 수 있어요</span></dd><dt>기간</dt><dd>상시</dd><dt>참여</dt><dd>별칭만 정하면 누구나 (회원가입 없음)</dd></dl></div>
     <div class="card stack" style="gap:10px"><p class="h3">기록하는 것</p>
@@ -1439,7 +1493,57 @@ async function vAbout(key){
     ${STEPS}
     <div class="card stack" style="gap:6px"><p class="h3">키링이 없다면</p><p class="small">사진 한 장과 색 이름, 짧은 이야기만 올려도 됩니다. 키링을 대고 찍은 기록은 색값까지 분석해 제주 바다색 지도에 올립니다.</p></div>
     <div class="card stack" style="gap:6px"><p class="h3">함께 만드는 것</p><p class="small">「제주블루스」 기록집과 제주 바다색 지도 — 계절·날씨·시간마다 달라지는 제주 바다의 색을 모읍니다.</p>
-      <p class="small muted">올린 기록은 컬러랩제주가 확인한 뒤 이 페이지에 공개합니다.</p></div>`);
+      <p class="small muted">올린 기록은 컬러랩제주가 확인한 뒤 이 페이지에 공개합니다.</p></div>`;
+}
+/* 안내 카드(.card > .h3 + 내용)를 접는 안내(details)로 바꾼다 */
+function foldCards(html){
+  const t=document.createElement('div'); t.innerHTML=html; const cards=[...t.children].filter(c=>c.classList.contains('card') && c.querySelector('.h3'));
+  const open=cards.find(c=>c.querySelector('.h3').textContent.trim()==='이렇게 기록해요')||cards[0];
+  const rest=[...t.children].filter(c=>!cards.includes(c)).map(c=>c.outerHTML).join('');   /* 카드가 아닌 알림(곧 열려요 등)은 그대로 */
+  return cards.map(c=>{ const h3=c.querySelector('.h3'), title=h3.textContent; h3.remove(); return `<details class="fold" ${c===open?'open':''}><summary>${h(title)}</summary><div class="stack small" style="gap:8px">${c.innerHTML}</div></details>`; }).join('')+rest;
+}
+const GAL_PAGE = 24;
+/* 주소: about/<미션>[/intro|records|mine]. 탭이 없으면 로그인한 주민(참여자)은 «모인 기록», 그 밖에는 «소개» */
+async function vAbout(path){
+  const [key, t0] = path.split('/');
+  const x = LANDING.find(l=>l.key===key); if(!x) return vNoInvite();
+  const ed = ED[key], member = canSeeMine(key), mineHref = ed ? '#/'+ed.base+'mine' : '';
+  if(t0==='mine' && member){ location.replace(mineHref); return ''; }
+  const eds = (key==='camellia') ? await loadAllEditions().catch(()=>({})) : {};
+  const inner = aboutInner(key, eds);
+  const tab = (t0==='records' || t0==='intro') ? t0 : (member ? 'records' : 'intro');
+  const mineN = (member && ed===CUR) ? S.records.length : null;
+  const mineLabel = `내 기록${mineN!=null?` <b>${mineN}</b>`:''}`;
+  setTimeout(()=>fillGallery(key), 0);
+  return `<div class="ab" data-tab="${tab}" data-key="${h(key)}">
+  <aside class="ab-side">
+    <button class="link" id="aboutback" style="align-self:flex-start">← 컬러헌터스</button>
+    <div class="aboutimg ab-hero">${projImage(x)}</div>
+    <section class="stack" style="gap:8px">
+      <span class="ptag" style="align-self:flex-start">${h(x.tag)}</span>
+      <h1 class="h1">${h(x.title)}</h1>
+      <p class="ab-lead">${h(x.text)}</p>
+    </section>
+    <div class="ab-acts"><button class="btn main block" data-rec="${h(key)}">＋ 기록하기</button>
+      ${member?`<a class="btn light block ab-mine" href="${mineHref}"><span>내 기록</span><span>${mineN!=null?mineN+'건 ':''}→</span></a>`:''}</div>
+    <div class="ab-fold">${foldCards(inner)}</div>
+  </aside>
+  <div class="ab-main">
+    <nav class="abtabs" aria-label="${h(x.title)}">
+      <a class="tab-intro" href="#/about/${h(key)}/intro" ${tab==='intro'?'aria-current="page"':''}>소개</a>
+      <a class="tab-records" href="#/about/${h(key)}/records" ${tab==='records'?'aria-current="page"':''}>모인 기록 <b data-gtotal></b></a>
+      ${member?`<a href="${mineHref}">${mineLabel}</a>`:''}
+    </nav>
+    <div class="ab-pane pane-intro"><div id="grecent" hidden></div>${inner}</div>
+    <div class="ab-pane pane-records">
+      <p class="small muted" id="gnote" hidden></p>
+      <div class="gbar"><div class="gchips" id="gchips"></div>
+        <div class="seg" role="group" aria-label="보기 방식"><button type="button" data-gview="photo">사진</button><button type="button" data-gview="color">색만</button></div></div>
+      <div id="gallery"><div class="card muted small">불러오는 중…</div></div>
+      <div id="gmore"></div>
+    </div>
+  </div></div>
+  <div class="ab-bar">${member?`<a class="btn light mine" href="${mineHref}">${mineLabel}</a>`:''}<button class="btn main rec" data-rec="${h(key)}">${member?'＋ 기록하기':'기록하기'}</button></div>`;
 }
 document.addEventListener('click', e=>{ if(e.target.id==='aboutback') go(''); });
 const REC_NOTE = {
@@ -1466,47 +1570,87 @@ document.addEventListener('click', e=>{
 
 /* ---------- 모인 기록 — 바깥(누구나)에는 운영진이 «공개 선정»한 기록만, 아이디로 로그인한 수집단원에게는 올라온 기록 모두(확인 중 포함) ---------- */
 const ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5emd6aWR0aG9senJva2h2enJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxMTQ4MjksImV4cCI6MjEwOTY5MDgyOX0.amqEEP42UFeHhof4oxZpkz_GSj2_-bdQEa1rXhfNUPE';
-S.gallery = {}; S.galScope = {};
-async function loadGallery(edition){
+S.gallery = {};
+async function loadGallery(edition, opt){
   /* 아이디로 로그인한 사람은 자기 토큰으로 묻는다 — 서버가 수집단원인지 보고 «수집단 안» 목록을 내준다 */
-  let tok = ANON_JWT;
+  let tok = ANON_JWT; opt = opt || {};
   try{ const {data:{session}} = await sb.auth.getSession(); if(session && !session.user.is_anonymous) tok = session.access_token; }catch(e){}
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/public-gallery?edition=${encodeURIComponent(edition)}`, {headers:{Authorization:`Bearer ${tok}`, apikey:ANON_JWT}});
+  const q = new URLSearchParams({edition, limit:String(opt.limit||GAL_PAGE), offset:String(opt.offset||0)}); if(opt.category) q.set('category', opt.category);
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/public-gallery?${q}`, {headers:{Authorization:`Bearer ${tok}`, apikey:ANON_JWT}});
   if(!res.ok) throw new Error('gallery '+res.status);
-  const j = await res.json(); S.galScope[edition] = j.scope==='group' ? 'group' : 'public';
-  /* 수집단 안 목록은 방금 올린 기록이 바로 보여야 하고, 로그아웃하면 남으면 안 되므로 담아 두지 않는다 */
-  if(S.galScope[edition]==='group') delete S.gallery[edition]; else S.gallery[edition] = j.records || [];
-  return j.records || [];
+  return await res.json();
 }
 /* 이 미션에 내 기록 화면이 있는 사람: 울릉은 아이디로 로그인한 주민, 누구나 참여 미션은 참여한 사람 */
 const canSeeMine = ed => !!ED[ed] && (ED[ed].mode==='public' ? !!S.part[ed] : !!S.me && !isAnonUser());
-function galleryShell(edition){
-  setTimeout(()=>fillGallery(edition), 0);
-  return `<section class="stack" style="gap:10px">
-    <div class="row between"><p class="h3">모인 기록</p><span class="small muted" id="gcount"></span></div>
-    ${canSeeMine(edition)?`<p class="small"><a href="#/${ED[edition].base}mine">내 기록 보기 →</a> <span class="muted">내가 올린 기록만 모아 보고, 고치거나 지울 수 있어요.</span></p>`:''}
-    <p class="small muted" id="gnote" hidden></p>
-    <div id="gallery"><div class="card muted small">불러오는 중…</div></div></section>`;
+/* 모인 기록 상태: S.gallery[미션] = {uid, at, scope, total, counts, cat, view, list, recent, busy, err}
+   24건씩 받아 이어 붙인다. 로그인한 사람이 바뀌거나 2분이 지나면 다시 받는다(탭을 오갈 때는 그대로 쓴다) */
+async function galPage(key, g, offset){
+  const j = await loadGallery(key, {offset, limit:GAL_PAGE, category:g.cat});
+  const rows = j.records || [];
+  g.scope = j.scope==='group' ? 'group' : 'public';
+  g.total = j.total!=null ? j.total : rows.length; g.counts = j.counts || {};
+  g.list = offset ? g.list.concat(rows) : rows;
+  if(!offset && !g.cat) g.recent = rows.slice(0,4);
+  g.at = Date.now();
 }
-async function fillGallery(edition){
+async function fillGallery(key){
   const box = $('#gallery'); if(!box) return;
-  let list;
-  const authed = !!(S.user && !S.user.is_anonymous);
-  try{ if(!authed && S.gallery[edition]){ list = S.gallery[edition]; S.galScope[edition]='public'; } else list = await loadGallery(edition); }
-  catch(e){ box.innerHTML = `<div class="card muted small">기록을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</div>`; return; }
-  const c = $('#gcount'); if(c) c.textContent = list.length ? `${list.length}건` : '';
-  const grp = S.galScope[edition]==='group';
-  const gn = $('#gnote'); if(gn){ gn.hidden = !grp; gn.textContent = grp ? '수집단 안에서만 보이는 화면이에요. 올리자마자 서로 볼 수 있고, 확인 중인 기록도 함께 보여요. 바깥에는 컬러랩제주가 고른 기록만 나가요.' : ''; }
-  if(!list.length && grp){ box.innerHTML = `<div class="card stack" style="gap:6px"><p class="small">아직 올라온 기록이 없어요.</p><p class="small muted">수집단이 올린 기록은 올리자마자 이곳에서 함께 볼 수 있어요.</p></div>`; return; }
-  if(!list.length){ box.innerHTML = `<div class="card stack" style="gap:6px"><p class="small">아직 공개된 기록이 없어요.</p><p class="small muted">참여자가 올린 기록은 컬러랩제주의 확인을 거쳐 이곳에 차례로 쌓입니다.</p></div>`; return; }
-  box.innerHTML = `<div class="gal">${list.map((r,i)=>`
-    <button class="gcard" data-g="${i}">
+  const uid = (S.user && !S.user.is_anonymous) ? S.user.id : '';
+  let g = S.gallery[key];
+  if(!g || g.uid!==uid || Date.now()-g.at>120000){
+    g = S.gallery[key] = {uid, at:Date.now(), scope:'public', total:0, counts:{}, cat:'', view:(g&&g.view)||'photo', list:[], recent:[], busy:false, err:false};
+    if(ED[key]){ try{ await galPage(key, g, 0); }catch(e){ g.err = true; g.at = 0; } }
+  }
+  if(S.gallery[key]===g) drawGallery(key);
+}
+const galCard = (r,i) => `<button class="gcard" data-g="${i}">
       <div class="gimg">${r.photo?`<img src="${h(r.photo)}" alt="${h(r.name)}" loading="lazy"${focusStyle(r.focus)}>`:`<span>${r.is_memory?'기억 카드':''}</span>`}</div>
       ${colorBand(r.colors, 10)}
       <div class="gtxt"><b>${h(r.name)}</b><span>${h(r.category)}${r.area?' · '+h(r.area):''}</span>${r.status&&r.status!=='approved'?`<span>${tag(r.status)}</span>`:''}</div>
-    </button>`).join('')}</div>`;
-  box.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>openRecord(list[+b.dataset.g]));
+    </button>`;
+/* «색만» 타일: 위 64% 내가 본 색, 아래 함께 보인 색 2 */
+function galTile(r,i){
+  const c=okColors(r.colors), cs=(c&&c.colors)||[];
+  return `<button class="ctile" data-g="${i}" aria-label="${h(r.name)}${cs.length?' — '+cs.map(x=>x.hex).join(', '):' — 색 없음'}">
+      <span class="cq${cs.length?'':' none'}">${cs.length?[0,1,2].map(k=>`<i style="background:${h((cs[k]||cs[0]).hex)}"></i>`).join(''):'색 없음'}</span>
+      <b>${h(r.name)}</b><span class="s">${h(r.area||r.category||'')}</span></button>`;
 }
+function drawGallery(key){
+  const g = S.gallery[key], box = $('#gallery'), root = document.querySelector('.ab'); if(!g || !box || !root || root.dataset.key!==key) return;
+  const grp = g.scope==='group', shown = g.cat ? (g.counts[g.cat]||0) : g.total;
+  document.querySelectorAll('[data-gtotal]').forEach(el=>el.textContent = g.total ? String(g.total) : '');
+  const gn = $('#gnote'); if(gn){ gn.hidden = !grp; gn.textContent = grp ? '수집단 안에서만 보이는 화면이에요. 올리자마자 서로 볼 수 있고, 확인 중인 기록도 함께 보여요. 바깥에는 컬러랩제주가 고른 기록만 나가요.' : ''; }
+  /* «소개» 탭 맨 위: 최근 기록 4장 */
+  const rc = $('#grecent');
+  if(rc){ rc.hidden = !g.recent.length;
+    rc.innerHTML = g.recent.length ? `<div class="card stack" style="gap:10px"><div class="row between"><p class="h3">최근 모인 기록</p><a class="small" href="#/about/${h(key)}/records">${g.total}건 모두 보기 →</a></div>
+      <div class="rec4">${g.recent.map((r,i)=>`<button data-gr="${i}" aria-label="${h(r.name)}">${r.photo?`<img src="${h(r.photo)}" alt="" loading="lazy"${focusStyle(r.focus)}>`:''}${colorBand(r.colors, 6)}</button>`).join('')}</div></div>` : ''; }
+  /* 분류 칩(건수) · 사진|색만 */
+  const cats = ED[key] ? ED[key].cats.map(c=>c.v) : [];
+  const ch = $('#gchips'); if(ch) ch.innerHTML = g.total ? [`<button type="button" data-gcat="" aria-pressed="${!g.cat}">전체 ${g.total}</button>`].concat(cats.map(v=>`<button type="button" data-gcat="${h(v)}" aria-pressed="${g.cat===v}">${h(v)} ${g.counts[v]||0}</button>`)).join('') : '';
+  document.querySelectorAll('[data-gview]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.gview===g.view)));
+  const seg = document.querySelector('.ab .seg'); if(seg) seg.hidden = !g.total;
+  const more = $('#gmore');
+  if(g.err){ box.innerHTML = `<div class="card muted small">기록을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</div>`; if(more) more.innerHTML=''; return; }
+  if(!g.total){ if(more) more.innerHTML='';
+    box.innerHTML = grp ? `<div class="card stack" style="gap:6px"><p class="small">아직 올라온 기록이 없어요.</p><p class="small muted">수집단이 올린 기록은 올리자마자 이곳에서 함께 볼 수 있어요.</p></div>`
+      : `<div class="card stack" style="gap:6px"><p class="small">아직 공개된 기록이 없어요.</p><p class="small muted">참여자가 올린 기록은 컬러랩제주의 확인을 거쳐 이곳에 차례로 쌓입니다.</p></div>`; return; }
+  box.innerHTML = g.list.length ? `<div class="gal${g.view==='color'?' colors':''}">${g.list.map(g.view==='color'?galTile:galCard).join('')}</div>` : `<div class="card muted small">이 분류에는 아직 기록이 없어요.</div>`;
+  if(more) more.innerHTML = g.list.length<shown ? `<button type="button" class="btn light block" id="gmorebtn" ${g.busy?'disabled':''}>${g.busy?'불러오는 중…':`더 보기 <span class="muted" style="font-weight:400">· ${g.list.length} / ${shown}건</span>`}</button>` : '';
+}
+document.addEventListener('click', async e=>{
+  const root = e.target.closest('.ab'); if(!root) return; const key = root.dataset.key, g = S.gallery[key]; if(!g) return;
+  const o = e.target.closest('[data-g]'); if(o){ const r=g.list[+o.dataset.g]; if(r) openRecord(r); return; }
+  const rc = e.target.closest('[data-gr]'); if(rc){ const r=g.recent[+rc.dataset.gr]; if(r) openRecord(r); return; }
+  const v = e.target.closest('[data-gview]'); if(v){ g.view = v.dataset.gview; drawGallery(key); return; }
+  const c = e.target.closest('[data-gcat]'), m = e.target.closest('#gmorebtn');
+  if((c || m) && !g.busy){
+    if(c){ if(g.cat===c.dataset.gcat) return; g.cat = c.dataset.gcat; g.list = []; }
+    g.busy = true; drawGallery(key);
+    try{ await galPage(key, g, c ? 0 : g.list.length); g.err=false; }catch(err){ if(c) g.err = true; else toast('더 불러오지 못했어요. 다시 눌러 주세요.'); }
+    g.busy = false; if(S.gallery[key]===g) drawGallery(key);
+  }
+});
 function openRecord(r){
   const d = document.createElement('div'); d.className='sheet';
   /* 사진은 원래 비율 그대로(둘레 띠 없이). 휴대폰은 한 단(사진 → 색 → 글), 넓은 화면은 두 단(사진 왼쪽, 글·색 오른쪽) */
