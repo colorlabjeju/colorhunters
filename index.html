@@ -497,6 +497,7 @@ const ED = {
       '기타':['언제 이 색이 가장 잘 보이나요?','예: 해 질 녘 절벽이 붉게 물들 때','이곳 이름의 유래나 얽힌 기억, 무엇이든 한두 문장이면 돼요','보이는 때']
     },
     conditions:true,
+    taps:true,  /* 사진①에서 키링·대상 짚기 (키링 원본 자르기, 색 추출 영역) */
     homeTitle:'님의 기록', homeNote:'같은 자원이라도 자리나 때(계절·날·말리기 전과 후)가 다르면 각각 한 건입니다. 다른 분이 이미 올린 대상이어도 괜찮아요. 보호종이나 남의 밭은 들어가지 말고 보이는 곳에서만 찍어 주세요.',
     foot:'문의: 색채수집단 단톡방 · 컬러랩제주', reasons:REASONS, about:'ulleung'},
   jejublues:{slug:'jejublues', base:'jb/', mode:'public', name:'제주블루스', cats:JB_CATS, rings:JB_RINGS, center:[33.37,126.55], zoom:9, consentVer:'jb-2026-11',
@@ -567,7 +568,11 @@ async function readExif(file){
    ① 키링 사진: 긴 변 1600px, 화질 0.88부터, 목표 약 450KB (색 조각 하나가 수십 px 이상 남아 평균색 계산에 충분)
    ② 키링 없는 사진: 긴 변 1280px, 화질 0.8부터, 목표 약 230KB (도감·지도 보기용)
    목표보다 크면 화질을 조금씩 낮추고(최저선 아래로는 내리지 않음), 그래도 크면 크기를 한 번 더 줄인다. */
-const SHRINK = {1:{max:1600, q:0.88, minQ:0.78, target:450*1024, floor:1280}, 2:{max:1280, q:0.8, minQ:0.66, target:230*1024, floor:1024}};
+/* ① 키링과 함께: 확인·대상 짚기용 / ② 대상만: 도감·인쇄용(300dpi 기준 약 16cm) */
+const SHRINK = {1:{max:1600, q:0.88, minQ:0.78, target:450*1024, floor:1280}, 2:{max:1920, q:0.85, minQ:0.7, target:500*1024, floor:1600}};
+/* 목록·갤러리용 미리보기, 키링 부분 원본 자르기 */
+const PREVIEW = {max:400, q:0.72};
+const KCROP = {frac:0.4, max:1024, q:0.9, minQ:0.8, target:250*1024};
 async function decodeImage(file){
   try{ return await createImageBitmap(file, {imageOrientation:'from-image'}); }
   catch(e){ return await new Promise((ok,no)=>{ const im=new Image(); im.onload=()=>ok(im); im.onerror=no; im.src=URL.createObjectURL(file); }); }
@@ -593,10 +598,37 @@ async function shrink(file, cfg){
   if(!blob) throw new Error('jpeg');
   return {blob, w:W, h:H, ow:out[0], oh:out[1], q};
 }
+async function makePreview(blob){
+  try{
+    const bmp = await createImageBitmap(blob);
+    const s = Math.min(1, PREVIEW.max/Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width=Math.round(bmp.width*s); c.height=Math.round(bmp.height*s);
+    const ctx=c.getContext('2d'); ctx.imageSmoothingQuality='high'; ctx.drawImage(bmp,0,0,c.width,c.height);
+    const out = await toJpeg(c, PREVIEW.q); c.width=c.height=0; if(bmp.close) bmp.close(); return out;
+  }catch(e){ return null; }
+}
+/* 사진①에서 주민이 짚은 키링 자리를 중심으로, 원본 해상도로 잘라 둔다 (짧은 변의 40% 정사각형, 최대 1024px) */
+async function cropKeyring(file, nx, ny){
+  try{
+    const bmp = await decodeImage(file);
+    const W = bmp.width||bmp.naturalWidth, H = bmp.height||bmp.naturalHeight;
+    const side = Math.round(Math.min(W,H)*KCROP.frac);
+    const sx = Math.max(0, Math.min(W-side, Math.round(nx*W - side/2))), sy = Math.max(0, Math.min(H-side, Math.round(ny*H - side/2)));
+    const out = Math.min(side, KCROP.max);
+    const c = document.createElement('canvas'); c.width=c.height=out;
+    const ctx=c.getContext('2d'); ctx.imageSmoothingQuality='high'; ctx.drawImage(bmp, sx, sy, side, side, 0, 0, out, out);
+    let q=KCROP.q, blob=await toJpeg(c, q);
+    while(blob && blob.size>KCROP.target && q-0.04>=KCROP.minQ-1e-9){ q=+(q-0.04).toFixed(2); blob=await toJpeg(c, q); }
+    c.width=c.height=0; if(bmp.close) bmp.close();
+    return blob ? {blob, box:{x:sx/W, y:sy/H, s:side/W, px:side}} : null;
+  }catch(e){ return null; }
+}
 async function takePhoto(file, which){
   const exif = await readExif(file);
   const r = await shrink(file, SHRINK[which===1?1:2]);
-  return {blob:r.blob, url:URL.createObjectURL(r.blob), exif, w:r.w, h:r.h, ow:r.ow, oh:r.oh, bytes:file.size, sent:r.blob.size, type:file.type};
+  const sblob = await makePreview(r.blob);
+  return {blob:r.blob, url:URL.createObjectURL(r.blob), exif, w:r.w, h:r.h, ow:r.ow, oh:r.oh, bytes:file.size, sent:r.blob.size, type:file.type,
+    file: which===1 ? file : null, sblob, kxy:null, txy:null, kblob:null, kbox:null};
 }
 function mb(n){ return n>=1024*1024 ? (n/1048576).toFixed(1)+'MB' : Math.max(1,Math.round(n/1024))+'KB'; }
 function sizeNote(p){ return p ? `<p class="xs muted">원본 ${mb(p.bytes)} → 올릴 크기 ${mb(p.sent)} (${p.ow}×${p.oh}px, 색 비교용으로 자동 축소)</p>` : ''; }
@@ -813,7 +845,7 @@ async function loadMine(){
   if(!error) S.records = data||[];
   if(CUR.stamps) await loadContact().catch(()=>{});
   S.queue = ((await idb.all().catch(()=>[])) || []).filter(it=>!it.row || !it.row.edition || it.row.edition===CUR.slug);
-  for(const r of S.records){ if(r.photo2_path && !S.thumbs[r.id]) signThumb(r); else if(r.photo1_path && !S.thumbs[r.id]) signThumb(r); }
+  for(const r of S.records){ if((r.photo2_preview||r.photo2_path||r.photo1_preview||r.photo1_path) && !S.thumbs[r.id]) signThumb(r); }
 }
 async function loadParts(){
   if(!S.user) return;
@@ -857,7 +889,7 @@ function stampState(){
   return {places, ids, done: places.filter(p=>ids.has(p.id)).length, need: (S.edition&&S.edition.mission_need)||places.length};
 }
 async function signThumb(r){
-  const p = r.photo2_path || r.photo1_path; if(!p) return;
+  const p = r.photo2_preview || r.photo2_path || r.photo1_preview || r.photo1_path; if(!p) return;
   const r2 = await sb.storage.from(BUCKET).createSignedUrl(p, 3600).catch(()=>({}));
   const url = r2 && r2.data && r2.data.signedUrl;
   if(url){ S.thumbs[r.id]=url; const im=document.querySelector(`[data-th="${r.id}"]`); if(im) im.innerHTML=`<img src="${h(url)}" alt="">`; }
@@ -868,6 +900,12 @@ async function uploadBlob(path, blob){
   const {error} = await sb.storage.from(BUCKET).upload(path, blob, {contentType:'image/jpeg', upsert:false});
   if(error && !/exists|Duplicate/i.test(error.message||'')) throw error;
 }
+/* 사진·키링 자른 사진·미리보기를 함께 올린다. 경로는 {uid}/{기록id}-1.jpg, -1k.jpg(키링), -1s.jpg·-2s.jpg(미리보기), -2.jpg */
+function uploadsFor(it, uid, row, ups){
+  const put=(col, suffix, blob)=>{ if(!blob) return; row[col]=`${uid}/${it.id}-${suffix}.jpg`; ups.push(uploadBlob(row[col], blob)); };
+  put('photo1_path','1',it.p1); put('photo2_path','2',it.p2);
+  put('photo1_keyring_path','1k',it.k); put('photo1_preview','1s',it.s1); put('photo2_preview','2s',it.s2);
+}
 async function processQueue(){
   if(processQueue.running) return; processQueue.running = true;
   try{
@@ -877,8 +915,7 @@ async function processQueue(){
         await ensureSession();
         const uid = S.user.id; const row = Object.assign({}, it.row);
         const ups=[];
-        if(it.p1){ row.photo1_path = `${uid}/${it.id}-1.jpg`; ups.push(uploadBlob(row.photo1_path, it.p1)); }
-        if(it.p2){ row.photo2_path = `${uid}/${it.id}-2.jpg`; ups.push(uploadBlob(row.photo2_path, it.p2)); }
+        uploadsFor(it, uid, row, ups);
         await Promise.all(ups);
         if(it.mode==='edit'){
           const {error} = await sb.from('records').update(row).eq('id', it.id);
@@ -1479,6 +1516,8 @@ function todFromIso(iso){
 const condText = (tod, wx) => [tod, wx].filter(Boolean).join(' · ');
 /* 동네 목록에 없는 곳은 «기타 (직접 적기)»로 고르고 이름을 적는다 — area에 적은 이름이 그대로 들어간다 */
 const OTHER_AREA='__other';
+/* ① 단계를 넘어가려면: 새 사진이면 키링·대상을 모두 짚어야 하고, 고치기에서 예전 사진을 그대로 두면 바로 넘어간다 */
+const p1Ready = d => d.p1 ? (!CUR.taps || !!(d.p1.kxy && d.p1.txy)) : !!d.oldP1;
 const areaIsOther = d => !!d.areaOther || (!!d.area && !S.places.some(p=>p.name===d.area));
 function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', areaOther:false, local_name:'', usage:'', story:'', tod:'', todAuto:false, weather:'', share:true, chip:'', noMatch:false, error:''}; }
 function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', tod:r.light||'', todAuto:false, weather:r.weather||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], chip:r.chip_code||'', noMatch:!!r.no_match, error:''}; }
@@ -1500,12 +1539,17 @@ function vDraft(){
       <div class="rings" style="grid-template-columns:repeat(${CUR.rings.length},1fr)">${CUR.rings.map(x=>`<button class="ring" style="color:${x.c}" data-ring="${x.v}" aria-pressed="${d.keyring===x.v}"><i></i><b>${h(x.t||x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`;
     foot=`<button class="btn main block" id="next" ${d.keyring?'':'disabled'}>다음</button>`;
   } else if(k==='p1'){
+    const tapMsg = !d.p1 || !CUR.taps ? '' : !d.p1.kxy ? '사진에서 <b>키링 가운데</b>를 한 번 눌러 주세요' : !d.p1.txy ? '이제 <b>기록할 대상</b>을 한 번 눌러 주세요' : '잘 짚었어요. 다시 하려면 «다시 짚기»';
+    const mark = (pt, kind) => pt ? `<span aria-hidden="true" style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:${(pt.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:${kind==='k'?44:28}px;height:${kind==='k'?44:28}px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px ${kind==='k'?'#224653':'#A6503F'};${kind==='t'?'background:rgba(166,80,63,.35);':''}pointer-events:none"></span><span style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:calc(${(pt.y*100).toFixed(2)}% + ${kind==='k'?28:20}px);transform:translateX(-50%);background:${kind==='k'?'#224653':'#A6503F'};color:#fff;border-radius:6px;padding:0 6px;font-size:12px;font-weight:700;pointer-events:none">${kind==='k'?'키링':'대상'}</span>` : '';
     body=`<h1 class="h2">① 키링을 대고 한 장</h1>
-      <div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진"><span class="badge">① 키링과 함께</span>`:(d.oldP1?'<span class="muted small">이미 올린 사진이 있어요 (바꾸려면 다시 찍기)</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>
+      ${d.p1&&CUR.taps?`<div class="notice small" id="tapmsg" style="margin:0">${tapMsg}</div>
+      <div id="tapwrap" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation"><img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진 — 눌러서 키링과 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">${mark(d.p1.kxy,'k')}${mark(d.p1.txy,'t')}<span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700">① 키링과 함께</span></div>
+      ${d.p1.kxy?'<button class="link" id="retap" style="align-self:flex-start">다시 짚기</button>':''}`
+      :`<div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진"><span class="badge">① 키링과 함께</span>`:d.oldP1?'<span class="muted small">이미 올린 사진이 있어요 (바꾸려면 다시 찍기)</span>':'<span class="muted">아직 사진이 없어요</span>'}</div>`}
       ${sizeNote(d.p1)}
       <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="1" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="1" data-cap="0">앨범에서 선택</button></div>
       <div class="card"><ul class="tips"><li>키링을 대상 <b>바로 옆, 같은 높이</b>에</li><li>키링과 대상이 <b>같은 빛</b>을 받게 (반은 그늘, 반은 햇빛 ✕)</li><li>키링이 화면의 5분의 1 이상 보이게</li><li>손가락이 색 조각을 가리지 않게</li><li>플래시·필터는 끄고</li></ul></div>`;
-    foot=`<button class="btn main block" id="next" ${(d.p1||d.oldP1)?'':'disabled'}>다음</button>`;
+    foot=`<button class="btn main block" id="next" ${p1Ready(d)?'':'disabled'}>다음</button>`;
   } else if(k==='p2'){
     const gap = (d.p1&&d.p2&&d.p1.exif.taken&&d.p2.exif.taken) ? Math.abs(new Date(d.p1.exif.taken)-new Date(d.p2.exif.taken))/60000 : null;
     body= noRing(d)
@@ -1595,6 +1639,14 @@ function bindDraft(){
       render();
     }catch(e){ toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요.'); }
   }; });
+  const tw=$('#tapwrap'); if(tw && d.p1) tw.onclick=async e=>{
+    const rc=tw.getBoundingClientRect(); const pt={x:+((e.clientX-rc.left)/rc.width).toFixed(4), y:+((e.clientY-rc.top)/rc.height).toFixed(4)};
+    if(pt.x<0||pt.x>1||pt.y<0||pt.y>1) return;
+    const p=d.p1;
+    if(!p.kxy){ p.kxy=pt; p.kblob=null; p.kbox=null; render(); const c=await cropKeyring(p.file, pt.x, pt.y); if(c && d.p1===p && p.kxy===pt){ p.kblob=c.blob; p.kbox=c.box; } }
+    else { p.txy=pt; render(); }
+  };
+  const rt=$('#retap'); if(rt) rt.onclick=()=>{ if(d.p1){ d.p1.kxy=null; d.p1.txy=null; d.p1.kblob=null; d.p1.kbox=null; } render(); };
   const nx=$('#next'); if(nx) nx.onclick=()=>{ d.step++; render(); window.scrollTo(0,0); };
   const sk=$('#skip'); if(sk) sk.onclick=()=>{ d.p2=null; d.step++; render(); window.scrollTo(0,0); };
   document.querySelectorAll('[data-chip]').forEach(b=>b.onclick=()=>{ d.chip=b.dataset.chip; d.noMatch=false;
@@ -1653,17 +1705,19 @@ async function submitDraft(){
   };
   if(CUR.conditions && !isMemory(d)){ row.light=d.tod||null; row.weather=d.weather||null; }
   if(CUR.tool){ row.tool=CUR.tool; row.chip_code=d.chip||null; row.no_match=!!d.noMatch && !d.chip; }
-  if(d.p1){ row.photo1_taken_at=d.p1.exif.taken; row.exif1=d.p1.exif.raw; row.taken_at=d.p1.exif.taken; }
+  if(d.p1){ row.photo1_taken_at=d.p1.exif.taken; row.exif1=d.p1.exif.raw; row.taken_at=d.p1.exif.taken;
+    if(d.p1.kxy) row.keyring_xy=Object.assign({}, d.p1.kxy, d.p1.kbox?{crop:d.p1.kbox}:{});
+    if(d.p1.txy) row.target_xy=d.p1.txy; }
   if(d.p2){ row.photo2_taken_at=d.p2.exif.taken; row.exif2=d.p2.exif.raw; if(!row.taken_at) row.taken_at=d.p2.exif.taken; }
   if(!row.taken_at && d.mode==='new') row.taken_at=new Date().toISOString();
-  const item={id:d.id, mode:d.mode, row, p1:d.p1?d.p1.blob:null, p2:d.p2?d.p2.blob:null, created:Date.now(), thumb:null};
+  const item={id:d.id, mode:d.mode, row, p1:d.p1?d.p1.blob:null, p2:d.p2?d.p2.blob:null,
+    k:d.p1?d.p1.kblob:null, s1:d.p1?d.p1.sblob:null, s2:d.p2?d.p2.sblob:null, created:Date.now(), thumb:null};
   try{ await idb.put(item); }catch(e){}
   try{
     await ensureSession();
     const uid=S.user.id;
     const ups=[];
-    if(item.p1){ row.photo1_path=`${uid}/${d.id}-1.jpg`; ups.push(uploadBlob(row.photo1_path, item.p1)); }
-    if(item.p2){ row.photo2_path=`${uid}/${d.id}-2.jpg`; ups.push(uploadBlob(row.photo2_path, item.p2)); }
+    uploadsFor(item, uid, row, ups);
     /* 두 장을 동시에 보내고, 전파가 약해 90초 넘게 걸리면 휴대폰에 저장해 두고 나중에 이어서 보낸다 */
     await withTimeout(Promise.all(ups), 90000);
     if(d.mode==='edit'){
