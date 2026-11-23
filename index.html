@@ -294,8 +294,6 @@ main.land{max-width:none;padding:0;gap:0}
 .L-hero .wrap{position:relative;z-index:1;min-height:clamp(460px,46vw,640px);display:flex;align-items:center;justify-content:flex-end}
 .L-hero .txt{width:min(100%,400px);display:flex;flex-direction:column;gap:18px;padding:40px 0}
 .L-hero h1{font-weight:300;font-size:clamp(32px,3.9vw,48px);line-height:1.25;letter-spacing:-.025em;color:var(--e-ink)}
-.L-hero .btns{display:flex;flex-direction:column;gap:10px;align-items:flex-start;margin-top:6px}
-.L-hero .btns .cta{min-width:236px}
 .L-hero .eyebrow,.L-hero .lead{color:var(--e-ink)}
 /* 미션 */
 .L-mlist{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
@@ -374,11 +372,10 @@ main.land{max-width:none;padding:0;gap:0}
 .L [hidden]{display:none!important}
 @media(min-width:900px) and (max-width:1139px){.L-hero>img{left:-26%;width:126%}}
 @media(max-width:899px){
-  .L-hero>img{inset:auto 0 0 0;width:100%;height:68%;object-position:57% 50%;-webkit-mask-image:linear-gradient(#0000,#000 22%);mask-image:linear-gradient(#0000,#000 22%)}
+  .L-hero>img{inset:auto 0 0 0;width:100%;height:64%;object-position:57% 50%;-webkit-mask-image:linear-gradient(#0000,#000 22%);mask-image:linear-gradient(#0000,#000 22%)}
   .L-hero::after{display:none}
-  .L-hero .wrap{min-height:min(150vw,640px);align-items:stretch;justify-content:flex-start}
+  .L-hero .wrap{min-height:min(128vw,560px);align-items:stretch;justify-content:flex-start}
   .L-hero .txt{width:100%;padding:28px 0 24px}
-  .L-hero .btns{align-items:stretch;margin-top:auto}
   .L-mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
   .L .L-journal,.L .L-archive{grid-template-columns:1fr}
   .L-colors{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -997,7 +994,6 @@ function vNoInvite(){
       <p class="eyebrow">AN INVITATION TO SEE DIFFERENTLY</p>
       <h1 id="hero-h">세상의 색을<br>발견하는 사람들</h1>
       <p class="lead">지역의 빛, 사람들의 이야기, 계절의 변화 속에서 우리만의 색을 발견하고 기록합니다.</p>
-      <div class="btns"><button class="cta" data-scroll="missions">진행 중인 미션 보기 →</button><button class="cta line" data-scroll="journal"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 6.500C10 5 7 4.800 4 5.500v13c3-.7 6-.5 8 1 2-1.500 5-1.700 8-1v-13c-3-.7-6-.5-8 1zM12 6.500v13"/></svg>컬러저널 시작하기</button></div>
     </div></div>
   </section>
 
