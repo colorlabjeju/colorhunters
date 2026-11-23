@@ -159,6 +159,10 @@ td{padding:8px;border-bottom:1px solid var(--line2);vertical-align:top}
 .gcard.mine{cursor:default}
 .swipe{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .swipe::-webkit-scrollbar{display:none}
+/* 마우스로 끌어 넘기기: 끄는 동안은 붙기(snap)를 끄고, 놓으면 가까운 장으로 */
+.swipe.many{cursor:grab;touch-action:pan-x pan-y}
+.swipe.drag{cursor:grabbing;scroll-snap-type:none;user-select:none}
+.swipe img{-webkit-user-drag:none;user-select:none}
 .swipe figure{flex:0 0 100%;min-width:0;margin:0;scroll-snap-align:center;display:flex;align-items:flex-start;justify-content:center}
 .phw{position:relative;display:block;width:100%;line-height:0}
 .phw img{display:block;width:100%;height:auto}
@@ -1534,10 +1538,33 @@ function openRecord(r){
   const onKey = e=>{ if(e.key==='Escape') close(); };
   d.addEventListener('click', e=>{ if(e.target===d || e.target.closest('[data-close]')) close(); });
   const sw=d.querySelector('[data-swipe]');
+  let swGo=null;
   if(sw && sw.children.length>1){ const n=sw.children.length, lab=d.querySelector('[data-swn]');
     const at=()=>Math.round(sw.scrollLeft/sw.clientWidth);
-    sw.addEventListener('scroll', ()=>{ lab.textContent=`${Math.min(n,at()+1)} / ${n}`; }, {passive:true});
-    d.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>sw.scrollTo({left:(Math.max(0,Math.min(n-1,at()+(+b.dataset.sw))))*sw.clientWidth, behavior:'smooth'})); }
+    sw.addEventListener('scroll', ()=>{ if(!sw.classList.contains('drag')) lab.textContent=`${Math.min(n,at()+1)} / ${n}`; }, {passive:true});
+    /* i번째 장으로 부드럽게. 끄는 중에 켜 둔 drag(붙기 끔)는 다 넘어간 뒤에 푼다 — 먼저 풀면 가까운 장으로 튀었다가 다시 움직임 */
+    let unT=0;
+    const goTo=i=>{ i=Math.max(0,Math.min(n-1,i)); lab.textContent=`${i+1} / ${n}`;
+      sw.scrollTo({left:i*sw.clientWidth, behavior:'smooth'});
+      clearTimeout(unT); unT=setTimeout(()=>sw.classList.remove('drag'), 450); };
+    swGo=k=>goTo(at()+k);
+    d.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>swGo(+b.dataset.sw));
+    /* 마우스·펜으로 끌어 넘기기. 손가락은 브라우저의 기본 넘김(붙기 포함)을 그대로 쓴다 */
+    sw.classList.add('many');
+    let st=null;
+    sw.addEventListener('pointerdown', e=>{ if(e.pointerType==='touch' || e.button!==0) return;
+      st={x:e.clientX, left:sw.scrollLeft, i:at(), moved:false}; clearTimeout(unT); sw.classList.add('drag'); sw.setPointerCapture(e.pointerId); });
+    sw.addEventListener('pointermove', e=>{ if(!st) return; const dx=e.clientX-st.x; if(Math.abs(dx)>3) st.moved=true; sw.scrollLeft=st.left-dx; });
+    const end=e=>{ if(!st) return; const dx=e.clientX-st.x, w=sw.clientWidth;
+      /* 폭의 15%(최소 40px) 넘게 끌면 그쪽 장으로, 아니면 원래 장으로 */
+      const k=Math.abs(dx)>Math.max(40, w*0.15) ? (dx<0?1:-1) : 0;
+      const moved=st.moved; goTo(st.i+k); st=null;
+      if(moved){ const stop=ev=>{ ev.stopPropagation(); ev.preventDefault(); }; sw.addEventListener('click', stop, {capture:true, once:true}); setTimeout(()=>sw.removeEventListener('click', stop, {capture:true}), 0); } };
+    sw.addEventListener('pointerup', end); sw.addEventListener('pointercancel', end);
+    sw.querySelectorAll('img').forEach(im=>im.draggable=false); }
+  /* 키보드 ←·→ 로도 넘기기 */
+  const onArrow = e=>{ if(!d.isConnected){ document.removeEventListener('keydown', onArrow); return; } if(swGo && (e.key==='ArrowRight'||e.key==='ArrowLeft')){ e.preventDefault(); swGo(e.key==='ArrowRight'?1:-1); } };
+  document.addEventListener('keydown', onArrow);
   document.addEventListener('keydown', onKey);
   document.body.appendChild(d);
   /* 넓은 화면: 사진을 왼쪽 단 폭과 화면 높이의 80% 안에서 원래 비율로 가장 크게 (작은 미리보기도 같은 크기로) */
