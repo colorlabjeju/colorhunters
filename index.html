@@ -171,6 +171,10 @@ body{font-size:17px;letter-spacing:-.01em;color:var(--ink2)}
 .top .logo{font-family:var(--display);font-size:20px;font-weight:500;letter-spacing:.06em;color:var(--ink);text-decoration:none;border:0;padding:0}
 .top small{font-size:13px;color:var(--ink3);letter-spacing:0}
 .top #topright a{color:var(--ink);border:1px solid var(--ink);border-radius:0;font-size:13px;letter-spacing:.06em;padding:6px 12px}
+.top #topright{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.top #topright a.who{border-color:var(--line);letter-spacing:0;display:inline-flex;gap:4px;align-items:center}
+.top #topright a.who span{max-width:8em;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:560px){.top #topsub{display:none} .top #topright a{padding:6px 9px} .top #topright a.who span{max-width:5.5em}}
 .display{font-family:var(--display);font-size:44px;line-height:1.05;font-weight:500;color:var(--accent);letter-spacing:.01em}
 .section-label{font-family:var(--display);font-size:15px;letter-spacing:.14em;color:var(--ink);margin-top:14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
 .eyebrow{letter-spacing:.08em}
@@ -742,6 +746,10 @@ async function logout(){
   location.hash = '#/'; render();
 }
 document.addEventListener('click', e=>{ if(e.target.closest('[data-logout]')){ e.preventDefault(); logout(); } });
+/* 머리글의 내 이름 → 첫 화면의 «이름 바꾸기» 칸을 연다 */
+document.addEventListener('click', e=>{ if(!e.target.closest('[data-rename-top]')) return; e.preventDefault(); S.renaming=true;
+  if(route()!=='') location.hash='#/'; else render();
+  setTimeout(()=>{ const n=$('#nickin'); if(n){ n.scrollIntoView({block:'center'}); n.focus(); } }, 250); });
 
 const pwField = (id, label, auto, hint) => `<div class="field"><label for="${id}">${label}</label>
   <div style="position:relative"><input id="${id}" class="input" type="password" autocomplete="${auto}" maxlength="72" style="padding-right:64px">
@@ -970,11 +978,16 @@ function topRight(){
   if(S.me && S.me.role==='admin' && !isAnonUser()) s = r.startsWith('admin') ? `<a href="#/">기록 화면</a>` : `<a href="#/admin">관리</a>`;
   else if(CUR.mode==='invite' && (!S.me) && r!=='login' && r!=='signup') s = `<a href="#/login">로그인</a>`;
   const about = r.startsWith('about/');
+  /* 아이디로 로그인한 사람은 어느 화면에서나 머리글에서 로그아웃. 주민은 자기 이름을 눌러 바꿀 수 있다 */
+  const authed = !!S.me && !isAnonUser();
+  const outLink = authed ? `<a href="#/" data-logout>로그아웃</a>` : '';
+  if(authed && S.me.role!=='admin' && !about) s += `<a href="#/" class="who" data-rename-top title="이름 바꾸기" aria-label="${h(S.me.nickname||'이름 없음')} — 이름 바꾸기"><span>${h(S.me.nickname||'이름 정하기')}</span> ✎</a>`;
+  s += outLink;
   /* 로그인 없이 보는 랜딩·미션 소개는 에디토리얼 모양(body.ed) */
   const land = !about && CUR.mode==='invite' && ((!S.me && r!=='login' && r!=='signup') || r==='home');
   document.body.classList.toggle('ed', land || about);
   document.body.classList.toggle('land', land);
-  if(land) s = S.me ? `<a class="pill" href="#/">내 기록</a>` : `<a class="pill" href="#/login">로그인</a>`;
+  if(land) s = S.me ? `<a class="pill" href="#/">내 기록</a>`+outLink : `<a class="pill" href="#/login">로그인</a>`;
   else if(about && LANDING.some(x=>x.key===r.slice(6))) s += `<button class="pill" data-rec="${h(r.slice(6))}">＋ 기록하기</button>`;
   $('#topright').innerHTML = s;
   $('#topnav').innerHTML = land ? [['missions','미션'],['journal','컬러저널'],['archive','둘러보기'],['colors','제주의 색'],['become','소개']].map(([k,t])=>`<button data-scroll="${k}">${t}</button>`).join('') : '';
