@@ -250,10 +250,12 @@ const CONSENT_VERSION = 'ul-2026-11';
 const GAP_WARN_MIN = 5;
 
 const CATS = [
-  {v:'나물·약초', ex:'명이, 부지깽이, 묵나물·장아찌'},
-  {v:'식물·꽃·열매', ex:'마가목 열매, 해안 들꽃'},
+  {v:'나물·약초', ex:'먹거나 약으로 쓰는 풀 — 명이, 부지깽이, 묵나물·장아찌'},
+  {v:'식물·꽃·열매', ex:'보고 즐기는 풀·꽃·나무·열매 — 울릉국화, 마가목, 너도밤나무'},
+  {v:'바다', ex:'바닷물, 갯바위, 해조류, 해산물'},
   {v:'농작물·먹거리', ex:'늦호박, 호박엿'},
   {v:'생업 재료', ex:'오징어 덕장, 어구'},
+  {v:'기타', ex:'위에 맞는 게 없을 때 — 풍경, 건물, 생활 도구'},
   {v:'기억 카드', ex:'지금 볼 수 없는 것 — 사진 없이 이야기만'}
 ];
 const RINGS = [
@@ -290,7 +292,8 @@ const CAM_REASONS = ['키링이 안 보이거나 작음','키링과 대상의 �
 const CAM_CONSENT = 'cm-2026-11';
 
 const STATUS = {pending:['확인 중',''], approved:['인정','ok'], held:['보완 요청','warn'], rejected:['반려','bad']};
-const REASONS = ['키링이 안 보이거나 작음','키링과 대상의 빛이 다름','흔들린 사진','두 사진의 자리·빛이 다름','울릉 이름·이야기가 부족함','위치가 없음','같은 대상이 이미 있음'];
+/* 같은 대상이라도 때(계절·날·말리기 전후)나 자리가 다르면 각각 한 건 — 같은 날 같은 자리에서 두 번 올린 것만 중복으로 본다 */
+const REASONS = ['키링이 안 보이거나 작음','키링과 대상의 빛이 다름','흔들린 사진','두 사진의 자리·빛이 다름','이름이나 이야기를 한 줄 더','찍은 곳(동네)을 알려 주세요','같은 날·같은 자리에서 두 번 올라옴'];
 
 const JB_REASONS = ['키링이 안 보이거나 작음','키링과 대상의 빛이 다름','흔들리거나 흐린 사진','두 사진의 자리·빛이 다름','필터·보정이 들어간 사진','색 이름·이야기가 부족함','위치가 없음','사람 얼굴이 크게 나옴'];
 
@@ -298,9 +301,11 @@ const JB_REASONS = ['키링이 안 보이거나 작음','키링과 대상의 빛
 const ED = {
   ulleung:{slug:'ulleung', base:'', mode:'invite', name:'울릉 색채수집단', cats:CATS, rings:RINGS, center:[37.505,130.865], zoom:12,
     ringQ:'어떤 키링을 대고 찍나요?', ringHint:'찍을 대상과 비슷한 색 조각이 많은 키링을 고르세요.',
+    catHint:'나물과 식물이 겹치면 — 먹거나 약으로 쓰면 «나물·약초», 아니면 «식물·꽃·열매». 헷갈리면 아무거나 골라도 돼요. 확인할 때 함께 정리해요.',
     placeLabel:'동네', wordsTitle:'울릉 이름과 이야기', nameQ:'울릉에서는 뭐라고 부르나요?', nameLabel:'울릉 이름', namePh:'예: 명이, 부지깽이',
+    nameHint:'따로 부르는 이름이 없으면 보이는 대로 적어도 돼요. 예: 도동항 아침 바다',
     usage:true, usagePh:'예: 봄에 따서 장아찌로 담가요', storyPh:'언제 따서 어떻게 먹는지, 얽힌 기억 무엇이든 한두 문장이면 돼요',
-    homeTitle:'님의 기록', homeNote:'같은 자원이라도 장소나 때(말리기 전과 후)가 다르면 각각 한 건입니다. 보호종이나 남의 밭은 들어가지 말고 보이는 곳에서만 찍어 주세요.',
+    homeTitle:'님의 기록', homeNote:'같은 자원이라도 자리나 때(계절·날·말리기 전과 후)가 다르면 각각 한 건입니다. 다른 분이 이미 올린 대상이어도 괜찮아요. 보호종이나 남의 밭은 들어가지 말고 보이는 곳에서만 찍어 주세요.',
     foot:'문의: 색채수집단 단톡방 · 컬러랩제주', reasons:REASONS, about:'ulleung'},
   jejublues:{slug:'jejublues', base:'jb/', mode:'public', name:'제주블루스', cats:JB_CATS, rings:JB_RINGS, center:[33.37,126.55], zoom:9, consentVer:'jb-2026-11',
     ringQ:'제주블루스 키링이 있나요?', ringHint:'키링이 있으면 대고 한 장 더 찍어요. 그 사진으로 색을 숫자로 남길 수 있어요. 키링이 없어도 사진 한 장으로 참여할 수 있어요.',
@@ -1126,7 +1131,10 @@ document.addEventListener('change', async e=>{
 });
 
 /* ---------- 기록 남기기 ---------- */
-function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', local_name:'', usage:'', story:'', share:true, chip:'', noMatch:false, error:''}; }
+/* 동네 목록에 없는 곳은 «기타 (직접 적기)»로 고르고 이름을 적는다 — area에 적은 이름이 그대로 들어간다 */
+const OTHER_AREA='__other';
+const areaIsOther = d => !!d.areaOther || (!!d.area && !S.places.some(p=>p.name===d.area));
+function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', areaOther:false, local_name:'', usage:'', story:'', share:true, chip:'', noMatch:false, error:''}; }
 function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], chip:r.chip_code||'', noMatch:!!r.no_match, error:''}; }
 const isMemory = d => d.category==='기억 카드';
 const noRing = d => d.keyring==='없음';
@@ -1139,7 +1147,7 @@ function vDraft(){
     ${d.mode==='edit'?`<div class="notice small"><b>보완 요청</b> ${h(d.memo||'')} ${h((d.reasons||[]).join(', '))}</div>`:''}`;
   let body='', foot='';
   if(k==='what'){
-    body=`<h1 class="h2">무엇을 기록하나요?</h1><div class="stack">${CUR.cats.map(x=>`<button class="choice" data-cat="${h(x.v)}" aria-pressed="${d.category===x.v}"><b>${h(x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`;
+    body=`<h1 class="h2">무엇을 기록하나요?</h1>${CUR.catHint?`<p class="small muted">${h(CUR.catHint)}</p>`:''}<div class="stack">${CUR.cats.map(x=>`<button class="choice" data-cat="${h(x.v)}" aria-pressed="${d.category===x.v}"><b>${h(x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`;
     foot=`<button class="btn main block" id="next" ${d.category?'':'disabled'}>다음</button>`;
   } else if(k==='ring'){
     body=`<h1 class="h2">${h(CUR.ringQ)}</h1><p class="muted small">${h(CUR.ringHint)}</p>
@@ -1179,9 +1187,11 @@ function vDraft(){
     foot=`<button class="btn main block" id="next" ${(d.chip||d.noMatch)?'':'disabled'}>다음</button>`;
   } else if(k==='where'){
     const opts=S.places.map(p=>`<option value="${h(p.name)}" ${d.area===p.name?'selected':''}>${h(p.name)}</option>`).join('');
+    const other=areaIsOther(d);
     body=`<h1 class="h2">어디에서 찍었나요?</h1>
       ${CUR.stamps?'<p class="small muted">참여 장소에서 찍었다면 그 장소를 골라 주세요. 장소마다 스탬프가 하나씩 찍혀요.</p>':''}
-      <div class="field"><label for="area">${h(CUR.placeLabel)}</label><select id="area" class="input"><option value="">${h(CUR.placeLabel)} 고르기</option>${opts}<option value="그 밖의 곳" ${d.area==='그 밖의 곳'?'selected':''}>그 밖의 곳</option></select></div>
+      <div class="field"><label for="area">${h(CUR.placeLabel)}</label><select id="area" class="input"><option value="">${h(CUR.placeLabel)} 고르기</option>${opts}<option value="${OTHER_AREA}" ${other?'selected':''}>기타 (직접 적기)</option></select></div>
+      ${other?`<div class="field"><label for="areatxt">어디인가요? <span style="color:var(--bad-ink)">*</span></label><input id="areatxt" class="input" maxlength="30" value="${h(d.area)}" placeholder="예: 내수전 약수터, 성인봉 가는 길"><span class="hint">목록에 없는 곳은 여기에 적어 주세요. 알려 주시면 목록에 넣을게요.</span></div>`:''}
       <div class="stack"><div class="row between"><b>지도 위치</b><button class="btn light sm" id="gps">지금 위치 쓰기</button></div>
       <p class="small muted" id="locmsg">${locMsg(d)}</p>
       <div class="map" id="map"></div>
@@ -1189,7 +1199,7 @@ function vDraft(){
     foot=`<button class="btn main block" id="next" ${d.area?'':'disabled'}>다음</button>`;
   } else if(k==='words'){
     body=`<h1 class="h2">${h(CUR.wordsTitle)}</h1>
-      <div class="field"><label for="ln">${h(CUR.nameQ)} <span style="color:var(--bad-ink)">*</span></label><input id="ln" class="input" maxlength="40" value="${h(d.local_name)}" placeholder="${h(CUR.namePh)}"></div>
+      <div class="field"><label for="ln">${h(CUR.nameQ)} <span style="color:var(--bad-ink)">*</span></label><input id="ln" class="input" maxlength="40" value="${h(d.local_name)}" placeholder="${h(CUR.namePh)}">${CUR.nameHint?`<span class="hint">${h(CUR.nameHint)}</span>`:''}</div>
       ${CUR.usage?`<div class="field"><label for="us">어디에 쓰나요?</label><input id="us" class="input" maxlength="500" value="${h(d.usage)}" placeholder="${h(CUR.usagePh)}"></div>`:''}
       <div class="field"><label for="sto">들려줄 이야기 ${isMemory(d)?'<span style="color:var(--bad-ink)">*</span>':''}</label><textarea id="sto" class="input" maxlength="1000" placeholder="${h(CUR.storyPh)}">${h(d.story)}</textarea>
       <span class="hint">🎤 키보드의 마이크 버튼을 누르고 말하면 글로 바뀌어요.</span></div>`;
@@ -1237,7 +1247,14 @@ function bindDraft(){
     document.querySelectorAll('[data-chip]').forEach(x=>x.setAttribute('aria-pressed', x===b)); $('#nomatch').setAttribute('aria-pressed', false); $('#next').disabled=false; });
   const nm=$('#nomatch'); if(nm) nm.onclick=()=>{ d.noMatch=!d.noMatch; if(d.noMatch) d.chip=''; render(); };
   if(k==='where'){
-    $('#area').onchange=e=>{ d.area=e.target.value; $('#next').disabled=!d.area; };
+    $('#area').onchange=e=>{
+      const v=e.target.value;
+      if(v===OTHER_AREA){ d.areaOther=true; d.area=''; render(); setTimeout(()=>{ const t=$('#areatxt'); if(t) t.focus(); }, 50); return; }
+      const was=areaIsOther(d); d.areaOther=false; d.area=v;
+      if(was){ render(); return; }
+      $('#next').disabled=!d.area;
+    };
+    const at=$('#areatxt'); if(at) at.oninput=e=>{ d.area=e.target.value.trim().slice(0,30); $('#next').disabled=!d.area; };
     $('#gps').onclick=()=>tryGps(false);
     initMap();
   }
@@ -1356,6 +1373,14 @@ async function admReview(){
   if(cur) bindDetail(cur);
 }
 async function admUrl(p){ const A=S.adm; if(A.urls[p]) return A.urls[p]; const {data}=await sb.storage.from(BUCKET).createSignedUrl(p, 3600); if(data){ A.urls[p]=data.signedUrl; return data.signedUrl;} return null; }
+/* 관리자가 분류를 바로잡는다 (예: 나물↔식물 겹침, 바다·기타로 옮기기). 기억 카드는 사진이 없어 다른 분류로 옮기지 않는다 */
+function admCatField(r){
+  const cats=(ED[A_ED()].cats||[]).map(c=>c.v).filter(v=>v!=='기억 카드');
+  if(r.is_memory || !cats.length) return h(r.category);
+  const list=cats.includes(r.category)?cats:[r.category, ...cats];
+  return `<select id="acat" class="input" style="min-height:36px;padding:4px 8px;width:auto" aria-label="분류 바꾸기">${list.map(v=>`<option value="${h(v)}" ${v===r.category?'selected':''}>${h(v)}</option>`).join('')}</select>`;
+}
+const A_ED = () => S.adm.ed;
 function admDetail(r){
   const A=S.adm;
   const gap=(r.photo1_taken_at&&r.photo2_taken_at)?Math.round(Math.abs(new Date(r.photo1_taken_at)-new Date(r.photo2_taken_at))/60000):null;
@@ -1364,7 +1389,7 @@ function admDetail(r){
     <div class="row between"><div><h2 class="h2">${h(r.local_name||r.color_name)}</h2><p class="small muted">${h(A.authors[r.author]||'?')} · ${fmt(r.created_at)}${r.resubmitted_at?' · 보완 후 다시 냄':''}${r.text_edited_at?' · 글 고침 '+fmt(r.text_edited_at):''}</p></div>${tag(r.status)}</div>
     ${r.is_memory?'<p><span class="tag">기억 카드 — 사진 없음</span></p>':`<div class="pics"><figure><div class="ph" data-big="${h(r.photo1_path||'')}">${r.photo1_path?'불러오는 중':'키링 사진 없음'}</div><figcaption class="xs muted">① 키링과 함께 · ${h(r.keyring||'키링 없음')} · ${fmt(r.photo1_taken_at)}</figcaption></figure><figure><div class="ph" data-big="${h(r.photo2_path||'')}">${r.photo2_path?'불러오는 중':'없음'}</div><figcaption class="xs muted">② 키링 없이 · ${fmt(r.photo2_taken_at)}</figcaption></figure></div>`}
     ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
-    <dl><dt>분류</dt><dd>${h(r.category)}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(ED[A.ed].placeLabel)}</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
+    <dl><dt>분류</dt><dd>${admCatField(r)}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(ED[A.ed].placeLabel)}</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
       <dt>쓰임</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
       <dt>기기</dt><dd class="small">${h([ex.Make,ex.Model].filter(Boolean).join(' ')||'—')}</dd><dt>공개</dt><dd>${r.share?'동의':'비공개'}</dd></dl>
     ${r.review_memo?`<div class="small muted">이전 검수 메모: ${h(r.review_memo)} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
@@ -1378,6 +1403,14 @@ function bindDetail(r){
   document.querySelectorAll('[data-big]').forEach(async el=>{ const p=el.dataset.big; if(!p) return; const u=await admUrl(p); if(u) el.innerHTML=`<a href="${h(u)}" target="_blank" rel="noopener" style="display:block;width:100%;height:100%"><img src="${h(u)}" alt=""></a>`; });
   document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const x=b.dataset.rs; A.memo=$('#memo').value; A.reasons=A.reasons.includes(x)?A.reasons.filter(y=>y!==x):[...A.reasons,x]; b.setAttribute('aria-pressed', A.reasons.includes(x)); });
   $('#memo').oninput=e=>{ A.memo=e.target.value; };
+  const ac=$('#acat'); if(ac) ac.onchange=async e=>{
+    const v=e.target.value, prev=r.category; ac.disabled=true;
+    const {error}=await sb.from('records').update({category:v}).eq('id', r.id);
+    ac.disabled=false;
+    if(error){ toast('분류를 바꾸지 못했어요: '+error.message); ac.value=prev; return; }
+    r.category=v; const it=A.list.find(x=>x.id===r.id); if(it) it.category=v;
+    toast('분류를 «'+v+'»(으)로 바꿨어요');
+  };
   document.querySelectorAll('[data-set]').forEach(b=>b.onclick=async ()=>{
     const st=b.dataset.set;
     if(st==='held' && !A.memo.trim() && !A.reasons.length){ toast('보완 요청은 사유나 메모를 남겨 주세요'); return; }
