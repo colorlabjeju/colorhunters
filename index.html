@@ -1294,31 +1294,42 @@ document.addEventListener('click', e=>{
   const [t,m]=REC_NOTE[key]||['곧 열려요','']; infoSheet(t,m);
 });
 
-/* ---------- 공개 갤러리 (로그인 없이, 인정·공개 동의 기록만) ---------- */
+/* ---------- 모인 기록 — 바깥(누구나)에는 운영진이 «공개 선정»한 기록만, 아이디로 로그인한 수집단원에게는 올라온 기록 모두(확인 중 포함) ---------- */
 const ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5emd6aWR0aG9senJva2h2enJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxMTQ4MjksImV4cCI6MjEwOTY5MDgyOX0.amqEEP42UFeHhof4oxZpkz_GSj2_-bdQEa1rXhfNUPE';
-S.gallery = {};
+S.gallery = {}; S.galScope = {};
 async function loadGallery(edition){
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/public-gallery?edition=${encodeURIComponent(edition)}`, {headers:{Authorization:`Bearer ${ANON_JWT}`, apikey:ANON_JWT}});
+  /* 아이디로 로그인한 사람은 자기 토큰으로 묻는다 — 서버가 수집단원인지 보고 «수집단 안» 목록을 내준다 */
+  let tok = ANON_JWT;
+  try{ const {data:{session}} = await sb.auth.getSession(); if(session && !session.user.is_anonymous) tok = session.access_token; }catch(e){}
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/public-gallery?edition=${encodeURIComponent(edition)}`, {headers:{Authorization:`Bearer ${tok}`, apikey:ANON_JWT}});
   if(!res.ok) throw new Error('gallery '+res.status);
-  const j = await res.json(); S.gallery[edition] = j.records || []; return S.gallery[edition];
+  const j = await res.json(); S.galScope[edition] = j.scope==='group' ? 'group' : 'public';
+  /* 수집단 안 목록은 방금 올린 기록이 바로 보여야 하고, 로그아웃하면 남으면 안 되므로 담아 두지 않는다 */
+  if(S.galScope[edition]==='group') delete S.gallery[edition]; else S.gallery[edition] = j.records || [];
+  return j.records || [];
 }
 function galleryShell(edition){
   setTimeout(()=>fillGallery(edition), 0);
   return `<section class="stack" style="gap:10px">
     <div class="row between"><p class="h3">모인 기록</p><span class="small muted" id="gcount"></span></div>
+    <p class="small muted" id="gnote" hidden></p>
     <div id="gallery"><div class="card muted small">불러오는 중…</div></div></section>`;
 }
 async function fillGallery(edition){
   const box = $('#gallery'); if(!box) return;
   let list;
-  try{ list = S.gallery[edition] || await loadGallery(edition); }
+  const authed = !!(S.user && !S.user.is_anonymous);
+  try{ if(!authed && S.gallery[edition]){ list = S.gallery[edition]; S.galScope[edition]='public'; } else list = await loadGallery(edition); }
   catch(e){ box.innerHTML = `<div class="card muted small">기록을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</div>`; return; }
   const c = $('#gcount'); if(c) c.textContent = list.length ? `${list.length}건` : '';
+  const grp = S.galScope[edition]==='group';
+  const gn = $('#gnote'); if(gn){ gn.hidden = !grp; gn.textContent = grp ? '수집단 안에서만 보이는 화면이에요. 올리자마자 서로 볼 수 있고, 확인 중인 기록도 함께 보여요. 바깥에는 컬러랩제주가 고른 기록만 나가요.' : ''; }
+  if(!list.length && grp){ box.innerHTML = `<div class="card stack" style="gap:6px"><p class="small">아직 올라온 기록이 없어요.</p><p class="small muted">수집단이 올린 기록은 올리자마자 이곳에서 함께 볼 수 있어요.</p></div>`; return; }
   if(!list.length){ box.innerHTML = `<div class="card stack" style="gap:6px"><p class="small">아직 공개된 기록이 없어요.</p><p class="small muted">참여자가 올린 기록은 컬러랩제주의 확인을 거쳐 이곳에 차례로 쌓입니다.</p></div>`; return; }
   box.innerHTML = `<div class="gal">${list.map((r,i)=>`
     <button class="gcard" data-g="${i}">
       <div class="gimg">${r.photo?`<img src="${h(r.photo)}" alt="${h(r.name)}" loading="lazy">`:`<span>${r.is_memory?'기억 카드':''}</span>`}</div>
-      <div class="gtxt"><b>${h(r.name)}</b><span>${h(r.category)}${r.area?' · '+h(r.area):''}</span></div>
+      <div class="gtxt"><b>${h(r.name)}</b><span>${h(r.category)}${r.area?' · '+h(r.area):''}</span>${r.status&&r.status!=='approved'?`<span>${tag(r.status)}</span>`:''}</div>
     </button>`).join('')}</div>`;
   box.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>openRecord(list[+b.dataset.g]));
 }
@@ -1328,6 +1339,7 @@ function openRecord(r){
     <button class="link" data-close style="align-self:flex-end">닫기 ✕</button>
     ${r.photo?`<div class="shot" style="aspect-ratio:auto;max-height:60vh;background:#1B3640"><img src="${h(r.photo)}" alt="${h(r.name)}" style="object-fit:contain;max-height:60vh"></div>`:''}
     <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(r.keyring)+' 키링':''}</p><h2 class="h2">${h(r.name)}</h2>
+      ${r.status&&r.status!=='approved'?`<p class="small">${tag(r.status)} <span class="muted">컬러랩제주가 아직 확인하지 않은 기록이에요. 작은 사진으로만 보여요.</span></p>`:''}
       ${r.usage?`<p><b>${h(usageQ(CUR, r.category).label)}</b> ${h(r.usage)}</p>`:''}
       ${r.story?`<p style="white-space:pre-wrap">${h(r.story)}</p>`:''}
       <p class="small muted">${[r.area, r.by?`기록 ${r.by}`:'', fmt(r.at)].filter(Boolean).map(h).join(' · ')}</p></div></div>`;
@@ -1497,7 +1509,7 @@ function vRecord(id){
     ${r.is_memory?'<p class="tag">기억 카드</p>':(r.photo1_path&&r.photo2_path?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div><div class="shot" data-ph="photo2_path"><span class="badge">② 키링 없이</span></div></div>`:r.photo1_path?`<div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div>`:`<div class="shot" data-ph="photo2_path"><span class="badge">사진</span></div>`)}
     <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${fmt(r.photo1_taken_at||r.taken_at||r.created_at)}${condText(r.light,r.weather)?' · '+h(condText(r.light,r.weather)):''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
     ${canEditText(r)?(S.textEdit===r.id?vTextForm(r):`<button class="btn light block" id="tedit">✎ ${canEditFields(r)?'고치기 (이름·분류·동네·이야기)':CUR.usage?'이름·쓰임·이야기 고치기':'색 이름·이야기 고치기'}</button>`):''}
-    <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">끄면 이 기록은 공개하지 않아요.</span></span></label>
+    <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.mode==='invite'?'끄면 이 기록은 나와 컬러랩제주만 봐요.':'끄면 이 기록은 공개하지 않아요.'}</span></span></label>
   </div>`;
 }
 /* ---------- 이름(제목)·쓰임·이야기 고치기 ---------- */
@@ -1685,7 +1697,7 @@ function vDraft(){
     body=`<h1 class="h2">이렇게 올릴게요</h1>
       ${isMemory(d)?'':noRing(d)?`<div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}</div>`:`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">①</span></div><div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:`<span class="small muted">${d.oldP2?'이전 사진':'건너뜀'}</span>`}<span class="badge">②</span></div></div>`}
       <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':d.keyring)}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd>${CUR.conditions&&!isMemory(d)?`<dt>찍은 때</dt><dd>${h(condText(d.tod,d.weather)||'—')}</dd>`:''}<dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage&&!isMemory(d)?`<dt>${h(usageQ(CUR,d.category).label)}</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
-      <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>도감·지도에 실어도 좋아요</b><br><span class="small muted">${CUR.usage?'정확한 위치는 흐리게 표시해요.':'공개 지도에는 약 100m 단위로 흐리게 표시해요.'}</span></span></label>
+      <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.usage?'정확한 위치는 흐리게 표시해요.':'공개 지도에는 약 100m 단위로 흐리게 표시해요.'}</span></span></label>
       ${d.error?`<div class="err">${h(d.error)}</div>`:''}`;
     foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?`<span class="spinner"></span> 올리는 중…${(d.p1||d.p2)?' ('+mb((d.p1?d.p1.sent:0)+(d.p2?d.p2.sent:0))+')':''}`:(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
   }
@@ -1852,18 +1864,21 @@ async function admLoad(){
 const editedAfterOk = r => r.status==='approved' && [r.text_edited_at, r.fields_edited_at].some(t=>t && (!r.reviewed_at || t > r.reviewed_at));
 async function admReview(){
   const A=S.adm; if(!(await admLoad())) return;
-  const c={pending:0,held:0,approved:0,rejected:0,edited:0}; A.list.forEach(r=>{ c[r.status]++; if(editedAfterOk(r)) c.edited++; });
-  const list=A.list.filter(r=>A.filter==='all'||(A.filter==='edited'?editedAfterOk(r):r.status===A.filter));
+  const c={pending:0,held:0,approved:0,rejected:0,edited:0,picked:0}; A.list.forEach(r=>{ c[r.status]++; if(editedAfterOk(r)) c.edited++; if(r.public_pick) c.picked++; });
+  const list=A.list.filter(admMatch);
   if(!A.sel || !list.find(r=>r.id===A.sel)) A.sel=list[0]?list[0].id:null;
   const cur=A.list.find(r=>r.id===A.sel);
-  $('#admbody').innerHTML=`<div class="tabs" style="margin-bottom:12px">${[['pending','확인 중'],['held','보완 요청'],['approved','인정'],['edited','인정 후 고침'],['rejected','반려'],['all','전체']].filter(([k])=>k!=='edited'||c.edited).map(([k,t])=>`<button class="chip" data-f="${k}" aria-pressed="${A.filter===k}">${t} ${k==='all'?A.list.length:c[k]}</button>`).join('')}</div>
-   <div class="adm"><div class="qlist">${list.length?list.map(r=>`<button class="qitem" data-sel="${h(r.id)}" aria-current="${r.id===A.sel}"><div class="th" data-qt="${h(r.id)}"></div><div style="min-width:0"><b>${h(r.local_name||r.color_name)}</b><br><span class="xs muted">${h(A.authors[r.author]||'?')} · ${h(r.category)} · ${h(r.area||'')}</span></div><div>${tag(r.status)}<br><span class="xs muted">${fmt(r.created_at)}</span></div></button>`).join(''):'<div class="card muted">해당하는 기록이 없어요.</div>'}</div>
+  $('#admbody').innerHTML=`<div class="tabs" style="margin-bottom:12px">${[['pending','확인 중'],['held','보완 요청'],['approved','인정'],['edited','인정 후 고침'],['picked','공개 선정'],['rejected','반려'],['all','전체']].filter(([k])=>(k!=='edited'||c.edited)&&(k!=='picked'||picksByHand())).map(([k,t])=>`<button class="chip" data-f="${k}" aria-pressed="${A.filter===k}">${t} ${k==='all'?A.list.length:c[k]}</button>`).join('')}</div>
+   <div class="adm"><div class="qlist">${list.length?list.map(r=>`<button class="qitem" data-sel="${h(r.id)}" aria-current="${r.id===A.sel}"><div class="th" data-qt="${h(r.id)}"></div><div style="min-width:0"><b>${h(r.local_name||r.color_name)}</b><br><span class="xs muted">${h(A.authors[r.author]||'?')} · ${h(r.category)} · ${h(r.area||'')}</span></div><div>${tag(r.status)}${r.public_pick&&picksByHand()?' <span class="tag ok">공개</span>':''}<br><span class="xs muted">${fmt(r.created_at)}</span></div></button>`).join(''):'<div class="card muted">해당하는 기록이 없어요.</div>'}</div>
    <div>${cur?admDetail(cur):''}</div></div>`;
   document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ A.filter=b.dataset.f; A.sel=null; admReview(); });
   document.querySelectorAll('[data-sel]').forEach(b=>b.onclick=()=>{ A.sel=b.dataset.sel; A.memo=''; A.reasons=[]; admReview(); });
   list.slice(0,80).forEach(async r=>{ const p=r.photo2_preview||r.photo2_path||r.photo1_preview||r.photo1_path; if(!p) return; const u=await admUrl(p); const el=document.querySelector(`[data-qt="${r.id}"]`); if(el&&u) el.innerHTML=`<img src="${h(u)}" alt="">`; });
   if(cur) bindDetail(cur);
 }
+/* 초대형 미션(울릉)은 운영진이 바깥에 내보낼 기록을 손으로 고른다. 누구나 참여하는 미션은 인정 + 공개 동의면 자동 */
+const picksByHand = () => ED[S.adm.ed].mode==='invite';
+const admMatch = r => { const f=S.adm.filter; return f==='all' || (f==='edited' ? editedAfterOk(r) : f==='picked' ? !!r.public_pick : r.status===f); };
 async function admUrl(p){ const A=S.adm; if(A.urls[p]) return A.urls[p]; const {data}=await sb.storage.from(BUCKET).createSignedUrl(p, 3600); if(data){ A.urls[p]=data.signedUrl; return data.signedUrl;} return null; }
 /* 관리자가 분류를 바로잡는다 (예: 나물↔식물 겹침, 바다·기타로 옮기기). 기억 카드는 사진이 없어 다른 분류로 옮기지 않는다 */
 function admCatField(r){
@@ -1888,6 +1903,11 @@ function admDetail(r){
     <div class="stack"><b>보완 사유</b><div class="row">${ED[A.ed].reasons.map(x=>`<button class="chip" data-rs="${h(x)}" aria-pressed="${A.reasons.includes(x)}">${h(x)}</button>`).join('')}</div>
       <textarea id="memo" class="input" style="min-height:70px" placeholder="참여자에게 보일 메모 (예: 키링이 그늘에 있어요. 둘 다 그늘에서 다시 찍어 주세요)">${h(A.memo)}</textarea></div>
     <div class="row"><button class="btn main" data-set="approved">인정</button><button class="btn" data-set="held" style="border-color:#C98A1B;color:#7A4A08">보완 요청</button><button class="btn light" data-set="rejected">반려</button><button class="btn light" data-set="pending">확인 중으로</button></div>
+    ${picksByHand() ? `<div class="stack" style="gap:6px;border-top:1px solid var(--line);padding-top:12px"><b>바깥 공개</b>
+      ${r.status!=='approved' ? '<p class="small muted">바깥(누구나 보는 화면)에 내보내려면 먼저 «인정»해 주세요.</p>'
+        : !r.share ? '<p class="small muted">주민이 비공개로 둔 기록이라 바깥에 내보낼 수 없어요.</p>'
+        : `<p class="small muted">${r.public_pick?`바깥에 공개 중이에요${r.public_picked_at?' · '+fmt(r.public_picked_at):''}.`:'인정된 기록이에요. «공개 선정»을 누르면 누구나 보는 «모인 기록»에 나가요.'}</p>
+           <div class="row"><button class="btn ${r.public_pick?'light':'dark'}" id="pick">${r.public_pick?'공개 선정 취소':'공개 선정'}</button></div>`}</div>` : ''}
   </div>`;
 }
 function bindDetail(r){
@@ -1903,6 +1923,14 @@ function bindDetail(r){
     r.category=v; const it=A.list.find(x=>x.id===r.id); if(it) it.category=v;
     toast('분류를 «'+v+'»(으)로 바꿨어요');
   };
+  const pk=$('#pick'); if(pk) pk.onclick=async ()=>{
+    pk.disabled=true; const want=!r.public_pick;
+    const {data, error}=await sb.from('records').update({public_pick:want}).eq('id', r.id).select('public_pick,public_picked_at').single();
+    if(error || !data || data.public_pick!==want){ toast('저장하지 못했어요'+(error?': '+error.message:'')); pk.disabled=false; return; }
+    Object.assign(r, data); delete S.gallery[A.ed];
+    toast(want?'공개 선정했어요. 누구나 보는 «모인 기록»에 나가요':'공개 선정을 취소했어요');
+    admReview();
+  };
   document.querySelectorAll('[data-set]').forEach(b=>b.onclick=async ()=>{
     const st=b.dataset.set;
     if(st==='held' && !A.memo.trim() && !A.reasons.length){ toast('보완 요청은 사유나 메모를 남겨 주세요'); return; }
@@ -1912,7 +1940,7 @@ function bindDetail(r){
     if(error){ toast('저장 실패: '+error.message); b.disabled=false; return; }
     toast({approved:'인정했어요',held:'보완 요청을 보냈어요',rejected:'반려했어요',pending:'확인 중으로 돌렸어요'}[st]);
     A.memo=''; A.reasons=[];
-    const list=A.list.filter(x=>A.filter==='all'||(A.filter==='edited'?editedAfterOk(x):x.status===A.filter)); const i=list.findIndex(x=>x.id===r.id);
+    const list=A.list.filter(admMatch); const i=list.findIndex(x=>x.id===r.id);
     A.sel = (list[i+1]||list[i-1]||{}).id || null;
     admReview();
   });
