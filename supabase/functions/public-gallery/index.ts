@@ -19,6 +19,13 @@ const HEX = /^#[0-9A-Fa-f]{6}$/;
 const ROLES = new Set(["main", "accent", "sub"]);
 const unit = (v: unknown) => (typeof v === "number" && v >= 0 && v <= 1 ? v : null);
 const xy = (o: any) => (o && unit(o.x) != null && unit(o.y) != null ? { x: o.x, y: o.y } : null);
+// 사진 맞추기: ② 사진을 보여 줄 틀 {ratio, x, y, w, h} (원본 대비 0~1). 모양이 맞을 때만 내보낸다
+function cropOf(c: any) {
+  if (!c || (c.ratio !== "4:3" && c.ratio !== "3:4")) return null;
+  const v = [c.x, c.y, c.w, c.h];
+  if (!v.every((n) => typeof n === "number" && n >= 0 && n <= 1.001) || c.w <= 0 || c.h <= 0) return null;
+  return { ratio: c.ratio, x: c.x, y: c.y, w: c.w, h: c.h };
+}
 function colorsOf(c: any) {
   const list = Array.isArray(c?.colors) ? c.colors.filter((x: any) => HEX.test(x?.hex ?? "")).slice(0, 3) : [];
   if (!list.length) return null;
@@ -109,7 +116,7 @@ Deno.serve(async (req: Request) => {
 
   let q = scoped(sb
     .from("records")
-    .select("id,author,status,category,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy,light,taken_at,taken_src,time_note,d1:exif1->>DateTimeOriginal,d2:exif2->>DateTimeOriginal"));
+    .select("id,author,status,category,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy,photo2_crop,light,taken_at,taken_src,time_note,d1:exif1->>DateTimeOriginal,d2:exif2->>DateTimeOriginal"));
   if (category) q = q.eq("category", category);
   const { data, error } = await q.order("created_at", { ascending: false }).order("id").range(offset, offset + limit - 1);
   if (error) return json({ error: "load failed" }, 500);
@@ -120,10 +127,14 @@ Deno.serve(async (req: Request) => {
   const pathOf = (r: Record<string, any>, n: 1 | 2) =>
     (r.status === "approved" ? r[`photo${n}_path`] : r[`photo${n}_preview`] || r[`photo${n}_path`]) || null;
   // 넘겨 볼 사진 두 장: ② 키링 없이(장면) 먼저, 그다음 ① 키링과 함께
+  // ② 사진에 맞춘 틀이 있으면 함께 내보낸다. 미리보기 파일은 이미 맞춘 부분만 담겨 있으므로 cropped로 알린다
   const photosOf = (r: Record<string, any>) =>
     ([[2, "scene"], [1, "keyring"]] as const)
-      .map(([n, kind]) => ({ kind, path: pathOf(r, n) }))
-      .filter((x) => x.path) as { kind: string; path: string }[];
+      .map(([n, kind]) => {
+        const path = pathOf(r, n), crop = n === 2 ? cropOf(r.photo2_crop) : null;
+        return { kind, path, ...(crop ? { crop, cropped: path !== r.photo2_path } : {}) };
+      })
+      .filter((x) => x.path) as { kind: string; path: string; crop?: any; cropped?: boolean }[];
   const paths = [...new Set(rows.flatMap((r: any) => photosOf(r).map((x) => x.path)))] as string[];
   const signed: Record<string, string> = {};
   if (paths.length) {
@@ -142,7 +153,12 @@ Deno.serve(async (req: Request) => {
 
   const out = rows.map((r: Record<string, any>) => {
     const hide = HIDE_COORDS.has(r.category) || r.lat == null;
-    const ph = photosOf(r).map((x) => ({ kind: x.kind, url: signed[x.path] ?? null })).filter((x) => x.url);
+    const ph = photosOf(r).map((x) => ({ kind: x.kind, url: signed[x.path] ?? null, ...(x.crop ? { crop: x.crop, cropped: x.cropped } : {}) })).filter((x) => x.url);
+    // 정사각 카드 기준점: 맞춘 틀이 있으면 틀의 가운데(이미 맞춘 미리보기면 그냥 가운데), 없으면 짚은 곳
+    const first: any = ph[0];
+    const focus = first?.crop
+      ? (first.cropped ? null : { x: first.crop.x + first.crop.w / 2, y: first.crop.y + first.crop.h / 2 })
+      : (xy(r.target_xy) ?? xy(r.colors?.roi));
     return {
       id: r.id,
       ...(group ? { status: r.status } : {}),
@@ -155,9 +171,9 @@ Deno.serve(async (req: Request) => {
       is_memory: r.is_memory,
       photo: ph[0]?.url ?? null,
       photos: ph,
-      // 뽑은 색(보정 전 표시 포함)과, 정사각 카드로 자를 때 기준이 되는 짚은 곳
+      // 뽑은 색(보정 전 표시 포함)과, 정사각 카드로 자를 때 기준이 되는 곳
       colors: colorsOf(r.colors),
-      focus: xy(r.target_xy) ?? xy(r.colors?.roi),
+      focus,
       // 찍은 때: 이름표와 «그때를 내 말로»만 (정확한 시각은 내보내지 않는다)
       tod: todOf(r, edition),
       time_note: r.time_note || "",

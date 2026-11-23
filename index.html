@@ -240,6 +240,18 @@ main.about{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 104px)}
 .swipe::-webkit-scrollbar{display:none}
 .swipe figure{flex:0 0 100%;min-width:0;margin:0;scroll-snap-align:center;display:flex;align-items:flex-start;justify-content:center}
 .phw{position:relative;display:block;width:100%;line-height:0}
+/* 사진 맞추기: 틀(.cropv) 안에 원본을 옮겨 놓는다 */
+.cropv{position:relative;overflow:hidden;width:100%;background:#DCE2E5;line-height:0}
+.cropv>img,.phw .cropv>img{position:absolute;display:block;max-width:none;height:auto;object-fit:fill}
+.rv .phw.fit{display:block;width:100%}
+.sheet.fit{z-index:60}
+.sheet-in.fitui{max-width:640px;width:100%;gap:12px}
+.fitbox{align-self:center;background:#111;overflow:hidden;touch-action:none}
+.fitzoom{display:flex;align-items:center;gap:10px}
+.fitzoom .btn{min-height:44px;min-width:48px;padding:0 12px;font-size:20px}
+.fitzoom input{flex:1;min-width:0;accent-color:#2F4A3E}
+.fitui .cropper-view-box{outline:2px solid #fff;outline-color:rgba(255,255,255,.9)}
+.fitui .cropper-modal{opacity:0}
 .phw img{display:block;width:100%;height:auto}
 .phcap{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;line-height:1.4;padding:3px 8px;border-radius:999px}
 .roi{position:absolute;transform:translate(-50%,-50%);aspect-ratio:1;width:30%;border-radius:50%;border:2px dashed rgba(255,255,255,.95);box-shadow:0 0 0 1px rgba(0,0,0,.3);pointer-events:none}
@@ -557,6 +569,8 @@ main.land{max-width:none;padding:0;gap:0}
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
@@ -790,6 +804,110 @@ async function shrink(file, cfg){
   if(!blob) throw new Error('jpeg');
   return {blob, w:W, h:H, ow:out[0], oh:out[1], q};
 }
+/* ================= 사진 맞추기 — ② 사진은 원본을 그대로 올리고, 보여 줄 틀만 따로 저장한다 =================
+   틀(crop) = {ratio:'4:3'|'3:4', x, y, w, h} (원본 대비 0~1). 색 뽑기·짚은 좌표는 늘 원본 전체 기준.
+   화면에 보이는 자리(틀 안 0~1)와 원본 자리는 toOrig·toView로 오간다. */
+const FIT = {minShort:800};
+const r4 = v => Math.round(v*10000)/10000;
+const okCrop = c => (c && (c.ratio==='4:3' || c.ratio==='3:4') && [c.x,c.y,c.w,c.h].every(v=>typeof v==='number' && v>=0 && v<=1.001) && c.w>0 && c.h>0) ? c : null;
+const fitAR = c => c.ratio==='3:4' ? 3/4 : 4/3;
+function defaultCrop(W, H, ratio){
+  ratio = ratio || (W>=H ? '4:3' : '3:4'); const a = ratio==='4:3' ? 4/3 : 3/4;
+  let w=1, hh=(W/a)/H; if(hh>1){ hh=1; w=(H*a)/W; }
+  return {ratio, x:r4((1-w)/2), y:r4((1-hh)/2), w:r4(w), h:r4(hh)};
+}
+const toOrig = (c, pt) => c ? {x:r4(c.x+pt.x*c.w), y:r4(c.y+pt.y*c.h)} : pt;
+const toView = (c, pt) => c ? {x:(pt.x-c.x)/c.w, y:(pt.y-c.y)/c.h} : pt;
+/* 틀 안에 원본을 옮겨 놓은 <img> (부모는 .cropv) */
+const fitImg = (url, c, alt) => `<img src="${h(url)}" alt="${h(alt||'')}" draggable="false" style="width:${(100/c.w).toFixed(3)}%;left:${(-c.x/c.w*100).toFixed(3)}%;top:${(-c.y/c.h*100).toFixed(3)}%">`;
+const fitStyle = c => `aspect-ratio:${c.ratio==='3:4'?'3/4':'4/3'}`;
+/* 맞춘 부분만으로 만든 작은 미리보기 */
+async function cropPreview(blob, c){
+  try{
+    const bmp = await createImageBitmap(blob), W=bmp.width, H=bmp.height;
+    const sx=Math.round(c.x*W), sy=Math.round(c.y*H), sw=Math.max(1,Math.min(W-sx,Math.round(c.w*W))), sh=Math.max(1,Math.min(H-sy,Math.round(c.h*H)));
+    const k = Math.min(1, PREVIEW.max/Math.max(sw, sh));
+    const cv = document.createElement('canvas'); cv.width=Math.max(1,Math.round(sw*k)); cv.height=Math.max(1,Math.round(sh*k));
+    const ctx=cv.getContext('2d'); ctx.imageSmoothingQuality='high'; ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+    const out = await toJpeg(cv, PREVIEW.q); cv.width=cv.height=0; if(bmp.close) bmp.close(); return out;
+  }catch(e){ return null; }
+}
+/* 맞추기 화면: 틀은 고정(가로 4:3 / 세로 3:4), 사진을 끌어 옮기고 두 손가락·막대로 키운다.
+   o = {url, w, h(사진 픽셀), crop(이전 틀), cancel(취소 단추)} → 틀 또는 null(취소) */
+function openFit(o){
+  return new Promise(done=>{
+    const first = okCrop(o.crop), natural = o.w>=o.h ? '4:3' : '3:4';
+    if(!window.Cropper){ done(first || defaultCrop(o.w, o.h)); return; }   /* 도구를 못 불러왔으면 가운데 틀로 */
+    let ratio = first ? first.ratio : natural, cr=null, minR=0, maxR=0, bw=0;
+    const d=document.createElement('div'); d.className='sheet fit';
+    d.innerHTML=`<div class="sheet-in fitui" role="dialog" aria-modal="true" aria-label="사진 맞추기">
+      <div class="row between"><h2 class="h2">사진 맞추기</h2>${o.cancel?'<button class="link" data-fcancel>취소</button>':''}</div>
+      <p class="small muted">틀은 그대로 두고, 사진을 끌어 옮기거나 두 손가락으로 키워 맞춰 주세요. 원래 사진은 그대로 보관해요.</p>
+      <div class="seg" role="group" aria-label="틀 모양" style="align-self:flex-start"><button type="button" data-fr="4:3">가로 4:3</button><button type="button" data-fr="3:4">세로 3:4</button></div>
+      <div class="fitbox" id="fitbox"></div>
+      <div class="fitzoom"><button type="button" class="btn light" data-fz="-1" aria-label="작게">−</button><input type="range" id="fitrange" min="0" max="100" value="0" aria-label="확대"><button type="button" class="btn light" data-fz="1" aria-label="크게">＋</button></div>
+      <p class="xs muted" id="fitnote"></p>
+      <div class="rings" style="grid-template-columns:1fr 2fr"><button class="btn light" data-freset>원래대로</button><button class="btn main" data-fok>이대로</button></div></div>`;
+    document.body.appendChild(d);
+    const box=d.querySelector('#fitbox'), range=d.querySelector('#fitrange'), note=d.querySelector('#fitnote');
+    const cur=()=>{ const cv=cr.getCanvasData(), im=cr.getImageData(); return cv.width/im.naturalWidth; };
+    const sync=()=>{ if(!cr) return; range.value = maxR>minR*1.001 ? Math.round(Math.max(0,Math.min(1,(cur()-minR)/(maxR-minR)))*100) : 0; };
+    const build=start=>{
+      if(cr){ cr.destroy(); cr=null; }
+      const a = ratio==='4:3' ? 4/3 : 3/4, maxW=box.parentElement.clientWidth-(parseFloat(getComputedStyle(box.parentElement).paddingLeft)||0)*2, maxH=Math.max(220, innerHeight*0.5);
+      bw=Math.floor(Math.min(maxW, maxH*a)); box.style.width=bw+'px'; box.style.height=Math.round(bw/a)+'px';
+      box.innerHTML=`<img src="${h(o.url)}" alt="" style="display:block;max-width:100%">`;
+      d.querySelectorAll('[data-fr]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.fr===ratio)));
+      cr=new Cropper(box.querySelector('img'), {viewMode:3, dragMode:'move', aspectRatio:a, autoCropArea:1, cropBoxMovable:false, cropBoxResizable:false, guides:true, center:false, highlight:false, background:false,
+        toggleDragModeOnDblclick:false, zoomOnWheel:true, wheelZoomRatio:0.08, checkOrientation:false, restore:false, responsive:false,
+        ready(){ const im=cr.getImageData(); minR=cur();
+          /* 맞춘 부분의 짧은 변이 사진 기준 800px 밑으로 내려가지 않게 — 그만큼만 키울 수 있다 */
+          const short0=Math.min(bw, bw/a)/minR; maxR = short0>FIT.minShort+4 ? minR*short0/(FIT.minShort+4) : minR;   /* 틀 크기 반올림만큼 여유 */
+          const fixed = maxR<=minR*1.001; range.disabled=fixed; d.querySelectorAll('[data-fz]').forEach(b=>b.disabled=fixed);
+          note.textContent = fixed ? '사진이 작아서 더 키울 수 없어요.' : '';
+          if(start && start.ratio===ratio){ const z=Math.max(minR, Math.min(maxR, bw/(start.w*im.naturalWidth))); if(z>minR*1.001) cr.zoomTo(z); cr.setCanvasData({left:-start.x*im.naturalWidth*z, top:-start.y*im.naturalHeight*z}); }
+          sync(); },
+        zoom(e){ if(e.detail.ratio>maxR*1.0005){ e.preventDefault(); if(e.detail.oldRatio<maxR*0.999) setTimeout(()=>{ if(cr){ cr.zoomTo(maxR); sync(); } },0); } else setTimeout(sync,0); } });
+    };
+    build(first);
+    range.oninput=()=>{ if(cr && maxR>minR) cr.zoomTo(minR+(+range.value/100)*(maxR-minR)); };
+    const close=v=>{ if(cr) cr.destroy(); d.remove(); done(v); };
+    d.addEventListener('click', e=>{
+      const fr=e.target.closest('[data-fr]'); if(fr){ if(fr.dataset.fr!==ratio){ ratio=fr.dataset.fr; build(null); } return; }
+      const fz=e.target.closest('[data-fz]'); if(fz && cr && maxR>minR){ cr.zoomTo(Math.max(minR, Math.min(maxR, cur()+(+fz.dataset.fz)*(maxR-minR)/8))); setTimeout(sync,0); return; }
+      if(e.target.closest('[data-freset]')){ ratio=natural; build(null); return; }
+      if(e.target.closest('[data-fcancel]')){ close(null); return; }
+      if(e.target.closest('[data-fok]') && cr){
+        const dt=cr.getData(), im=cr.getImageData(), W=im.naturalWidth, H=im.naturalHeight;
+        let x=Math.max(0,dt.x/W), y=Math.max(0,dt.y/H), w=Math.min(1,dt.width/W), hh=Math.min(1,dt.height/H);
+        /* 틀 크기 반올림으로 생기는 실금(0.2% 안쪽)은 사진 끝에 붙인다 */
+        if(x<0.002) x=0; if(y<0.002) y=0; if(x+w>0.998) w=1-x; if(y+hh>0.998) hh=1-y;
+        close({ratio, x:r4(Math.max(0,x)), y:r4(Math.max(0,y)), w:r4(w), h:r4(hh)});
+      }
+    });
+  });
+}
+/* 올린 기록의 «사진 맞추기» 다시 하기 (내 기록·관리 화면). 원본은 그대로 두고 틀과 미리보기만 바꾼다 */
+async function refitRecord(r){
+  if(!r || !r.photo2_path) return false;
+  let blob, url='';
+  try{ const {data}=await sb.storage.from(BUCKET).createSignedUrl(r.photo2_path, 3600); blob=await (await fetch(data.signedUrl)).blob(); }
+  catch(e){ toast('사진을 받지 못했어요. 다시 눌러 주세요.'); return false; }
+  const bmp=await createImageBitmap(blob), W=bmp.width, H=bmp.height; if(bmp.close) bmp.close();
+  url=URL.createObjectURL(blob);
+  const c=await openFit({url, w:W, h:H, crop:r.photo2_crop, cancel:true}); URL.revokeObjectURL(url);
+  if(!c) return false;
+  try{
+    const upd={photo2_crop:c}, small=await cropPreview(blob, c), old=r.photo2_preview;
+    /* 저장소는 덮어쓰기를 막아 두었으므로 미리보기는 새 이름으로 올린다 (내 폴더) */
+    if(small){ const to=`${S.user.id}/${r.id}-2s-${Date.now().toString(36)}.jpg`; await uploadBlob(to, small); upd.photo2_preview=to; }
+    const {data, error}=await sb.from('records').update(upd).eq('id', r.id).select('photo2_crop,photo2_preview').single();
+    if(error || !data || !okCrop(data.photo2_crop) || data.photo2_crop.x!==c.x || data.photo2_crop.w!==c.w) throw (error||new Error('저장되지 않았어요'));
+    Object.assign(r, data); delete S.thumbs[r.id]; S.gallery={}; if(S.records.includes(r)) signThumb(r);   /* 목록 썸네일도 새 미리보기로 */
+    if(old && old!==r.photo2_preview && old.startsWith(S.user.id+'/')) sb.storage.from(BUCKET).remove([old]).catch(()=>{});
+    toast('사진을 다시 맞췄어요'); return true;
+  }catch(e){ toast('저장하지 못했어요'+(e&&e.message?': '+e.message:'')); return false; }
+}
 async function makePreview(blob){
   try{
     const bmp = await createImageBitmap(blob);
@@ -961,7 +1079,7 @@ function vAccentRow(q, cat){
       <button type="button" data-cacc="none" aria-pressed="${q.cacc==null}"><i class="dash">—</i><span>없음</span></button></div>
     ${q.amode?'<p class="small" style="color:#A6503F;font-weight:600">사진에서 포인트 색이 있는 곳을 눌러 주세요.</p>':''}</div>`;
 }
-const accMark = q => (q && q.cacc==='tap' && q.atap) ? `<span aria-hidden="true" style="position:absolute;left:${(q.atap.x*100).toFixed(2)}%;top:${(q.atap.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #A6503F;background:${h(q.atap.hex)};pointer-events:none"></span>` : '';
+const accMark = (q, c) => { if(!(q && q.cacc==='tap' && q.atap)) return ''; const v=toView(c||null, q.atap); return `<span aria-hidden="true" style="position:absolute;left:${(v.x*100).toFixed(2)}%;top:${(v.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #A6503F;background:${h(q.atap.hex)};pointer-events:none"></span>`; };
 
 /* 미리보기(약 400px) 픽셀 읽기 */
 async function previewPixels(blob){
@@ -973,7 +1091,7 @@ async function previewPixels(blob){
 /* 사진 p에서 짚은 대상(p.txy) 둘레의 색을 찾아 p.cx(5색)·p.cmain(내가 본 색: 군집 번호 또는 'point')에 둔다 */
 async function findColors(p){
   const pt=p.txy; p.cx=null; p.cmain=null; p.cerr=false; p.acc=[]; p.cacc=null; p.atap=null; p.amode=false;
-  try{ const px=await previewPixels(p.sblob||p.blob), ex=extractColors(px, pt, p.r); if(p.txy===pt){ p.px=px; p.cx=ex; p.cmain=ex.pick; refreshAccents(p); } }
+  try{ const px=await previewPixels(p.full||p.sblob||p.blob), ex=extractColors(px, pt, p.r); if(p.txy===pt){ p.px=px; p.cx=ex; p.cmain=ex.pick; refreshAccents(p); } }
   catch(e){ if(p.txy===pt) p.cerr=true; }
 }
 const draftColors = (p, photo) => (p && p.txy && p.cx && p.cmain!=null) ? buildColors(p.cx, p.cmain, {photo, x:p.txy.x, y:p.txy.y, r:p.r}, accentOf(p)) : null;
@@ -1813,7 +1931,9 @@ function openRecord(r){
   let ps=(r.photos&&r.photos.length)?r.photos.slice():(r.photo?[{kind:'scene',url:r.photo}]:[]);
   const roiKind = roi ? (roi.photo===2?'scene':'keyring') : null;
   if(roiKind) ps.sort((x,y)=>(y.kind===roiKind)-(x.kind===roiKind));   /* 색을 뽑은 사진을 먼저 */
-  const fig=(p,i)=>`<figure><span class="phw"><img src="${h(p.url)}" alt="${h(r.name)}${ps.length>1?' — '+cap(p.kind):''}" ${i?'loading="lazy"':''}>${p.kind===roiKind?`<span class="roi" data-roi aria-hidden="true" style="left:${(roi.x*100).toFixed(2)}%;top:${(roi.y*100).toFixed(2)}%"></span><span class="roilab" aria-hidden="true" style="left:${(roi.x*100).toFixed(2)}%;top:${(roi.y*100).toFixed(2)}%">색을 뽑은 곳</span>`:''}${ps.length>1?`<span class="phcap">${cap(p.kind)}</span>`:''}</span></figure>`;
+  /* ② 사진에 맞춘 틀이 있으면 그 틀로 보여 준다. 미리보기는 이미 맞춘 부분만 담겨 있다(p.cropped). 색을 뽑은 자리(원본 기준)는 틀 안 자리로 옮긴다 */
+  const fig=(p,i)=>{ const c=okCrop(p.crop), css=c && !p.cropped, v=(p.kind===roiKind) ? toView(c, roi) : null, vis=v && v.x>=0 && v.x<=1 && v.y>=0 && v.y<=1, alt=`${r.name}${ps.length>1?' — '+cap(p.kind):''}`;
+    return `<figure><span class="phw${css?' fit':''}" ${c?`data-cw="${c.w}" data-ch="${c.h}" data-ar="${fitAR(c)}"`:''} ${css?'data-css="1"':''}>${css?`<span class="cropv" style="display:block;${fitStyle(c)}">${fitImg(p.url, c, alt)}</span>`:`<img src="${h(p.url)}" alt="${h(alt)}" ${i?'loading="lazy"':''}>`}${vis?`<span class="roi" data-roi aria-hidden="true" style="left:${(v.x*100).toFixed(2)}%;top:${(v.y*100).toFixed(2)}%"></span><span class="roilab" aria-hidden="true" style="left:${(v.x*100).toFixed(2)}%;top:${(v.y*100).toFixed(2)}%">색을 뽑은 곳</span>`:''}${ps.length>1?`<span class="phcap">${cap(p.kind)}</span>`:''}</span></figure>`; };
   d.innerHTML = `<div class="sheet-in rv" role="dialog" aria-modal="true" aria-label="${h(r.name)}">
     <button class="link" data-close style="align-self:flex-end">닫기 ✕</button>
     <div class="rv-grid${ps.length?'':' nophoto'}">
@@ -1831,7 +1951,10 @@ function openRecord(r){
       </div>
     </div></div>`;
   /* 점선 원은 사진의 짧은 변을 기준으로 한 크기라, 사진이 뜬 뒤에 폭을 정한다 */
-  d.querySelectorAll('[data-roi]').forEach(el=>{ const im=el.parentElement.querySelector('img'); const fit=()=>{ if(im.naturalWidth) el.style.width=(2*(roi.r||COLORS.roi)*Math.min(im.naturalWidth,im.naturalHeight)/im.naturalWidth*100).toFixed(2)+'%'; }; im.complete?fit():im.addEventListener('load', fit); });
+  d.querySelectorAll('[data-roi]').forEach(el=>{ const w=el.parentElement, im=w.querySelector('img'), rr=roi.r||COLORS.roi;
+    /* 원의 폭(%) = 2r × 원본의 짧은 변 ÷ 보이는 폭. 틀이 있으면 원본의 가로세로 비를 틀에서 되짚는다 */
+    const fit=()=>{ if(w.dataset.cw){ const cw=+w.dataset.cw, ch=+w.dataset.ch, ar=+w.dataset.ar, hw=cw/(ar*ch); el.style.width=(2*rr*Math.min(1,hw)/cw*100).toFixed(2)+'%'; }
+      else if(im.naturalWidth) el.style.width=(2*rr*Math.min(im.naturalWidth,im.naturalHeight)/im.naturalWidth*100).toFixed(2)+'%'; }; im.complete?fit():im.addEventListener('load', fit); fit(); });
   const close = ()=>{ d.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e=>{ if(e.key==='Escape') close(); };
   d.addEventListener('click', e=>{ if(e.target===d || e.target.closest('[data-close]')) close(); });
@@ -1845,7 +1968,9 @@ function openRecord(r){
   /* 넓은 화면: 사진을 왼쪽 단 폭과 화면 높이의 80% 안에서 원래 비율로 가장 크게 (작은 미리보기도 같은 크기로) */
   const sizePh=()=>{ const wide=matchMedia('(min-width:700px)').matches, box=d.querySelector('.rv-ph');
     d.querySelectorAll('.phw').forEach(w=>{ const im=w.querySelector('img'); if(!wide || !box || !im.naturalWidth){ w.style.width=''; return; }
-      w.style.width=Math.floor(im.naturalWidth*Math.min(box.clientWidth/im.naturalWidth, innerHeight*0.8/im.naturalHeight))+'px'; }); };
+      /* CSS로 맞춘 사진은 틀의 크기(원본 폭 × 틀 폭, 틀 비율)로 셈한다 */
+      const nw=w.dataset.css ? im.naturalWidth*(+w.dataset.cw) : im.naturalWidth, nh=w.dataset.css ? nw/(+w.dataset.ar) : im.naturalHeight;
+      w.style.width=Math.floor(nw*Math.min(box.clientWidth/nw, innerHeight*0.8/nh))+'px'; }); };
   d.querySelectorAll('.phw img').forEach(im=>im.complete?0:im.addEventListener('load', sizePh)); sizePh();
   const onRs=()=>{ if(d.isConnected) sizePh(); else removeEventListener('resize', onRs); }; addEventListener('resize', onRs);
 }
@@ -2010,7 +2135,7 @@ function vMine(){
     <p class="small muted">내가 올린 기록 ${list.length}건이에요. 비공개로 둔 기록도 여기서는 보여요.</p></div>
   ${list.length ? `<div class="gal">${list.map(r=>`
     <div class="gcard mine">
-      <button class="gimg" data-open="${h(r.id)}" data-th="${h(r.id)}" style="border:0;padding:0;cursor:pointer;width:100%" aria-label="${h(r.local_name||r.color_name)} 열기">${S.thumbs[r.id]?`<img src="${h(S.thumbs[r.id])}" alt=""${focusStyle(r.target_xy)}>`:`<span>${r.is_memory?'기억 카드':''}</span>`}</button>
+      <button class="gimg" data-open="${h(r.id)}" data-th="${h(r.id)}" style="border:0;padding:0;cursor:pointer;width:100%" aria-label="${h(r.local_name||r.color_name)} 열기">${S.thumbs[r.id]?`<img src="${h(S.thumbs[r.id])}" alt=""${focusStyle(r.photo2_crop?null:r.target_xy)}>`:`<span>${r.is_memory?'기억 카드':''}</span>`}</button>
       ${colorBand(r.colors, 10)}
       <div class="gtxt"><b>${h(r.local_name||r.color_name)}</b><span>${h(r.category)}${(r.area||r.place_name)?' · '+h(r.area||r.place_name):''} · ${fmt(r.created_at)}</span><span>${tag(r.status)}${r.share?'':' <span class="tag">비공개</span>'}</span></div>
       <div class="gacts">${r.status==='rejected'?'':`<button class="btn light" data-medit="${h(r.id)}">고치기</button>`}${canDelete(r)?`<button class="btn light" data-mdel="${h(r.id)}" style="color:var(--bad-ink)">지우기</button>`:''}${delWhy(r)?`<span class="small muted">${delWhy(r)}</span>`:''}</div>
@@ -2033,11 +2158,15 @@ document.addEventListener('click', async e=>{
     if(r.status==='held'){ S.draft=draftFrom(r); go('edit/'+r.id); } else { S.openEdit=r.id; S.tedit=null; go('rec/'+r.id); } return; }
   const dl=e.target.closest('[data-mdel]');
   if(dl){ dl.disabled=true; const ok=await deleteRecord(dl.dataset.mdel); if(ok && sub()==='mine') render(); else dl.disabled=false; return; }
+  if(e.target.id==='recrop'){ const r=S.records.find(x=>x.id===sub().slice(4)); e.target.disabled=true; await refitRecord(r); if(sub().startsWith('rec/')) render(); return; }
   if(e.target.id==='rdel'){ const id=sub().slice(4); e.target.disabled=true; if(await deleteRecord(id)) go('mine'); else e.target.disabled=false; }
 });
 function vRecord(id){
   const r=S.records.find(x=>x.id===id); if(!r) return `<div class="card">기록을 찾을 수 없어요. <a href="${homeHref()}">돌아가기</a></div>`;
-  setTimeout(async ()=>{ for(const k of ['photo1_path','photo2_path']){ if(!r[k]) continue; const {data}=await sb.storage.from(BUCKET).createSignedUrl(r[k],3600); const el=document.querySelector(`[data-ph="${k}"]`); if(el&&data) el.innerHTML=`<img src="${h(data.signedUrl)}" alt="">`; } },0);
+  setTimeout(async ()=>{ for(const k of ['photo1_path','photo2_path']){ if(!r[k]) continue; const {data}=await sb.storage.from(BUCKET).createSignedUrl(r[k],3600); const el=document.querySelector(`[data-ph="${k}"]`); if(!el||!data) continue; const c=k==='photo2_path'?okCrop(r.photo2_crop):null;
+      /* ② 사진은 맞춘 틀로 */
+      if(c){ const badge=el.querySelector('.badge'); el.className='cropv'; el.style.cssText='border-radius:14px;'+fitStyle(c); el.innerHTML=fitImg(data.signedUrl, c, '')+(badge?`<span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700">${h(badge.textContent)}</span>`:''); }
+      else el.innerHTML=`<img src="${h(data.signedUrl)}" alt="">`; } },0);
   return `<button class="link" onclick="history.back()">← 내 기록</button>
   <div class="card stack">
     <div class="row between"><h1 class="h2">${h(r.local_name||r.color_name)}</h1>${tag(r.status)}</div>
@@ -2047,6 +2176,7 @@ function vRecord(id){
     <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>${CUR.tools?TOOL_WORD:'키링'}</dt><dd>${h(toolName(r.keyring)||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${h([r.taken_src==='unknown'?'시각 모름':timeUnsure(r)&&CUR.conditions?'':(fmtWhen(r.taken_src?r.taken_at:(r.photo1_taken_at||r.taken_at||r.created_at))), whenLine(r), r.weather].filter(Boolean).join(' · ')||'—')}${timeUnsure(r)&&CUR.conditions&&canEditFields(r)?' <span class="xs muted">사진에 찍은 시각이 없어요. «고치기»에서 알려 주세요.</span>':''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
     ${canEditText(r)?(S.textEdit===r.id?vTextForm(r):`<button class="btn light block" id="tedit">✎ ${canEditFields(r)?'고치기 (이름·분류·동네·이야기)':CUR.usage?'이름·쓰임·이야기 고치기':'색 이름·이야기 고치기'}</button>`):''}
     <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.mode==='invite'?'끄면 이 기록은 나와 컬러랩제주만 봐요.':'끄면 이 기록은 공개하지 않아요.'}</span></span></label>
+    ${r.photo2_path&&canEditText(r)?`<button class="btn light block" id="recrop">사진 맞추기 (② 사진의 틀 다시 잡기)</button>`:''}
     ${canDelete(r)?`<button class="btn light block" id="rdel" style="color:var(--bad-ink)">이 기록 지우기</button>`:''}
   </div>`;
 }
@@ -2305,11 +2435,13 @@ function vDraft(){
       : `<h1 class="h2">② ${h(toolShort(d))}만 빼고 한 장</h1><p class="muted small">같은 자리, 같은 빛에서 바로 이어서 찍어요. ${CUR.mode==='public'?'오늘 본 색이 잘 보이게.':'자원의 모양이 잘 보이게 가까이.'}</p>`;
     body+= (noRing(d) && d.p2) ? `
       <div class="notice small" style="margin:0">${d.p2.txy?'잘 짚었어요. 다시 하려면 «다시 짚기»':'사진에서 <b>기록할 대상</b>을 한 번 눌러 주세요'}</div>
-      <div id="tapwrap2" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation"><img src="${h(d.p2.url)}" alt="찍은 사진 — 눌러서 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">${d.p2.txy?roiMarks(d.p2.txy, d.p2.ow, d.p2.oh)+`<span aria-hidden="true" style="position:absolute;left:${(d.p2.txy.x*100).toFixed(2)}%;top:${(d.p2.txy.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #A6503F;background:rgba(166,80,63,.35);pointer-events:none"></span>`+accMark(d.p2):''}</div>
+      ${(()=>{ const p=d.p2, c=okCrop(p.crop), v=p.txy?toView(c, p.txy):null, W=c?c.w*p.w:p.ow, H=c?c.h*p.h:p.oh, rr=(p.r||COLORS.roi)*(c?Math.min(p.w,p.h)/Math.min(W,H):1);
+        return `<div id="tapwrap2" class="${c?'cropv':''}" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation;${c?fitStyle(c):''}">${c?fitImg(p.url, c, '찍은 사진 — 눌러서 대상을 짚어요'):`<img src="${h(p.url)}" alt="찍은 사진 — 눌러서 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">`}${v?roiMarks(v, W, H, rr)+`<span aria-hidden="true" style="position:absolute;left:${(v.x*100).toFixed(2)}%;top:${(v.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #A6503F;background:rgba(166,80,63,.35);pointer-events:none"></span>`+accMark(p, c):''}</div>`; })()}
       ${d.p2.txy?'<button class="link" id="retap2" style="align-self:flex-start">다시 짚기</button>':''}
       ${vColorPick(d.p2, 2, d.category)}` : `
-      <div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="${h(toolShort(d))} 없이 찍은 사진"><span class="badge">② ${h(toolShort(d))} 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>`;
+      ${d.p2&&okCrop(d.p2.crop)?`<div class="cropv" style="border-radius:14px;${fitStyle(d.p2.crop)}">${fitImg(d.p2.url, d.p2.crop, toolShort(d)+' 없이 찍은 사진')}<span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700">② ${h(toolShort(d))} 없이</span></div>`:`<div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="${h(toolShort(d))} 없이 찍은 사진"><span class="badge">② ${h(toolShort(d))} 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>`}`;
     body+=`
+      ${d.p2?'<button type="button" class="link" id="refit" style="align-self:flex-start">사진 맞추기 다시</button>':''}
       ${sizeNote(d.p2)}
       <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="2" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="2" data-cap="0">앨범에서 선택</button></div>
       ${gap!=null && gap>GAP_WARN_MIN?`<div class="notice">두 사진을 찍은 시간이 <b>${Math.round(gap)}분</b> 차이 나요. 빛이 바뀌었을 수 있으니, 가능하면 같은 자리에서 다시 이어서 찍어 주세요.</div>`:''}`;
@@ -2388,7 +2520,10 @@ function bindDraft(){
       const p=await takePhoto(f, pickTarget);
       p.fromCamera = (s==='#fcam');
       if(pickTarget===1){ d.p1=p; if(p.exif.lat!=null && d.locMethod!=='map'){ d.lat=p.exif.lat; d.lng=p.exif.lng; d.locMethod='exif'; d.acc=null; } }
-      else { d.p2=p; if(d.lat==null && p.exif.lat!=null && d.locMethod!=='map'){ d.lat=p.exif.lat; d.lng=p.exif.lng; d.locMethod='exif'; d.acc=null; } }
+      else {
+        /* ② 사진: 맞추기 화면을 거친다. 원본(p.blob)은 그대로 올리고, 미리보기만 맞춘 부분으로. 색은 원본 전체(p.full)에서 뽑는다 */
+        p.full=p.sblob; p.crop=await openFit({url:p.url, w:p.w, h:p.h}); const cs=await cropPreview(p.blob, p.crop); if(cs) p.sblob=cs;
+        d.p2=p; if(d.lat==null && p.exif.lat!=null && d.locMethod!=='map'){ d.lat=p.exif.lat; d.lng=p.exif.lng; d.locMethod='exif'; d.acc=null; } }
       if(p.fromCamera && d.lat==null) tryGps(true);
       render();
     }catch(e){ toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요.'); }
@@ -2401,14 +2536,23 @@ function bindDraft(){
     if(!p.kxy){ p.kxy=pt; p.kblob=null; p.kbox=null; render(); const c=await cropKeyring(p.file, pt.x, pt.y); if(c && d.p1===p && p.kxy===pt){ p.kblob=c.blob; p.kbox=c.box; if(p.cx){ refreshAccents(p); if(steps(d)[d.step-1]==='p1') render(); } } }
     else { p.txy=pt; render(); await findColors(p); if(d.p1===p && p.txy===pt && steps(d)[d.step-1]==='p1') render(); }
   };
+  if(tw && d.p1){ /* 누르는 동안 확대경 — 짚는 자리는 그대로, 보기만 키운다 */
+    const lens=document.createElement('span'); lens.className='rp-lens'; lens.hidden=true; tw.appendChild(lens); const Z=2.5, L=132;
+    const show=e=>{ const rc=tw.getBoundingClientRect(), px=e.clientX-rc.left, py=e.clientY-rc.top; if(px<0||py<0||px>rc.width||py>rc.height){ lens.hidden=true; return; }
+      lens.hidden=false; lens.style.left=px+'px'; lens.style.top=(py<L+30 ? py+L/2+34 : py-L/2-34)+'px'; lens.style.backgroundImage=`url("${d.p1.url}")`;
+      lens.style.backgroundSize=`${rc.width*Z}px ${rc.height*Z}px`; lens.style.backgroundPosition=`${-(px*Z-L/2)}px ${-(py*Z-L/2)}px`; };
+    let on=false; tw.addEventListener('pointerdown', e=>{ on=true; show(e); }); tw.addEventListener('pointermove', e=>{ if(on) show(e); });
+    ['pointerup','pointercancel','pointerleave'].forEach(t=>tw.addEventListener(t, ()=>{ on=false; lens.hidden=true; })); }
   const rt=$('#retap'); if(rt) rt.onclick=()=>{ if(d.p1){ d.p1.kxy=null; d.p1.txy=null; d.p1.kblob=null; d.p1.kbox=null; d.p1.cx=null; d.p1.cmain=null; } render(); };
   /* 키링 없이 올리는 기록: ② 사진에서 대상을 한 번 짚는다 */
   const tw2=$('#tapwrap2'); if(tw2 && d.p2) tw2.onclick=async e=>{
     const rc=tw2.getBoundingClientRect(); const pt={x:+((e.clientX-rc.left)/rc.width).toFixed(4), y:+((e.clientY-rc.top)/rc.height).toFixed(4)};
     if(pt.x<0||pt.x>1||pt.y<0||pt.y>1) return;
-    const p=d.p2; if(p.amode && p.txy && p.px){ tapAccent(p, pt); render(); return; }
-    p.txy=pt; render(); await findColors(p); if(d.p2===p && p.txy===pt && steps(d)[d.step-1]==='p2') render();
+    const p=d.p2, at=toOrig(okCrop(p.crop), pt);   /* 화면(틀 안)에서 짚은 자리를 원본 자리로 */
+    if(p.amode && p.txy && p.px){ tapAccent(p, at); render(); return; }
+    p.txy=at; render(); await findColors(p); if(d.p2===p && p.txy===at && steps(d)[d.step-1]==='p2') render();
   };
+  const rf=$('#refit'); if(rf && d.p2) rf.onclick=async ()=>{ const p=d.p2, c=await openFit({url:p.url, w:p.w, h:p.h, crop:p.crop, cancel:true}); if(!c || d.p2!==p) return; p.crop=c; const cs=await cropPreview(p.blob, c); if(cs) p.sblob=cs; render(); };
   const rt2=$('#retap2'); if(rt2) rt2.onclick=()=>{ if(d.p2){ d.p2.txy=null; d.p2.cx=null; d.p2.cmain=null; } render(); };
   document.querySelectorAll('#cpick [data-cmain]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; const v=b.dataset.cmain; p.cmain = v==='point' ? 'point' : +v; refreshAccents(p); render(); });
   document.querySelectorAll('#apick [data-cacc]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; pickAccent(p, b.dataset.cacc); render(); });
@@ -2479,7 +2623,8 @@ async function submitDraft(){
     if(d.p1.txy) row.target_xy=d.p1.txy;
     const c1=draftColors(d.p1, 1); if(c1) row.colors=c1; }
   if(d.p2 && d.p2.txy && !d.p1){ row.target_xy=d.p2.txy; const c2=draftColors(d.p2, 2); if(c2) row.colors=c2; }
-  if(d.p2){ row.photo2_taken_at=d.p2.exif.taken; row.exif2=d.p2.exif.raw; if(!row.taken_at) row.taken_at=d.p2.exif.taken; }
+  if(d.p2){ if(okCrop(d.p2.crop)) row.photo2_crop=d.p2.crop;
+    row.photo2_taken_at=d.p2.exif.taken; row.exif2=d.p2.exif.raw; if(!row.taken_at) row.taken_at=d.p2.exif.taken; }
   if(CUR.conditions && !isMemory(d)){
     /* 찍은 때: 시각·위치로 해 높이를 계산해 이름표(light)를 붙인다. 시각을 모르면 내 말(time_note)만 */
     const w=d.when; row.time_note=(w.note||'').trim().slice(0,40)||null;
@@ -2590,8 +2735,8 @@ async function fillRecord(r){
   const upd={}, pv={};
   for(const n of [1,2]){ const path=r[`photo${n}_path`]; if(!path) continue;
     const u=await admUrl(path); if(!u) continue;
-    const small=await makePreview(await (await fetch(u)).blob()); if(!small) continue; pv[n]=small;
-    if(!r[`photo${n}_preview`]){ const to=`${S.user.id}/${r.id}-${n}s.jpg`; await uploadBlob(to, small); upd[`photo${n}_preview`]=to; } }
+    const orig=await (await fetch(u)).blob(), small=await makePreview(orig); if(!small) continue; pv[n]=small;   /* 색은 원본 전체에서 */
+    if(!r[`photo${n}_preview`]){ const to=`${S.user.id}/${r.id}-${n}s.jpg`, c=n===2?okCrop(r.photo2_crop):null; await uploadBlob(to, (c && await cropPreview(orig, c)) || small); upd[`photo${n}_preview`]=to; } }
   if(!okColors(r.colors)){
     const t=okXY(r.target_xy), photo=(t && pv[1]) ? 1 : pv[2] ? 2 : pv[1] ? 1 : 0;
     if(photo){ const pt=(t && photo===1) ? t : {x:0.5, y:0.5};
@@ -2689,7 +2834,7 @@ function admDetail(r){
     ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
     <dl><dt>분류</dt><dd>${admCatField(r)}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(ED[A.ed].placeLabel)}</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
       <dt>찍은 때</dt><dd>${admWhen(r)}</dd><dt>${h(usageQ(ED[A.ed], r.category).label)}</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
-      <dt>색</dt><dd>${okColors(r.colors)?`${colorBand(r.colors, 18)}<span class="xs muted">${okColors(r.colors).colors.map(x=>h(x.hex)).join(' · ')} · ${r.colors.calibrated?'보정됨':'보정 전'}${r.colors.at==='center'?' · 사진 가운데 기준':''}</span>`:'없음'}${needsFill(r)?` <button class="btn light" id="fillone" style="min-height:34px;padding:2px 10px;font-size:13px">미리보기·색 채우기</button>`:''}${(r.photo1_path||r.photo2_path)?` <button class="btn light" id="repick" style="min-height:34px;padding:2px 10px;font-size:13px">색 다시 짚기</button>`:''}${r.colors&&r.colors.prev?` <span class="xs muted">· 운영진이 다시 짚음 ${fmt(r.colors.prev.at)}</span>`:''}</dd>
+      <dt>색</dt><dd>${okColors(r.colors)?`${colorBand(r.colors, 18)}<span class="xs muted">${okColors(r.colors).colors.map(x=>h(x.hex)).join(' · ')} · ${r.colors.calibrated?'보정됨':'보정 전'}${r.colors.at==='center'?' · 사진 가운데 기준':''}</span>`:'없음'}${needsFill(r)?` <button class="btn light" id="fillone" style="min-height:34px;padding:2px 10px;font-size:13px">미리보기·색 채우기</button>`:''}${r.photo2_path?` <button class="btn light" id="admcrop" style="min-height:34px;padding:2px 10px;font-size:13px">사진 맞추기</button>`:''}${(r.photo1_path||r.photo2_path)?` <button class="btn light" id="repick" style="min-height:34px;padding:2px 10px;font-size:13px">색 다시 짚기</button>`:''}${r.colors&&r.colors.prev?` <span class="xs muted">· 운영진이 다시 짚음 ${fmt(r.colors.prev.at)}</span>`:''}</dd>
       <dt>기기</dt><dd class="small">${h([ex.Make,ex.Model].filter(Boolean).join(' ')||'—')}</dd><dt>공개</dt><dd>${r.share?'동의':'비공개'}</dd></dl>
     ${r.review_memo?`<div class="small muted">이전 검수 메모: ${h(r.review_memo)} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
     <div class="stack"><b>보완 사유</b><div class="row">${ED[A.ed].reasons.map(x=>`<button class="chip" data-rs="${h(x)}" aria-pressed="${A.reasons.includes(x)}">${h(x)}</button>`).join('')}</div>
@@ -2716,6 +2861,7 @@ function bindDetail(r){
     toast('분류를 «'+v+'»(으)로 바꿨어요');
   };
   const rp=$('#repick'); if(rp) rp.onclick=()=>openRepick(r);
+  const acp=$('#admcrop'); if(acp) acp.onclick=async ()=>{ acp.disabled=true; const ok=await refitRecord(r); if(ok){ delete S.adm.urls[r.photo2_preview]; admReview(); } else acp.disabled=false; };
   const fo=$('#fillone'); if(fo) fo.onclick=async ()=>{ fo.disabled=true; fo.textContent='채우는 중…';
     try{ await fillRecord(r); toast('미리보기와 색을 채웠어요'); }catch(e){ toast('채우지 못했어요: '+(e.message||'')); }
     admReview(); };
