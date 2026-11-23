@@ -157,6 +157,13 @@ td{padding:8px;border-bottom:1px solid var(--line2);vertical-align:top}
 .gimg{position:relative;overflow:hidden}
 .gimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block}
 .gcard.mine{cursor:default}
+.swipe{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;background:#1B3640;border-radius:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.swipe::-webkit-scrollbar{display:none}
+.swipe figure{flex:0 0 100%;margin:0;scroll-snap-align:center;position:relative;display:flex;align-items:center;justify-content:center}
+.swipe img{display:block;max-width:100%;max-height:60vh;object-fit:contain}
+.swipe figcaption{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:3px 8px;border-radius:999px}
+.swnav{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.swnav .btn{min-height:36px;padding:2px 14px;font-size:20px;line-height:1}
 .gacts{display:flex;gap:8px;padding:0 12px 12px;flex-wrap:wrap}
 .gacts .btn{flex:1;min-height:40px;padding:6px 10px;font-size:14px}
 .gacts .small{flex-basis:100%}
@@ -1346,7 +1353,11 @@ function openRecord(r){
   const d = document.createElement('div'); d.className='sheet';
   d.innerHTML = `<div class="sheet-in" role="dialog" aria-modal="true" aria-label="${h(r.name)}">
     <button class="link" data-close style="align-self:flex-end">닫기 ✕</button>
-    ${r.photo?`<div class="shot" style="aspect-ratio:auto;max-height:60vh;background:#1B3640"><img src="${h(r.photo)}" alt="${h(r.name)}" style="object-fit:contain;max-height:60vh"></div>`:''}
+    ${(()=>{ const ps=(r.photos&&r.photos.length)?r.photos:(r.photo?[{kind:'scene',url:r.photo}]:[]); const cap=k=>k==='keyring'?'① 키링과 함께':'② 키링 없이';
+      if(!ps.length) return '';
+      if(ps.length===1) return `<div class="shot" style="aspect-ratio:auto;max-height:60vh;background:#1B3640"><img src="${h(ps[0].url)}" alt="${h(r.name)}" style="object-fit:contain;max-height:60vh"></div>`;
+      return `<div class="swipe" data-swipe>${ps.map((p,i)=>`<figure><img src="${h(p.url)}" alt="${h(r.name)} — ${cap(p.kind)}" ${i?'loading="lazy"':''}><figcaption>${cap(p.kind)}</figcaption></figure>`).join('')}</div>
+        <div class="swnav"><button class="btn light" data-sw="-1" aria-label="이전 사진">‹</button><span class="small muted" data-swn>1 / ${ps.length} · 옆으로 넘겨 보세요</span><button class="btn light" data-sw="1" aria-label="다음 사진">›</button></div>`; })()}
     <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(r.keyring)+' 키링':''}</p><h2 class="h2">${h(r.name)}</h2>
       ${r.status&&r.status!=='approved'?`<p class="small">${tag(r.status)} <span class="muted">컬러랩제주가 아직 확인하지 않은 기록이에요.</span></p>`:''}
       ${r.usage?`<p><b>${h(usageQ(CUR, r.category).label)}</b> ${h(r.usage)}</p>`:''}
@@ -1355,6 +1366,11 @@ function openRecord(r){
   const close = ()=>{ d.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e=>{ if(e.key==='Escape') close(); };
   d.addEventListener('click', e=>{ if(e.target===d || e.target.closest('[data-close]')) close(); });
+  const sw=d.querySelector('[data-swipe]');
+  if(sw){ const n=sw.children.length, lab=d.querySelector('[data-swn]');
+    const at=()=>Math.round(sw.scrollLeft/sw.clientWidth);
+    sw.addEventListener('scroll', ()=>{ lab.textContent=`${Math.min(n,at()+1)} / ${n}`; }, {passive:true});
+    d.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>sw.scrollTo({left:(Math.max(0,Math.min(n-1,at()+(+b.dataset.sw))))*sw.clientWidth, behavior:'smooth'})); }
   document.addEventListener('keydown', onKey);
   document.body.appendChild(d);
 }

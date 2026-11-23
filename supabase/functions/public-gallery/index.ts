@@ -56,11 +56,14 @@ Deno.serve(async (req: Request) => {
 
   // 사진: 키링 없이 찍은 장면 사진을 우선, 없으면 키링 사진. 확인 전(인정 아님) 기록은 작은 미리보기를 쓴다.
   // 미리보기를 만들기 전에 올라온 예전 기록은 미리보기가 없으므로 원래 사진으로 대신한다.
-  const photoOf = (r: Record<string, any>) =>
-    r.status === "approved"
-      ? r.photo2_path || r.photo1_path
-      : r.photo2_preview || r.photo1_preview || r.photo2_path || r.photo1_path || null;
-  const paths = [...new Set(rows.map(photoOf).filter(Boolean))] as string[];
+  const pathOf = (r: Record<string, any>, n: 1 | 2) =>
+    (r.status === "approved" ? r[`photo${n}_path`] : r[`photo${n}_preview`] || r[`photo${n}_path`]) || null;
+  // 넘겨 볼 사진 두 장: ② 키링 없이(장면) 먼저, 그다음 ① 키링과 함께
+  const photosOf = (r: Record<string, any>) =>
+    ([[2, "scene"], [1, "keyring"]] as const)
+      .map(([n, kind]) => ({ kind, path: pathOf(r, n) }))
+      .filter((x) => x.path) as { kind: string; path: string }[];
+  const paths = [...new Set(rows.flatMap((r) => photosOf(r).map((x) => x.path)))] as string[];
   const signed: Record<string, string> = {};
   if (paths.length) {
     const { data: s } = await sb.storage.from("record-photos").createSignedUrls(paths, 60 * 60 * 6);
@@ -78,7 +81,7 @@ Deno.serve(async (req: Request) => {
 
   const out = rows.map((r) => {
     const hide = HIDE_COORDS.has(r.category) || r.lat == null;
-    const p = photoOf(r);
+    const ph = photosOf(r).map((x) => ({ kind: x.kind, url: signed[x.path] ?? null })).filter((x) => x.url);
     return {
       id: r.id,
       ...(group ? { status: r.status } : {}),
@@ -89,7 +92,8 @@ Deno.serve(async (req: Request) => {
       keyring: r.keyring,
       area: r.area,
       is_memory: r.is_memory,
-      photo: p ? signed[p] ?? null : null,
+      photo: ph[0]?.url ?? null,
+      photos: ph,
       by: nick[r.author] ?? "",
       at: r.created_at,
       // 좌표: 민감 분류는 없음, 나머지는 약 100m 단위로 뭉갬
