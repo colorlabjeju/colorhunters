@@ -1664,7 +1664,7 @@ function steps(d){ if(CUR.chips) return ['what','p1','p2','chip','where','words'
 function vDraft(){
   const d=S.draft; const st=steps(d); const k=st[d.step-1];
   const prog=`<div class="progress">${st.map((_,i)=>`<i class="${i<d.step?'on':''}"></i>`).join('')}</div>`;
-  const head=`<div class="row between"><button class="link" id="back">← ${d.step>1?'이전':'그만두기'}</button><span class="small muted">${d.step} / ${st.length}</span></div>${prog}
+  const head=`<div class="row between"><button class="link" id="back">← 이전</button><span class="small muted">${d.step} / ${st.length}</span></div>${prog}
     ${d.mode==='edit'?`<div class="notice small"><b>보완 요청</b> ${h(d.memo||'')} ${h((d.reasons||[]).join(', '))}</div>`:''}`;
   let body='', foot='';
   if(k==='what'){
