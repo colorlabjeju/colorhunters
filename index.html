@@ -157,11 +157,37 @@ td{padding:8px;border-bottom:1px solid var(--line2);vertical-align:top}
 .gimg{position:relative;overflow:hidden}
 .gimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block}
 .gcard.mine{cursor:default}
-.swipe{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;background:#1B3640;border-radius:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.swipe{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .swipe::-webkit-scrollbar{display:none}
-.swipe figure{flex:0 0 100%;margin:0;scroll-snap-align:center;position:relative;display:flex;align-items:center;justify-content:center}
-.swipe img{display:block;max-width:100%;max-height:60vh;object-fit:contain}
-.swipe figcaption{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:3px 8px;border-radius:999px}
+.swipe figure{flex:0 0 100%;min-width:0;margin:0;scroll-snap-align:center;display:flex;align-items:flex-start;justify-content:center}
+.phw{position:relative;display:block;width:100%;line-height:0}
+.phw img{display:block;width:100%;height:auto}
+.phcap{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;line-height:1.4;padding:3px 8px;border-radius:999px}
+.roi{position:absolute;transform:translate(-50%,-50%);aspect-ratio:1;width:30%;border-radius:50%;border:2px dashed rgba(255,255,255,.95);box-shadow:0 0 0 1px rgba(0,0,0,.3);pointer-events:none}
+.roi::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.roilab{position:absolute;transform:translate(-50%,18px);background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.4;padding:2px 7px;border-radius:999px;white-space:nowrap;pointer-events:none}
+.rv-grid{display:flex;flex-direction:column;gap:14px}
+.rv-ph{display:flex;flex-direction:column;gap:8px;min-width:0}
+.rv-tx{display:flex;flex-direction:column;gap:14px;min-width:0}
+.rv-col{order:-1;display:flex;flex-direction:column;gap:6px}
+.cband{display:flex;gap:2px;width:100%}
+.cband i{display:block;min-width:0}
+.gcard>.cband{gap:0}
+.cblock{display:flex;flex-direction:column;gap:8px}
+.clabs{display:flex;gap:2px;font-size:13px;line-height:1.35}
+.clabs span{min-width:0}
+.cchips{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.cchips button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;border:0;background:none;font:inherit;font-size:12px;color:var(--ink3);cursor:pointer}
+.cchips i{display:block;width:100%;aspect-ratio:1;border-radius:6px;border:1px solid rgba(0,0,0,.08)}
+.cchips button[aria-pressed="true"]{color:#A6503F;font-weight:700}
+.cchips button[aria-pressed="true"] i{outline:3px solid #A6503F;outline-offset:2px}
+@media(min-width:700px){
+  .sheet-in.rv{max-width:940px}
+  .rv-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:start}
+  .rv-grid.nophoto{grid-template-columns:1fr}
+  .rv .phw{display:inline-block;width:auto;max-width:100%}
+  .rv-col{order:0}
+}
 .swnav{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .swnav .btn{min-height:36px;padding:2px 14px;font-size:20px;line-height:1}
 .gacts{display:flex;gap:8px;padding:0 12px 12px;flex-wrap:wrap}
@@ -638,6 +664,135 @@ async function cropKeyring(file, nx, ny){
     c.width=c.height=0; if(bmp.close) bmp.close();
     return blob ? {blob, box:{x:sx/W, y:sy/H, s:side/W, px:side}} : null;
   }catch(e){ return null; }
+}
+/* ================= «내가 본 색» — 사진의 대상 둘레에서 색 뽑기 (키링 보정 전) =================
+   400px 미리보기에서 짚은 곳 둘레(짧은 변의 24%) 픽셀을 CIELAB으로 옮기고, 밝기(L*)에 0.5를 곱해
+   k-means 5개로 묶는다. 너무 어둡거나 날아간 픽셀은 빼고, 군집마다 중심에 가까운 80%만 평균한다. */
+const COLORS = {method:'kmeans5-lab', k:5, weightL:0.5, roi:0.24, keep:0.8, minL:6, maxL:97, minDE:5};
+function rgb2lab(r,g,b){
+  const f=v=>{ v/=255; return v<=0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
+  const R=f(r), G=f(g), B=f(b);
+  const g3=t=>t>0.008856 ? Math.cbrt(t) : 7.787*t+16/116;
+  const x=g3((0.4124564*R+0.3575761*G+0.1804375*B)/0.95047), y=g3(0.2126729*R+0.7151522*G+0.0721750*B), z=g3((0.0193339*R+0.1191920*G+0.9503041*B)/1.08883);
+  return [116*y-16, 500*(x-y), 200*(y-z)];
+}
+function lab2hex(L,a,b){
+  const fy=(L+16)/116, fx=fy+a/500, fz=fy-b/200, inv=t=>t*t*t>0.008856 ? t*t*t : (t-16/116)/7.787;
+  const X=inv(fx)*0.95047, Y=inv(fy), Z=inv(fz)*1.08883;
+  const lin=[3.2404542*X-1.5371385*Y-0.4985314*Z, -0.9692660*X+1.8760108*Y+0.0415560*Z, 0.0556434*X-0.2040259*Y+1.0572252*Z];
+  return '#'+lin.map(v=>{ v=v<=0.0031308 ? 12.92*v : 1.055*Math.pow(v,1/2.4)-0.055; return Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,'0'); }).join('').toUpperCase();
+}
+function deltaE00(p,q){
+  const [L1,a1,b1]=p,[L2,a2,b2]=q, rad=Math.PI/180;
+  const C1=Math.hypot(a1,b1), C2=Math.hypot(a2,b2), Cm=(C1+C2)/2, G=0.5*(1-Math.sqrt(Math.pow(Cm,7)/(Math.pow(Cm,7)+Math.pow(25,7))));
+  const A1=a1*(1+G), A2=a2*(1+G), c1=Math.hypot(A1,b1), c2=Math.hypot(A2,b2);
+  const hh=(y,x)=>{ if(!x&&!y) return 0; const d=Math.atan2(y,x)/rad; return d<0?d+360:d; };
+  const h1=hh(b1,A1), h2=hh(b2,A2), dL=L2-L1, dC=c2-c1;
+  let dh=0; if(c1*c2){ dh=h2-h1; if(dh>180) dh-=360; else if(dh<-180) dh+=360; }
+  const dH=2*Math.sqrt(c1*c2)*Math.sin(dh/2*rad), Lm=(L1+L2)/2, cm=(c1+c2)/2;
+  let hm=h1+h2; if(c1*c2){ hm = Math.abs(h1-h2)<=180 ? hm/2 : (hm<360 ? (hm+360)/2 : (hm-360)/2); }
+  const T=1-0.17*Math.cos((hm-30)*rad)+0.24*Math.cos(2*hm*rad)+0.32*Math.cos((3*hm+6)*rad)-0.20*Math.cos((4*hm-63)*rad);
+  const Sl=1+0.015*(Lm-50)*(Lm-50)/Math.sqrt(20+(Lm-50)*(Lm-50)), Sc=1+0.045*cm, Sh=1+0.015*cm*T;
+  const Rc=2*Math.sqrt(Math.pow(cm,7)/(Math.pow(cm,7)+Math.pow(25,7))), Rt=-Rc*Math.sin(2*30*Math.exp(-Math.pow((hm-275)/25,2))*rad);
+  return Math.sqrt(Math.pow(dL/Sl,2)+Math.pow(dC/Sc,2)+Math.pow(dH/Sh,2)+Rt*(dC/Sc)*(dH/Sh));
+}
+const r1 = v => Math.round(v*10)/10;
+/* img: {data(Uint8ClampedArray RGBA), width, height}, pt: {x,y} 0~1 → {clusters:[{lab,hex,share}] 넓은 순, pick, point:{lab,hex}} */
+function extractColors(img, pt){
+  const {data, width:W, height:H}=img, wL=COLORS.weightL;
+  const cx=Math.max(0,Math.min(W-1,Math.round(pt.x*W))), cy=Math.max(0,Math.min(H-1,Math.round(pt.y*H))), R=Math.max(4, COLORS.roi*Math.min(W,H));
+  const px=(x,y)=>{ const i=(y*W+x)*4; return rgb2lab(data[i],data[i+1],data[i+2]); };
+  /* 짚은 점: 3×3 평균 */
+  let s=[0,0,0], n=0;
+  for(let y=cy-1;y<=cy+1;y++) for(let x=cx-1;x<=cx+1;x++){ if(x<0||y<0||x>=W||y>=H) continue; const i=(y*W+x)*4; s[0]+=data[i]; s[1]+=data[i+1]; s[2]+=data[i+2]; n++; }
+  const pLab=rgb2lab(s[0]/n, s[1]/n, s[2]/n), point={lab:pLab.map(r1), hex:lab2hex(...pLab)};
+  const collect=strict=>{ const out=[]; for(let y=Math.max(0,Math.floor(cy-R)); y<=Math.min(H-1,Math.ceil(cy+R)); y++) for(let x=Math.max(0,Math.floor(cx-R)); x<=Math.min(W-1,Math.ceil(cx+R)); x++){
+      if((x-cx)*(x-cx)+(y-cy)*(y-cy)>R*R) continue; const l=px(x,y); if(strict && (l[0]<COLORS.minL || l[0]>COLORS.maxL)) continue; out.push(l); } return out; };
+  let pts=collect(true); if(pts.length<60) pts=collect(false);   /* 거의 다 걸러지면(아주 어둡거나 밝은 대상) 그대로 쓴다 */
+  const N=pts.length, k=Math.min(COLORS.k, N), F=pts.map(l=>[l[0]*wL, l[1], l[2]]);
+  const d2=(p,q)=>(p[0]-q[0])*(p[0]-q[0])+(p[1]-q[1])*(p[1]-q[1])+(p[2]-q[2])*(p[2]-q[2]);
+  /* 처음 중심: 전체 평균에 가장 가까운 점에서 시작해, 이미 고른 중심들에서 가장 먼 점을 차례로 (매번 같은 결과) */
+  const mean=F.reduce((m,p)=>[m[0]+p[0]/N,m[1]+p[1]/N,m[2]+p[2]/N],[0,0,0]);
+  let first=0, best=Infinity; F.forEach((p,i)=>{ const d=d2(p,mean); if(d<best){ best=d; first=i; } });
+  const cen=[F[first].slice()], md=F.map(p=>d2(p,cen[0]));
+  while(cen.length<k){ let far=0; for(let i=1;i<N;i++) if(md[i]>md[far]) far=i; cen.push(F[far].slice()); for(let i=0;i<N;i++){ const d=d2(F[i],cen[cen.length-1]); if(d<md[i]) md[i]=d; } }
+  const lab=new Int32Array(N);
+  const assign=()=>{ let ch=0; for(let i=0;i<N;i++){ let b=0, bd=Infinity; for(let c=0;c<k;c++){ const d=d2(F[i],cen[c]); if(d<bd){ bd=d; b=c; } } if(lab[i]!==b){ lab[i]=b; ch++; } } return ch; };
+  for(let it=0; it<20; it++){
+    const ch=assign(); if(it && !ch) break;
+    const sum=cen.map(()=>[0,0,0,0]); for(let i=0;i<N;i++){ const t=sum[lab[i]]; t[0]+=F[i][0]; t[1]+=F[i][1]; t[2]+=F[i][2]; t[3]++; }
+    sum.forEach((t,c)=>{ if(t[3]) cen[c]=[t[0]/t[3],t[1]/t[3],t[2]/t[3]]; });
+  }
+  assign();
+  /* 군집마다 중심에 가까운 80%만 평균 (가장자리·섞인 픽셀 제외) */
+  const groups=cen.map(()=>[]); for(let i=0;i<N;i++) groups[lab[i]].push(i);
+  let cl=groups.map((g,c)=>{ if(!g.length) return null;
+    const near=g.map(i=>[d2(F[i],cen[c]),i]).sort((a,b)=>a[0]-b[0]).slice(0, Math.max(1, Math.round(g.length*COLORS.keep)));
+    const m=near.reduce((t,[,i])=>[t[0]+pts[i][0],t[1]+pts[i][1],t[2]+pts[i][2]],[0,0,0]).map(v=>v/near.length);
+    return {lab:m.map(r1), hex:lab2hex(...m), share:Math.round(g.length/N*1000)/1000, c}; }).filter(Boolean);
+  /* 짚은 점이 속한 군집 */
+  const pf=[pLab[0]*wL,pLab[1],pLab[2]]; let pc=cl[0].c, pd=Infinity; cl.forEach(x=>{ const d=d2(pf,cen[x.c]); if(d<pd){ pd=d; pc=x.c; } });
+  cl.sort((a,b)=>b.share-a.share);
+  const pick=cl.findIndex(x=>x.c===pc); cl=cl.map(({c,...x})=>x);
+  return {clusters:cl, pick, point};
+}
+/* 저장할 모양: 내가 본 색 1 + 함께 보인 색 2 (나머지 중 넓은 순, 이미 고른 색과 ΔE00 5 미만이면 건너뜀). main: 군집 번호 또는 'point' */
+function buildColors(ex, main, roi){
+  const m = main==='point' ? {role:'main', from:'point', hex:ex.point.hex, lab:ex.point.lab} : Object.assign({role:'main', from:'cluster'}, ex.clusters[main]);
+  const out=[m];
+  ex.clusters.forEach((c,i)=>{ if(out.length>=3 || i===main) return; if(out.some(o=>deltaE00(o.lab,c.lab)<COLORS.minDE)) return; out.push(Object.assign({role:'sub', from:'cluster'}, c)); });
+  return {method:COLORS.method, calibrated:false, weightL:COLORS.weightL, roi:{photo:roi.photo, x:roi.x, y:roi.y, r:COLORS.roi}, colors:out, clusters5:ex.clusters};
+}
+
+/* 미리보기(약 400px) 픽셀 읽기 */
+async function previewPixels(blob){
+  const bmp=await createImageBitmap(blob); const sc=Math.min(1, PREVIEW.max/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(bmp.width*sc)); c.height=Math.max(1,Math.round(bmp.height*sc));
+  const ctx=c.getContext('2d',{willReadFrequently:true}); ctx.drawImage(bmp,0,0,c.width,c.height);
+  const d=ctx.getImageData(0,0,c.width,c.height); c.width=c.height=0; if(bmp.close) bmp.close(); return d;
+}
+/* 사진 p에서 짚은 대상(p.txy) 둘레의 색을 찾아 p.cx(5색)·p.cmain(내가 본 색: 군집 번호 또는 'point')에 둔다 */
+async function findColors(p){
+  const pt=p.txy; p.cx=null; p.cmain=null; p.cerr=false;
+  try{ const ex=extractColors(await previewPixels(p.sblob||p.blob), pt); if(p.txy===pt){ p.cx=ex; p.cmain=ex.pick; } }
+  catch(e){ if(p.txy===pt) p.cerr=true; }
+}
+const draftColors = (p, photo) => (p && p.txy && p.cx && p.cmain!=null) ? buildColors(p.cx, p.cmain, {photo, x:p.txy.x, y:p.txy.y}) : null;
+/* 정사각 카드로 자를 때 가운데가 아니라 짚은 대상을 기준으로 */
+const focusStyle = f => { f=okXY(f); return f ? ` style="object-position:${(f.x*100).toFixed(1)}% ${(f.y*100).toFixed(1)}%"` : ''; };
+/* 3색 띠 (내가 본 색 2 : 함께 보인 색 1 : 1) */
+const HEXOK = /^#[0-9A-Fa-f]{6}$/;
+const okColors = c => (c && Array.isArray(c.colors)) ? Object.assign({}, c, {colors:c.colors.filter(x=>x && HEXOK.test(x.hex||'')).slice(0,3)}) : null;
+const okXY = o => (o && o.x>=0 && o.x<=1 && o.y>=0 && o.y<=1) ? {x:+o.x, y:+o.y} : null;
+function colorBand(c, ht){ c=okColors(c); const cs=(c&&c.colors)||[]; return cs.length ? `<div class="cband" style="height:${ht||12}px" role="img" aria-label="이 기록의 색 ${cs.map(x=>x.hex).join(', ')}">${cs.map((x,i)=>`<i style="flex:${i?1:2};background:${h(x.hex)}"></i>`).join('')}</div>` : ''; }
+const calTag = c => `<span class="tag" style="border:1px solid var(--line);background:transparent;border-radius:999px">${c&&c.calibrated?'보정됨':'보정 전'}</span>`;
+function colorBlock(c){
+  c=okColors(c); const cs=(c&&c.colors)||[]; if(!cs.length) return '';
+  const pct=x=>x.share!=null?` · ${Math.round(x.share*100)}%`:'';
+  return `<div class="cblock"><div class="row between"><b>이 기록의 색</b>${calTag(c)}</div>
+    ${colorBand(c, 44)}
+    <div class="clabs">${cs.map((x,i)=>`<span style="flex:${i?1:2}"><b>${i?'함께 보인 색':'내가 본 색'}</b><br><span class="xs muted">${h(x.hex)}${pct(x)}</span></span>`).join('')}</div>
+    <p class="xs muted">${c.calibrated?'키링에 견주어 보정한 색이에요.':'사진 그대로의 색이에요. 키링 보정이 끝나면 «보정됨»으로 바뀌고 숫자가 조금 달라질 수 있어요.'}</p></div>`;
+}
+/* 색을 뽑은 곳: 짚은 점(작은 원)과 둘레(점선 원). 사진 폭·높이를 알아야 원이 동그랗게 그려진다 */
+function roiMarks(pt, w, hh, r){
+  const d=2*(r||COLORS.roi)*Math.min(w,hh)/w*100, pos=`left:${(pt.x*100).toFixed(2)}%;top:${(pt.y*100).toFixed(2)}%;transform:translate(-50%,-50%);position:absolute;pointer-events:none;border-radius:50%`;
+  return `<span aria-hidden="true" style="${pos};width:${d.toFixed(2)}%;aspect-ratio:1;border:2px dashed rgba(255,255,255,.92);box-shadow:0 0 0 1px rgba(0,0,0,.25)"></span>`;
+}
+/* 기록하기: 5색 칩에서 «내가 본 색» 고르기 */
+function vColorPick(p, photo){
+  if(!p || !p.txy) return '';
+  if(p.cerr) return `<div class="notice small">색을 찾지 못했어요. 색 없이 올려도 괜찮아요. 다시 하려면 «다시 짚기»를 눌러 주세요.</div>`;
+  if(!p.cx) return `<p class="small muted"><span class="spinner"></span> 짚은 곳의 색을 찾고 있어요…</p>`;
+  const cl=p.cx.clusters, out=draftColors(p, photo);
+  return `<div class="stack" style="gap:10px" id="cpick">
+    <div class="notice small" style="margin:0">짚은 곳 둘레(점선)에서 ${cl.length}가지 색을 찾았어요. <b>눈으로 본 색</b>에 가장 가까운 칸을 눌러 주세요.</div>
+    <div class="cchips">${cl.map((c,i)=>`<button type="button" data-cmain="${i}" aria-pressed="${p.cmain===i}" aria-label="${h(c.hex)} ${Math.round(c.share*100)}%"><i style="background:${h(c.hex)}"></i><span>${p.cmain===i?'내가 본 색':Math.round(c.share*100)+'%'}</span></button>`).join('')}</div>
+    <div class="cband" style="height:6px">${cl.map(c=>`<i style="flex:${Math.max(c.share,0.01)};background:${h(c.hex)}"></i>`).join('')}</div>
+    <div class="row between"><b class="small">저장될 3색</b><span class="xs muted">함께 보인 색은 넓은 순으로 자동</span></div>
+    ${colorBand(out, 30)}
+    <button type="button" class="link" data-cmain="point" style="align-self:flex-start">${p.cmain==='point'?'✓ 짚은 점의 색 그대로 저장해요':'딱 맞는 색이 없어요 (짚은 점의 색 그대로 저장)'}${p.cmain==='point'?` <i style="display:inline-block;width:14px;height:14px;vertical-align:-2px;border:1px solid var(--line);background:${h(p.cx.point.hex)}"></i>`:''}</button>
+  </div>`;
 }
 async function takePhoto(file, which){
   const exif = await readExif(file);
@@ -1344,35 +1499,53 @@ async function fillGallery(edition){
   if(!list.length){ box.innerHTML = `<div class="card stack" style="gap:6px"><p class="small">아직 공개된 기록이 없어요.</p><p class="small muted">참여자가 올린 기록은 컬러랩제주의 확인을 거쳐 이곳에 차례로 쌓입니다.</p></div>`; return; }
   box.innerHTML = `<div class="gal">${list.map((r,i)=>`
     <button class="gcard" data-g="${i}">
-      <div class="gimg">${r.photo?`<img src="${h(r.photo)}" alt="${h(r.name)}" loading="lazy">`:`<span>${r.is_memory?'기억 카드':''}</span>`}</div>
+      <div class="gimg">${r.photo?`<img src="${h(r.photo)}" alt="${h(r.name)}" loading="lazy"${focusStyle(r.focus)}>`:`<span>${r.is_memory?'기억 카드':''}</span>`}</div>
+      ${colorBand(r.colors, 10)}
       <div class="gtxt"><b>${h(r.name)}</b><span>${h(r.category)}${r.area?' · '+h(r.area):''}</span>${r.status&&r.status!=='approved'?`<span>${tag(r.status)}</span>`:''}</div>
     </button>`).join('')}</div>`;
   box.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>openRecord(list[+b.dataset.g]));
 }
 function openRecord(r){
   const d = document.createElement('div'); d.className='sheet';
-  d.innerHTML = `<div class="sheet-in" role="dialog" aria-modal="true" aria-label="${h(r.name)}">
+  /* 사진은 원래 비율 그대로(둘레 띠 없이). 휴대폰은 한 단(사진 → 색 → 글), 넓은 화면은 두 단(사진 왼쪽, 글·색 오른쪽) */
+  const col=okColors(r.colors), roi=col&&col.roi&&okXY(col.roi) ? col.roi : null, cap=k=>k==='keyring'?'① 키링과 함께':'② 키링 없이';
+  let ps=(r.photos&&r.photos.length)?r.photos.slice():(r.photo?[{kind:'scene',url:r.photo}]:[]);
+  const roiKind = roi ? (roi.photo===2?'scene':'keyring') : null;
+  if(roiKind) ps.sort((x,y)=>(y.kind===roiKind)-(x.kind===roiKind));   /* 색을 뽑은 사진을 먼저 */
+  const fig=(p,i)=>`<figure><span class="phw"><img src="${h(p.url)}" alt="${h(r.name)}${ps.length>1?' — '+cap(p.kind):''}" ${i?'loading="lazy"':''}>${p.kind===roiKind?`<span class="roi" data-roi aria-hidden="true" style="left:${(roi.x*100).toFixed(2)}%;top:${(roi.y*100).toFixed(2)}%"></span><span class="roilab" aria-hidden="true" style="left:${(roi.x*100).toFixed(2)}%;top:${(roi.y*100).toFixed(2)}%">색을 뽑은 곳</span>`:''}${ps.length>1?`<span class="phcap">${cap(p.kind)}</span>`:''}</span></figure>`;
+  d.innerHTML = `<div class="sheet-in rv" role="dialog" aria-modal="true" aria-label="${h(r.name)}">
     <button class="link" data-close style="align-self:flex-end">닫기 ✕</button>
-    ${(()=>{ const ps=(r.photos&&r.photos.length)?r.photos:(r.photo?[{kind:'scene',url:r.photo}]:[]); const cap=k=>k==='keyring'?'① 키링과 함께':'② 키링 없이';
-      if(!ps.length) return '';
-      if(ps.length===1) return `<div class="shot" style="aspect-ratio:auto;max-height:60vh;background:#1B3640"><img src="${h(ps[0].url)}" alt="${h(r.name)}" style="object-fit:contain;max-height:60vh"></div>`;
-      return `<div class="swipe" data-swipe>${ps.map((p,i)=>`<figure><img src="${h(p.url)}" alt="${h(r.name)} — ${cap(p.kind)}" ${i?'loading="lazy"':''}><figcaption>${cap(p.kind)}</figcaption></figure>`).join('')}</div>
-        <div class="swnav"><button class="btn light" data-sw="-1" aria-label="이전 사진">‹</button><span class="small muted" data-swn>1 / ${ps.length} · 옆으로 넘겨 보세요</span><button class="btn light" data-sw="1" aria-label="다음 사진">›</button></div>`; })()}
-    <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(r.keyring)+' 키링':''}</p><h2 class="h2">${h(r.name)}</h2>
-      ${r.status&&r.status!=='approved'?`<p class="small">${tag(r.status)} <span class="muted">컬러랩제주가 아직 확인하지 않은 기록이에요.</span></p>`:''}
-      ${r.usage?`<p><b>${h(usageQ(CUR, r.category).label)}</b> ${h(r.usage)}</p>`:''}
-      ${r.story?`<p style="white-space:pre-wrap">${h(r.story)}</p>`:''}
-      <p class="small muted">${[r.area, r.by?`기록 ${r.by}`:'', fmt(r.at)].filter(Boolean).map(h).join(' · ')}</p></div></div>`;
+    <div class="rv-grid${ps.length?'':' nophoto'}">
+      ${ps.length?`<div class="rv-ph"><div class="swipe" data-swipe>${ps.map(fig).join('')}</div>
+        ${ps.length>1?`<div class="swnav"><button class="btn light" data-sw="-1" aria-label="이전 사진">‹</button><span class="small muted" data-swn>1 / ${ps.length} · 옆으로 넘겨 보세요</span><button class="btn light" data-sw="1" aria-label="다음 사진">›</button></div>`:''}</div>`:''}
+      <div class="rv-tx">
+        <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(r.keyring)+' 키링':''}</p><h2 class="h2">${h(r.name)}</h2>
+          ${r.status&&r.status!=='approved'?`<p class="small">${tag(r.status)} <span class="muted">컬러랩제주가 아직 확인하지 않은 기록이에요.</span></p>`:''}</div>
+        ${col&&col.colors.length?`<div class="rv-col">${colorBlock(col)}${roi?'<p class="xs muted">사진 위 점선이 색을 뽑은 곳이에요.</p>':''}</div>`:''}
+        <div class="stack" style="gap:6px">
+          ${r.usage?`<p><b>${h(usageQ(CUR, r.category).label)}</b> ${h(r.usage)}</p>`:''}
+          ${r.story?`<p style="white-space:pre-wrap">${h(r.story)}</p>`:''}
+          <p class="small muted">${[r.area, r.by?`기록 ${r.by}`:'', fmt(r.at)].filter(Boolean).map(h).join(' · ')}</p></div>
+      </div>
+    </div></div>`;
+  /* 점선 원은 사진의 짧은 변을 기준으로 한 크기라, 사진이 뜬 뒤에 폭을 정한다 */
+  d.querySelectorAll('[data-roi]').forEach(el=>{ const im=el.parentElement.querySelector('img'); const fit=()=>{ if(im.naturalWidth) el.style.width=(2*(roi.r||COLORS.roi)*Math.min(im.naturalWidth,im.naturalHeight)/im.naturalWidth*100).toFixed(2)+'%'; }; im.complete?fit():im.addEventListener('load', fit); });
   const close = ()=>{ d.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e=>{ if(e.key==='Escape') close(); };
   d.addEventListener('click', e=>{ if(e.target===d || e.target.closest('[data-close]')) close(); });
   const sw=d.querySelector('[data-swipe]');
-  if(sw){ const n=sw.children.length, lab=d.querySelector('[data-swn]');
+  if(sw && sw.children.length>1){ const n=sw.children.length, lab=d.querySelector('[data-swn]');
     const at=()=>Math.round(sw.scrollLeft/sw.clientWidth);
     sw.addEventListener('scroll', ()=>{ lab.textContent=`${Math.min(n,at()+1)} / ${n}`; }, {passive:true});
     d.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>sw.scrollTo({left:(Math.max(0,Math.min(n-1,at()+(+b.dataset.sw))))*sw.clientWidth, behavior:'smooth'})); }
   document.addEventListener('keydown', onKey);
   document.body.appendChild(d);
+  /* 넓은 화면: 사진을 왼쪽 단 폭과 화면 높이의 80% 안에서 원래 비율로 가장 크게 (작은 미리보기도 같은 크기로) */
+  const sizePh=()=>{ const wide=matchMedia('(min-width:700px)').matches, box=d.querySelector('.rv-ph');
+    d.querySelectorAll('.phw').forEach(w=>{ const im=w.querySelector('img'); if(!wide || !box || !im.naturalWidth){ w.style.width=''; return; }
+      w.style.width=Math.floor(im.naturalWidth*Math.min(box.clientWidth/im.naturalWidth, innerHeight*0.8/im.naturalHeight))+'px'; }); };
+  d.querySelectorAll('.phw img').forEach(im=>im.complete?0:im.addEventListener('load', sizePh)); sizePh();
+  const onRs=()=>{ if(d.isConnected) sizePh(); else removeEventListener('resize', onRs); }; addEventListener('resize', onRs);
 }
 
 function vConsent(){
@@ -1535,7 +1708,8 @@ function vMine(){
     <p class="small muted">내가 올린 기록 ${list.length}건이에요. 비공개로 둔 기록도 여기서는 보여요.</p></div>
   ${list.length ? `<div class="gal">${list.map(r=>`
     <div class="gcard mine">
-      <button class="gimg" data-open="${h(r.id)}" data-th="${h(r.id)}" style="border:0;padding:0;cursor:pointer;width:100%" aria-label="${h(r.local_name||r.color_name)} 열기">${S.thumbs[r.id]?`<img src="${h(S.thumbs[r.id])}" alt="">`:`<span>${r.is_memory?'기억 카드':''}</span>`}</button>
+      <button class="gimg" data-open="${h(r.id)}" data-th="${h(r.id)}" style="border:0;padding:0;cursor:pointer;width:100%" aria-label="${h(r.local_name||r.color_name)} 열기">${S.thumbs[r.id]?`<img src="${h(S.thumbs[r.id])}" alt=""${focusStyle(r.target_xy)}>`:`<span>${r.is_memory?'기억 카드':''}</span>`}</button>
+      ${colorBand(r.colors, 10)}
       <div class="gtxt"><b>${h(r.local_name||r.color_name)}</b><span>${h(r.category)}${(r.area||r.place_name)?' · '+h(r.area||r.place_name):''} · ${fmt(r.created_at)}</span><span>${tag(r.status)}${r.share?'':' <span class="tag">비공개</span>'}</span></div>
       <div class="gacts">${r.status==='rejected'?'':`<button class="btn light" data-medit="${h(r.id)}">고치기</button>`}${canDelete(r)?`<button class="btn light" data-mdel="${h(r.id)}" style="color:var(--bad-ink)">지우기</button>`:''}${delWhy(r)?`<span class="small muted">${delWhy(r)}</span>`:''}</div>
     </div>`).join('')}</div>` : `<div class="card muted">아직 올린 기록이 없어요.</div>`}
@@ -1567,6 +1741,7 @@ function vRecord(id){
     <div class="row between"><h1 class="h2">${h(r.local_name||r.color_name)}</h1>${tag(r.status)}</div>
     ${r.status==='held'?`<div class="notice">보완 요청: ${h(r.review_memo||'')} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
     ${r.is_memory?'<p class="tag">기억 카드</p>':(r.photo1_path&&r.photo2_path?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div><div class="shot" data-ph="photo2_path"><span class="badge">② 키링 없이</span></div></div>`:r.photo1_path?`<div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div>`:`<div class="shot" data-ph="photo2_path"><span class="badge">사진</span></div>`)}
+    ${colorBlock(r.colors)}
     <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${fmt(r.photo1_taken_at||r.taken_at||r.created_at)}${condText(r.light,r.weather)?' · '+h(condText(r.light,r.weather)):''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
     ${canEditText(r)?(S.textEdit===r.id?vTextForm(r):`<button class="btn light block" id="tedit">✎ ${canEditFields(r)?'고치기 (이름·분류·동네·이야기)':CUR.usage?'이름·쓰임·이야기 고치기':'색 이름·이야기 고치기'}</button>`):''}
     <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.mode==='invite'?'끄면 이 기록은 나와 컬러랩제주만 봐요.':'끄면 이 기록은 공개하지 않아요.'}</span></span></label>
@@ -1695,8 +1870,9 @@ function vDraft(){
     const mark = (pt, kind) => pt ? `<span aria-hidden="true" style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:${(pt.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:${kind==='k'?44:28}px;height:${kind==='k'?44:28}px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px ${kind==='k'?'#224653':'#A6503F'};${kind==='t'?'background:rgba(166,80,63,.35);':''}pointer-events:none"></span><span style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:calc(${(pt.y*100).toFixed(2)}% + ${kind==='k'?28:20}px);transform:translateX(-50%);background:${kind==='k'?'#224653':'#A6503F'};color:#fff;border-radius:6px;padding:0 6px;font-size:12px;font-weight:700;pointer-events:none">${kind==='k'?'키링':'대상'}</span>` : '';
     body=`<h1 class="h2">① 키링을 대고 한 장</h1>
       ${d.p1&&CUR.taps?`<div class="notice small" id="tapmsg" style="margin:0">${tapMsg}</div>
-      <div id="tapwrap" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation"><img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진 — 눌러서 키링과 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">${mark(d.p1.kxy,'k')}${mark(d.p1.txy,'t')}<span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700">① 키링과 함께</span></div>
-      ${d.p1.kxy?'<button class="link" id="retap" style="align-self:flex-start">다시 짚기</button>':''}`
+      <div id="tapwrap" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation"><img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진 — 눌러서 키링과 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">${d.p1.txy?roiMarks(d.p1.txy, d.p1.ow, d.p1.oh):''}${mark(d.p1.kxy,'k')}${mark(d.p1.txy,'t')}<span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700">① 키링과 함께</span></div>
+      ${d.p1.kxy?'<button class="link" id="retap" style="align-self:flex-start">다시 짚기</button>':''}
+      ${vColorPick(d.p1, 1)}`
       :`<div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진"><span class="badge">① 키링과 함께</span>`:d.oldP1?'<span class="muted small">이미 올린 사진이 있어요 (바꾸려면 다시 찍기)</span>':'<span class="muted">아직 사진이 없어요</span>'}</div>`}
       ${sizeNote(d.p1)}
       <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="1" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="1" data-cap="0">앨범에서 선택</button></div>
@@ -1707,14 +1883,19 @@ function vDraft(){
     body= noRing(d)
       ? `<h1 class="h2">사진 한 장</h1><p class="muted small">오늘 본 색이 잘 보이게 찍어요. 플래시·필터·보정 기능은 끄고, 해를 정면으로 마주 보지 않게.</p>`
       : `<h1 class="h2">② 키링만 빼고 한 장</h1><p class="muted small">같은 자리, 같은 빛에서 바로 이어서 찍어요. ${CUR.mode==='public'?'오늘 본 색이 잘 보이게.':'자원의 모양이 잘 보이게 가까이.'}</p>`;
+    body+= (noRing(d) && d.p2) ? `
+      <div class="notice small" style="margin:0">${d.p2.txy?'잘 짚었어요. 다시 하려면 «다시 짚기»':'사진에서 <b>기록할 대상</b>을 한 번 눌러 주세요'}</div>
+      <div id="tapwrap2" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation"><img src="${h(d.p2.url)}" alt="찍은 사진 — 눌러서 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">${d.p2.txy?roiMarks(d.p2.txy, d.p2.ow, d.p2.oh)+`<span aria-hidden="true" style="position:absolute;left:${(d.p2.txy.x*100).toFixed(2)}%;top:${(d.p2.txy.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #A6503F;background:rgba(166,80,63,.35);pointer-events:none"></span>`:''}</div>
+      ${d.p2.txy?'<button class="link" id="retap2" style="align-self:flex-start">다시 짚기</button>':''}
+      ${vColorPick(d.p2, 2)}` : `
+      <div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="키링 없이 찍은 사진"><span class="badge">② 키링 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>`;
     body+=`
-      <div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="키링 없이 찍은 사진"><span class="badge">② 키링 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>
       ${sizeNote(d.p2)}
       <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="2" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="2" data-cap="0">앨범에서 선택</button></div>
       ${gap!=null && gap>GAP_WARN_MIN?`<div class="notice">두 사진을 찍은 시간이 <b>${Math.round(gap)}분</b> 차이 나요. 빛이 바뀌었을 수 있으니, 가능하면 같은 자리에서 다시 이어서 찍어 주세요.</div>`:''}`;
     foot = (CUR.chips && !(S.edition&&S.edition.photo2_required))
       ? `<div class="rings" style="grid-template-columns:1fr 2fr"><button class="btn light" id="skip">건너뛰기</button><button class="btn main" id="next" ${(d.p2||d.oldP2)?'':'disabled'}>다음</button></div>`
-      : `<button class="btn main block" id="next" ${(d.p2||d.oldP2)?'':'disabled'}>다음</button>`;
+      : `<button class="btn main block" id="next" ${(d.p2 ? (!noRing(d) || !!d.p2.txy) : !!d.oldP2)?'':'disabled'}>다음</button>`;
   } else if(k==='chip'){
     const cs=S.chips[CUR.tool]||[];
     if(!cs.length && !vDraft.chipTry){ vDraft.chipTry=true; loadChips(CUR.tool).then(l=>{ if(l.length && S.draft===d) render(); }).catch(()=>{}).finally(()=>{ vDraft.chipTry=false; }); }
@@ -1796,9 +1977,17 @@ function bindDraft(){
     if(pt.x<0||pt.x>1||pt.y<0||pt.y>1) return;
     const p=d.p1;
     if(!p.kxy){ p.kxy=pt; p.kblob=null; p.kbox=null; render(); const c=await cropKeyring(p.file, pt.x, pt.y); if(c && d.p1===p && p.kxy===pt){ p.kblob=c.blob; p.kbox=c.box; } }
-    else { p.txy=pt; render(); }
+    else { p.txy=pt; render(); await findColors(p); if(d.p1===p && p.txy===pt && steps(d)[d.step-1]==='p1') render(); }
   };
-  const rt=$('#retap'); if(rt) rt.onclick=()=>{ if(d.p1){ d.p1.kxy=null; d.p1.txy=null; d.p1.kblob=null; d.p1.kbox=null; } render(); };
+  const rt=$('#retap'); if(rt) rt.onclick=()=>{ if(d.p1){ d.p1.kxy=null; d.p1.txy=null; d.p1.kblob=null; d.p1.kbox=null; d.p1.cx=null; d.p1.cmain=null; } render(); };
+  /* 키링 없이 올리는 기록: ② 사진에서 대상을 한 번 짚는다 */
+  const tw2=$('#tapwrap2'); if(tw2 && d.p2) tw2.onclick=async e=>{
+    const rc=tw2.getBoundingClientRect(); const pt={x:+((e.clientX-rc.left)/rc.width).toFixed(4), y:+((e.clientY-rc.top)/rc.height).toFixed(4)};
+    if(pt.x<0||pt.x>1||pt.y<0||pt.y>1) return;
+    const p=d.p2; p.txy=pt; render(); await findColors(p); if(d.p2===p && p.txy===pt && steps(d)[d.step-1]==='p2') render();
+  };
+  const rt2=$('#retap2'); if(rt2) rt2.onclick=()=>{ if(d.p2){ d.p2.txy=null; d.p2.cx=null; d.p2.cmain=null; } render(); };
+  document.querySelectorAll('#cpick [data-cmain]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; const v=b.dataset.cmain; p.cmain = v==='point' ? 'point' : +v; render(); });
   const nx=$('#next'); if(nx) nx.onclick=()=>{ d.step++; render(); window.scrollTo(0,0); };
   const sk=$('#skip'); if(sk) sk.onclick=()=>{ d.p2=null; d.step++; render(); window.scrollTo(0,0); };
   document.querySelectorAll('[data-chip]').forEach(b=>b.onclick=()=>{ d.chip=b.dataset.chip; d.noMatch=false;
@@ -1859,7 +2048,9 @@ async function submitDraft(){
   if(CUR.tool){ row.tool=CUR.tool; row.chip_code=d.chip||null; row.no_match=!!d.noMatch && !d.chip; }
   if(d.p1){ row.photo1_taken_at=d.p1.exif.taken; row.exif1=d.p1.exif.raw; row.taken_at=d.p1.exif.taken;
     if(d.p1.kxy) row.keyring_xy=Object.assign({}, d.p1.kxy, d.p1.kbox?{crop:d.p1.kbox}:{});
-    if(d.p1.txy) row.target_xy=d.p1.txy; }
+    if(d.p1.txy) row.target_xy=d.p1.txy;
+    const c1=draftColors(d.p1, 1); if(c1) row.colors=c1; }
+  if(d.p2 && d.p2.txy && !d.p1){ row.target_xy=d.p2.txy; const c2=draftColors(d.p2, 2); if(c2) row.colors=c2; }
   if(d.p2){ row.photo2_taken_at=d.p2.exif.taken; row.exif2=d.p2.exif.raw; if(!row.taken_at) row.taken_at=d.p2.exif.taken; }
   if(!row.taken_at && d.mode==='new') row.taken_at=new Date().toISOString();
   const item={id:d.id, mode:d.mode, row, p1:d.p1?d.p1.blob:null, p2:d.p2?d.p2.blob:null,
@@ -1930,9 +2121,16 @@ async function admReview(){
   if(!A.sel || !list.find(r=>r.id===A.sel)) A.sel=list[0]?list[0].id:null;
   const cur=A.list.find(r=>r.id===A.sel);
   $('#admbody').innerHTML=`<div class="tabs" style="margin-bottom:12px">${[['pending','확인 중'],['held','보완 요청'],['approved','인정'],['edited','인정 후 고침'],['picked','공개 선정'],['rejected','반려'],['all','전체']].filter(([k])=>(k!=='edited'||c.edited)&&(k!=='picked'||picksByHand())).map(([k,t])=>`<button class="chip" data-f="${k}" aria-pressed="${A.filter===k}">${t} ${k==='all'?A.list.length:c[k]}</button>`).join('')}</div>
+   ${A.list.some(needsFill)?`<div class="card small" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><span>미리보기나 색이 없는 기록이 <b>${A.list.filter(needsFill).length}건</b> 있어요. 예전 기록은 짚은 곳이 없어 사진 가운데에서 색을 뽑아요.</span><button class="btn light" id="fillall">미리보기·색 채우기</button></div>`:''}
    <div class="adm"><div class="qlist">${list.length?list.map(r=>`<button class="qitem" data-sel="${h(r.id)}" aria-current="${r.id===A.sel}"><div class="th" data-qt="${h(r.id)}"></div><div style="min-width:0"><b>${h(r.local_name||r.color_name)}</b><br><span class="xs muted">${h(A.authors[r.author]||'?')} · ${h(r.category)} · ${h(r.area||'')}</span></div><div>${tag(r.status)}${r.public_pick&&picksByHand()?' <span class="tag ok">공개</span>':''}<br><span class="xs muted">${fmt(r.created_at)}</span></div></button>`).join(''):'<div class="card muted">해당하는 기록이 없어요.</div>'}</div>
    <div>${cur?admDetail(cur):''}</div></div>`;
   document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ A.filter=b.dataset.f; A.sel=null; admReview(); });
+  const fa=$('#fillall'); if(fa) fa.onclick=async ()=>{
+    const todo=A.list.filter(needsFill); if(!confirm(`기록 ${todo.length}건에 미리보기와 색을 채울까요?\n원래 사진과 글은 그대로 두고, 미리보기 파일과 색 값만 더해요.`)) return;
+    fa.disabled=true; let ok=0, bad=0;
+    for(const r of todo){ fa.textContent=`채우는 중… ${ok+bad+1} / ${todo.length}`; try{ await fillRecord(r); ok++; }catch(e){ bad++; } }
+    toast(bad?`${ok}건 채웠고 ${bad}건은 못 했어요`:`${ok}건을 채웠어요`); admReview();
+  };
   document.querySelectorAll('[data-sel]').forEach(b=>b.onclick=()=>{ A.sel=b.dataset.sel; A.memo=''; A.reasons=[]; admReview(); });
   list.slice(0,80).forEach(async r=>{ const p=r.photo2_preview||r.photo2_path||r.photo1_preview||r.photo1_path; if(!p) return; const u=await admUrl(p); const el=document.querySelector(`[data-qt="${r.id}"]`); if(el&&u) el.innerHTML=`<img src="${h(u)}" alt="">`; });
   if(cur) bindDetail(cur);
@@ -1940,6 +2138,25 @@ async function admReview(){
 /* 초대형 미션(울릉)은 운영진이 바깥에 내보낼 기록을 손으로 고른다. 누구나 참여하는 미션은 인정 + 공개 동의면 자동 */
 const picksByHand = () => ED[S.adm.ed].mode==='invite';
 const admMatch = r => { const f=S.adm.filter; return f==='all' || (f==='edited' ? editedAfterOk(r) : f==='picked' ? !!r.public_pick : r.status===f); };
+/* 미리보기·색 채우기 — 미리보기와 색이 생기기 전에 올라온 기록을 운영진이 채운다.
+   짚은 곳이 있으면 ① 사진의 그 자리, 없으면(예전 기록) 키링이 없는 ② 사진의 가운데에서 색을 뽑는다.
+   미리보기 파일은 운영진 자기 폴더에 올린다(다른 사람 폴더에는 올릴 수 없음). 원래 사진·글은 건드리지 않는다. */
+const needsFill = r => !r.is_memory && (r.photo1_path||r.photo2_path) && (!okColors(r.colors) || (r.photo1_path&&!r.photo1_preview) || (r.photo2_path&&!r.photo2_preview));
+async function fillRecord(r){
+  const upd={}, pv={};
+  for(const n of [1,2]){ const path=r[`photo${n}_path`]; if(!path) continue;
+    const u=await admUrl(path); if(!u) continue;
+    const small=await makePreview(await (await fetch(u)).blob()); if(!small) continue; pv[n]=small;
+    if(!r[`photo${n}_preview`]){ const to=`${S.user.id}/${r.id}-${n}s.jpg`; await uploadBlob(to, small); upd[`photo${n}_preview`]=to; } }
+  if(!okColors(r.colors)){
+    const t=okXY(r.target_xy), photo=(t && pv[1]) ? 1 : pv[2] ? 2 : pv[1] ? 1 : 0;
+    if(photo){ const pt=(t && photo===1) ? t : {x:0.5, y:0.5};
+      const ex=extractColors(await previewPixels(pv[photo]), pt);
+      upd.colors=Object.assign(buildColors(ex, ex.pick, {photo, x:pt.x, y:pt.y}), {by:'staff', at:t&&photo===1?'target':'center'}); } }
+  if(!Object.keys(upd).length) return false;
+  const {error}=await sb.from('records').update(upd).eq('id', r.id); if(error) throw error;
+  Object.assign(r, upd); return true;
+}
 async function admUrl(p){ const A=S.adm; if(A.urls[p]) return A.urls[p]; const {data}=await sb.storage.from(BUCKET).createSignedUrl(p, 3600); if(data){ A.urls[p]=data.signedUrl; return data.signedUrl;} return null; }
 /* 관리자가 분류를 바로잡는다 (예: 나물↔식물 겹침, 바다·기타로 옮기기). 기억 카드는 사진이 없어 다른 분류로 옮기지 않는다 */
 function admCatField(r){
@@ -1959,6 +2176,7 @@ function admDetail(r){
     ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
     <dl><dt>분류</dt><dd>${admCatField(r)}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(ED[A.ed].placeLabel)}</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
       <dt>찍은 때</dt><dd>${h(condText(r.light, r.weather)||'—')}</dd><dt>${h(usageQ(ED[A.ed], r.category).label)}</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
+      <dt>색</dt><dd>${okColors(r.colors)?`${colorBand(r.colors, 18)}<span class="xs muted">${okColors(r.colors).colors.map(x=>h(x.hex)).join(' · ')} · ${r.colors.calibrated?'보정됨':'보정 전'}${r.colors.at==='center'?' · 사진 가운데 기준':''}</span>`:'없음'}${needsFill(r)?` <button class="btn light" id="fillone" style="min-height:34px;padding:2px 10px;font-size:13px">미리보기·색 채우기</button>`:''}</dd>
       <dt>기기</dt><dd class="small">${h([ex.Make,ex.Model].filter(Boolean).join(' ')||'—')}</dd><dt>공개</dt><dd>${r.share?'동의':'비공개'}</dd></dl>
     ${r.review_memo?`<div class="small muted">이전 검수 메모: ${h(r.review_memo)} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
     <div class="stack"><b>보완 사유</b><div class="row">${ED[A.ed].reasons.map(x=>`<button class="chip" data-rs="${h(x)}" aria-pressed="${A.reasons.includes(x)}">${h(x)}</button>`).join('')}</div>
@@ -1984,6 +2202,9 @@ function bindDetail(r){
     r.category=v; const it=A.list.find(x=>x.id===r.id); if(it) it.category=v;
     toast('분류를 «'+v+'»(으)로 바꿨어요');
   };
+  const fo=$('#fillone'); if(fo) fo.onclick=async ()=>{ fo.disabled=true; fo.textContent='채우는 중…';
+    try{ await fillRecord(r); toast('미리보기와 색을 채웠어요'); }catch(e){ toast('채우지 못했어요: '+(e.message||'')); }
+    admReview(); };
   const pk=$('#pick'); if(pk) pk.onclick=async ()=>{
     pk.disabled=true; const want=!r.public_pick;
     const {data, error}=await sb.from('records').update({public_pick:want}).eq('id', r.id).select('public_pick,public_picked_at').single();

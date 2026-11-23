@@ -14,6 +14,21 @@ const cors = {
 // 채취지가 드러나면 안 되는 분류: 동네 이름만 (수집단 안에서도 똑같이)
 const HIDE_COORDS = new Set(["나물·약초", "식물·꽃·열매", "기억 카드"]);
 
+// 색·짚은 곳은 올린 사람이 보낸 값이라, 모양이 맞는 것만 골라 내보낸다
+const HEX = /^#[0-9A-Fa-f]{6}$/;
+const unit = (v: unknown) => (typeof v === "number" && v >= 0 && v <= 1 ? v : null);
+const xy = (o: any) => (o && unit(o.x) != null && unit(o.y) != null ? { x: o.x, y: o.y } : null);
+function colorsOf(c: any) {
+  const list = Array.isArray(c?.colors) ? c.colors.filter((x: any) => HEX.test(x?.hex ?? "")).slice(0, 3) : [];
+  if (!list.length) return null;
+  const at = xy(c.roi);
+  return {
+    calibrated: c.calibrated === true,
+    colors: list.map((x: any) => ({ hex: x.hex.toUpperCase(), share: unit(x.share) })),
+    roi: at ? { ...at, photo: c.roi.photo === 2 ? 2 : 1, r: unit(c.roi.r) ?? 0.24 } : null,
+  };
+}
+
 function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -46,7 +61,7 @@ Deno.serve(async (req: Request) => {
 
   let q = sb
     .from("records")
-    .select("id,author,status,category,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng")
+    .select("id,author,status,category,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy")
     .eq("edition", edition)
     .eq("share", true);
   q = group ? q.in("status", ["pending", "held", "approved"]) : q.eq("status", "approved").eq("public_pick", true);
@@ -94,6 +109,9 @@ Deno.serve(async (req: Request) => {
       is_memory: r.is_memory,
       photo: ph[0]?.url ?? null,
       photos: ph,
+      // 뽑은 색(보정 전 표시 포함)과, 정사각 카드로 자를 때 기준이 되는 짚은 곳
+      colors: colorsOf(r.colors),
+      focus: xy(r.target_xy) ?? xy(r.colors?.roi),
       by: nick[r.author] ?? "",
       at: r.created_at,
       // 좌표: 민감 분류는 없음, 나머지는 약 100m 단위로 뭉갬
