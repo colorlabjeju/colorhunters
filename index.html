@@ -303,6 +303,11 @@ main.land{max-width:none;padding:0;gap:0}
 .L-m .ph img{width:100%;height:100%;object-fit:cover;display:block}
 .L-m .ph .stripes{position:absolute;inset:0;display:flex}
 .L-m .badge{position:absolute;left:10px;top:10px;font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;background:rgba(36,42,38,.84);color:#fff}
+.partner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px;background:linear-gradient(rgba(20,24,20,.2),rgba(20,24,20,.5));text-align:center;pointer-events:none}
+.partner .plogo{display:block;width:min(76%,300px);aspect-ratio:720/156;background:#FFCE33;-webkit-mask:url(img/nowda-logo.png) center/contain no-repeat;mask:url(img/nowda-logo.png) center/contain no-repeat;filter:drop-shadow(0 1px 6px rgba(0,0,0,.35))}
+.partner .pcap{font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:.04em;line-height:1.3;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.L-m .badge{z-index:1}
+.L-m .badge.sp{left:auto;right:10px;background:#FFCE33;color:#332F29}
 .L-m .badge.soon{background:rgba(255,255,255,.92);color:var(--e-ink)}
 .L-m .body{display:flex;flex-direction:column;gap:6px;padding:14px 16px 16px;flex:1}
 .L-m b{font-size:19px;font-weight:500;letter-spacing:-.02em;line-height:1.35;color:var(--e-ink)}
@@ -947,15 +952,21 @@ const LANDING = [
 /* 임시 사진(위키미디어 공용, 2026-11-23). 대표 사진이 오면 같은 파일 이름으로 바꾸고 LAND_CREDIT에서 해당 줄을 지운다. */
 const LANDING_IMG = {camellia:'img/camellia.jpg', ulleung:'img/ulleung.jpg', jejublues:'img/jejublues.jpg', tradition:'img/tradition.jpg'};
 const LAND_CREDIT = '사진: 울릉 — Korea.net/KOCIS(CC BY-SA 2.0) · 제주 바다 — lumoplank(CC0) · 안동 — Robert(CC BY 3.0), 위키미디어 공용';
+/* 협력 기관 특별 미션 — 사진 위에 기관 로고를 올린다. (동백 = 제주관광공사 나우다) */
+const LAND_PARTNER = {camellia:{name:'나우다', cap:'제주관광공사 × 컬러헌터스', badge:'특별 미션'}};
+function partnerMark(x){
+  const p = LAND_PARTNER[x.key]; if(!p) return '';
+  return `<span class="partner"><span class="plogo" role="img" aria-label="${h(p.name)}"></span><span class="pcap">${h(p.cap)}</span></span>`;
+}
 function projImage(x){
-  if(LANDING_IMG[x.key]) return `<img src="${LANDING_IMG[x.key]}" alt="${h(x.title)}">`;
+  if(LANDING_IMG[x.key]) return `<img src="${LANDING_IMG[x.key]}" alt="${h(x.title)}">${partnerMark(x)}`;
   return `<div class="swatch" aria-hidden="true">${x.sw.map(([c,w])=>`<i style="background:${c};flex:${w}"></i>`).join('')}</div>`;
 }
 /* 랜딩 (시안 2026-11-23) — 표지 · 지금 열린 미션 · 나만의 컬러저널 · 지도로 만나는 컬러아카이브 · 제주의 색 · 컬러헌터가 된다는 것 · 바닥.
    지어낸 숫자·없는 글은 넣지 않는다: 기록 건수는 공개 기록이 쌓이면, «이달의 색» 읽을거리는 글이 생기면 추가. 사진은 LANDING_IMG에 경로를 적으면 카드에 들어간다. */
 const LAND_ORDER = ['camellia','ulleung','jejublues','tradition'];
 const LAND_CARD = {
-  camellia:{badge:'진행중', d:'겨울을 물들이는 제주의 동백색', acc:'누구나 참여', icon:'user'},
+  camellia:{badge:'진행중', d:'제주관광공사 나우다와 함께 찾는 겨울 동백색', acc:'누구나 참여', icon:'user'},
   ulleung:{badge:'진행중', d:'울릉의 자연과 삶이 만든 고유한 색', acc:'참여 코드', note:'(주민 전용)', icon:'lock'},
   jejublues:{badge:'진행중', d:'제주의 바다를 걸으며 기록하는 색', acc:'누구나 참여', icon:'user'},
   tradition:{badge:'곧 열림', soon:true, d:'안동의 전통과 일상에서 발견하는 색', acc:'오픈 예정', icon:'cal'}
@@ -1001,7 +1012,7 @@ function vNoInvite(){
     <div class="bar"><div class="head"><p class="eyebrow">COLOR MISSIONS</p><h2 class="t" id="missions-h">지금, 열린 미션</h2><p class="lead">지금 참여할 수 있는 컬러헌팅 미션입니다.</p></div></div>
     <div class="L-mlist">${ms.map(x=>{ const c=LAND_CARD[x.key]||{}; return `
       <button class="L-m" data-land="${x.key}" aria-label="${h(x.title)} 살펴보기">
-        <span class="ph">${landPhoto(x)}<span class="badge${c.soon?' soon':''}">${h(c.badge||'')}</span></span>
+        <span class="ph">${landPhoto(x)}${partnerMark(x)}<span class="badge${c.soon?' soon':''}">${h(c.badge||'')}</span>${LAND_PARTNER[x.key]?`<span class="badge sp">${h(LAND_PARTNER[x.key].badge)}</span>`:''}</span>
         <span class="body"><b>${h(x.title)}</b><span class="d">${h(c.d||x.card)}</span></span>
         <span class="acc">${LAND_ICON[c.icon]||''}${h(c.acc||'')}${c.note?` <small>${h(c.note)}</small>`:''}</span>
       </button>`; }).join('')}</div>
