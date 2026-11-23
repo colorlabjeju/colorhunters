@@ -611,9 +611,14 @@ function tfSVG(p){
   p.i.forEach((c,k)=>{ s+=wedge(12.5,19.3,22.5*k,22.5*(k+1),c); });
   return s+`<rect x="${cx-7}" y="${cy-27.6}" width="14" height="1.8" rx=".9" fill="#8C8C8C"/></svg>`;
 }
+/* 컬러카드(컬러랩제주 뚜띠콜로리 컬러카드 — 한 장에 한 색, 위에 색 이름, 아래에 tutti colori·색 번호)와 컬러칩 띠를 나란히 */
 function chipSVG(){
   const cs=['#C6DB91','#A9C769','#85AD4E','#698447'];
-  return `<svg viewBox="0 0 64 72" aria-hidden="true"><g transform="rotate(-8 32 38)"><rect x="19" y="6" width="26" height="62" rx="3" fill="#FFFFFF" stroke="#CFCAB8"/>${cs.map((c,i)=>`<rect x="22" y="${9+i*14}" width="20" height="12.5" fill="${c}"/>`).join('')}</g></svg>`;
+  return `<svg viewBox="0 0 64 72" aria-hidden="true">`
+    +`<g transform="rotate(-6 19 38)"><rect x="4" y="16" width="30" height="44" rx="3" fill="#E0752E"/>`
+    +`<rect x="7.5" y="20.5" width="17" height="2.2" rx="1.1" fill="#FFFFFF"/><rect x="7.5" y="24.6" width="13" height="2.2" rx="1.1" fill="#FFFFFF"/><rect x="7.5" y="28.8" width="11" height="1.4" rx=".7" fill="#FFFFFF" opacity=".85"/>`
+    +`<rect x="7.5" y="54.6" width="8" height="1.4" rx=".7" fill="#FFFFFF" opacity=".85"/><rect x="24" y="53.6" width="6.5" height="2.6" rx="1" fill="#FFFFFF"/></g>`
+    +`<g transform="rotate(7 49 38)"><rect x="39.5" y="8" width="19" height="58" rx="2.5" fill="#FFFFFF" stroke="#CFCAB8"/>${cs.map((c,i)=>`<rect x="42" y="${10.5+i*13.4}" width="14" height="12" fill="${c}"/>`).join('')}</g></svg>`;
 }
 function frameSVG(){
   /* 위쪽 정사각 창은 뚫린 자리: 바깥 틀에서 창을 빼고(evenodd) 테두리만 그린다 */
@@ -625,7 +630,7 @@ const TOOLS = {
   '바다':{g:'tf', t:'바다', name:'톤파인더 바다', ex:'바닷물·갯바위·해조류', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
   '숲':{g:'tf', t:'숲', name:'톤파인더 숲', ex:'나물·약초·잎·이끼', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
   '꽃':{g:'tf', t:'꽃', name:'톤파인더 꽃', ex:'꽃·열매·호박·먹거리', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
-  '컬러칩':{g:'etc', t:'컬러카드·컬러칩', name:'컬러카드·컬러칩', ex:'색 견본 카드나 칩', short:'컬러칩', tap:'컬러칩 가운데'},
+  '컬러칩':{g:'etc', t:'컬러카드·컬러칩', name:'컬러카드·컬러칩', ex:'컬러랩제주 컬러카드·색 견본 칩', short:'컬러칩', tap:'컬러칩 가운데'},
   '컬러프레임':{g:'etc', t:'컬러프레임', name:'컬러프레임', ex:'흰 틀 창에 대상을 담아', short:'컬러프레임', tap:'프레임의 흰 테두리',
     note:'컬러프레임은 흰 테두리로 그날 빛의 색(누렇거나 푸른 기운)을 맞춰요.'},
   '제주블루스':{name:'제주블루스 키링', short:'키링', tap:'키링 가운데'}
