@@ -69,6 +69,16 @@ main.wide{max-width:1180px}
 .ring i{width:46px;height:46px;border-radius:50%;border:8px solid currentColor;display:block}
 .ring b{font-size:20px}
 .ring span{font-size:13px;color:var(--ink3);text-align:center;line-height:1.35}
+/* 색 잣대 고르기: 실물을 닮은 작은 그림 */
+.ring.tool{gap:4px;padding:12px 8px}
+.ring.tool svg{width:58px;height:65px;display:block}
+.ring.tool b{font-size:17px}
+details.why{padding:12px 14px}
+details.why summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+details.why summary::-webkit-details-marker{display:none}
+details.why summary::after{content:'＋';color:var(--ink3);font-weight:700}
+details.why[open] summary::after{content:'－'}
+details.why p{margin:8px 0 0;line-height:1.6}
 .ring[aria-pressed="true"]{border-color:currentColor;background:var(--soft)}
 /* 키링 칸 고르기 */
 .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
@@ -572,6 +582,60 @@ const RINGS = [
   {v:'숲', c:'var(--forest)', ex:'나물·약초·잎·이끼'},
   {v:'꽃', c:'var(--flower)', ex:'꽃·열매·호박·먹거리'}
 ];
+/* ================= 색 잣대 — 색을 미리 재 둔 도구 (톤파인더·컬러카드/컬러칩·컬러프레임) =================
+   카메라는 휴대폰마다 색을 다르게 담는다. 원래 색을 아는 잣대를 대상 옆에 함께 찍으면, 사진 속 잣대 색이
+   얼마나 달라졌는지 보고 대상의 색을 현장 색에 가깝게 되돌릴 수 있다.
+   값은 records.keyring 칸에 그대로 쓴다 — 예전 값('바다'·'숲'·'꽃')은 톤파인더 바다·숲·꽃으로 읽힌다. */
+const TOOL_WORD = '색 잣대';
+/* 톤파인더 칸 색: 실물 그림에서 읽은 값. o = 바깥 14칸(12시 고리 바로 오른쪽부터 시계 방향), i = 안쪽 16칸(12시부터 시계 방향) */
+const TF = {
+  '기본':{o:['#014028','#0E633C','#508643','#189249','#69B048','#738255','#A4B059','#BBCF3F','#F7E888','#EBAC30','#DB6B2A','#AB2E2C','#D32D26','#CE2662'],
+          i:['#FFFEFE','#BDB9AD','#3D3C39','#451F12','#49362D','#734F3A','#9D5A36','#A67B4B','#C6A780','#C47AA9','#77456A','#412E85','#18347E','#2A5555','#1B86C1','#6BBCC9']},
+  '바다':{o:['#223D3F','#183974','#074256','#135254','#215476','#225176','#005AA7','#176A91','#326FA1','#167A77','#009CC5','#53A29A','#58A2B2','#58B5BB'],
+          i:['#FCFCFA','#EEF3F5','#D2E1E4','#BFD7D1','#BFD7D1','#B8D7DE','#B4D4D6','#B3CAD7','#94BFBA','#A0BBAD','#97B1D4','#8F9CC4','#7992A1','#5F76AE','#657890','#546679']},
+  '숲':{o:['#B5B6B6','#5C644B','#6B6941','#33482F','#4A5C45','#446851','#637B58','#51723C','#4F8446','#709341','#829B5A','#929E4E','#A7BE54','#BAC385'],
+         i:['#564546','#56524C','#7E766A','#503A2C','#724734','#985C35','#754F2B','#826444','#9C7D57','#A77139','#AE8D5D','#756252','#9B8972','#9F9477','#BBAF9D','#D4C2A2']},
+  '꽃':{o:['#EBB7CF','#E5A1AE','#D989A6','#DE80A0','#DE7F8F','#D15E82','#D45D73','#D54F8F','#D65082','#D2226A','#D1197D','#C41A7D','#A12567','#7E1C4E'],
+         i:['#F2E8CB','#FEFBF5','#FFFFFF','#FAEFF0','#FCF4F8','#F5DCDD','#F0CAD5','#EAC4BB','#E0C3D3','#ECBCD2','#E8BECE','#E3B1B3','#E8ADC2','#DBAFC0','#E0A2A9','#EAD77B']}
+};
+/* 단순한 벡터 그림 (64×72). 0°=12시, 시계 방향 */
+/* 흰 바탕에 칸 사이도 흰 선, 위쪽 고리는 그리지 않는다. 12시 쪽 바깥 칸이 빈 자리는 «Color Hunters» 글자 자리(작은 회색 줄로 표시) */
+function tfSVG(p){
+  const cx=32, cy=36, pt=(r,a)=>{ const t=(a-90)*Math.PI/180; return [(cx+r*Math.cos(t)).toFixed(2), (cy+r*Math.sin(t)).toFixed(2)]; };
+  /* 흰색에 가까운 칸은 흰 바탕에 묻히지 않게 아주 옅은 테두리 */
+  const light = c => { const n=parseInt(c.slice(1),16); return ((n>>16&255)*0.299+(n>>8&255)*0.587+(n&255)*0.114) > 238; };
+  const wedge=(r0,r1,a0,a1,fill)=>{ const [x1,y1]=pt(r1,a0),[x2,y2]=pt(r1,a1),[x3,y3]=pt(r0,a1),[x4,y4]=pt(r0,a0);
+    return `<path d="M${x1} ${y1}A${r1} ${r1} 0 0 1 ${x2} ${y2}L${x3} ${y3}A${r0} ${r0} 0 0 0 ${x4} ${y4}Z" fill="${fill}" stroke="${light(fill)?'#E2DFD6':'#FFFFFF'}" stroke-width="${light(fill)?.6:1.1}"/>`; };
+  let s=`<svg viewBox="0 0 64 72" aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="31.5" fill="#FFFFFF"/>`;
+  p.o.forEach((c,k)=>{ s+=wedge(23.4,30.3,22.5*(k+1),22.5*(k+2),c); });
+  p.i.forEach((c,k)=>{ s+=wedge(12.5,19.3,22.5*k,22.5*(k+1),c); });
+  return s+`<rect x="${cx-7}" y="${cy-27.6}" width="14" height="1.8" rx=".9" fill="#8C8C8C"/></svg>`;
+}
+function chipSVG(){
+  const cs=['#C6DB91','#A9C769','#85AD4E','#698447'];
+  return `<svg viewBox="0 0 64 72" aria-hidden="true"><g transform="rotate(-8 32 38)"><rect x="19" y="6" width="26" height="62" rx="3" fill="#FFFFFF" stroke="#CFCAB8"/>${cs.map((c,i)=>`<rect x="22" y="${9+i*14}" width="20" height="12.5" fill="${c}"/>`).join('')}</g></svg>`;
+}
+function frameSVG(){
+  /* 위쪽 정사각 창은 뚫린 자리: 바깥 틀에서 창을 빼고(evenodd) 테두리만 그린다 */
+  return `<svg viewBox="0 0 64 72" aria-hidden="true"><path d="M18 3h28a2 2 0 0 1 2 2v62a2 2 0 0 1-2 2H18a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM21.5 9v21h21V9Z" fill="#FFFFFF" fill-rule="evenodd" stroke="#CFCAB8"/><rect x="24" y="36" width="16" height="2" rx="1" fill="#8A8A8A"/></svg>`;
+}
+/* short: 문장 속 이름, tap: ① 사진에서 먼저 누를 곳 */
+const TOOLS = {
+  '기본':{g:'tf', t:'기본', name:'톤파인더 기본', ex:'여러 가지 색 — 무엇이든', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
+  '바다':{g:'tf', t:'바다', name:'톤파인더 바다', ex:'바닷물·갯바위·해조류', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
+  '숲':{g:'tf', t:'숲', name:'톤파인더 숲', ex:'나물·약초·잎·이끼', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
+  '꽃':{g:'tf', t:'꽃', name:'톤파인더 꽃', ex:'꽃·열매·호박·먹거리', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
+  '컬러칩':{g:'etc', t:'컬러카드·컬러칩', name:'컬러카드·컬러칩', ex:'색 견본 카드나 칩', short:'컬러칩', tap:'컬러칩 가운데'},
+  '컬러프레임':{g:'etc', t:'컬러프레임', name:'컬러프레임', ex:'흰 틀 창에 대상을 담아', short:'컬러프레임', tap:'프레임의 흰 테두리',
+    note:'컬러프레임은 흰 테두리로 그날 빛의 색(누렇거나 푸른 기운)을 맞춰요.'},
+  '제주블루스':{name:'제주블루스 키링', short:'키링', tap:'키링 가운데'}
+};
+const toolSVG = v => TF[v] ? tfSVG(TF[v]) : v==='컬러칩' ? chipSVG() : v==='컬러프레임' ? frameSVG() : '';
+const toolName = v => !v ? '' : TOOLS[v] ? TOOLS[v].name : v+' 키링';
+const toolShort = d => (TOOLS[d.keyring]||{}).short || '키링';
+const toolTap = d => (TOOLS[d.keyring]||{}).tap || '키링 가운데';
+/* 받침이 있으면 a(을·과), 없으면 b(를·와) */
+const jo = (w, a, b) => { const c=w.charCodeAt(w.length-1)-0xAC00; return w + ((c>=0 && c<11172 && c%28) ? a : b); };
 /* 제주블루스 (누구나 참여) */
 const JB_CATS = [
   {v:'바다', ex:'물빛, 파도, 수평선 — 오늘의 바다색'},
@@ -609,7 +673,8 @@ const JB_REASONS = ['키링이 안 보이거나 작음','키링과 대상의 빛
 /* 에디션별 설정 — 새 프로젝트는 여기에 하나 더 넣고, editions 테이블에 같은 slug를 만든다 */
 const ED = {
   ulleung:{slug:'ulleung', base:'', mode:'invite', name:'울릉 색채수집단', cats:CATS, rings:RINGS, center:[37.505,130.865], zoom:12,
-    ringQ:'어떤 키링을 대고 찍나요?', ringHint:'찍을 대상과 비슷한 색 조각이 많은 키링을 고르세요.',
+    ringQ:'어떤 색 잣대를 대고 찍나요?', ringHint:'톤파인더·컬러칩·컬러프레임처럼 색을 미리 재 둔 도구를 «색 잣대»라고 불러요. 찍을 대상과 비슷한 색이 많은 것을 고르세요.',
+    tools:[{g:'톤파인더', items:['기본','바다','숲','꽃']}, {g:'다른 색 잣대', items:['컬러칩','컬러프레임']}],
     catHint:'나물과 식물이 겹치면 — 먹거나 약으로 쓰면 «나물·약초», 아니면 «식물·꽃·열매». 헷갈리면 아무거나 골라도 돼요. 확인할 때 함께 정리해요.',
     placeLabel:'동네', wordsTitle:'울릉 이름과 이야기', nameQ:'울릉에서는 뭐라고 부르나요?', nameLabel:'울릉 이름', namePh:'예: 명이, 부지깽이',
     nameHint:'따로 부르는 이름이 없으면 보이는 대로 적어도 돼요. 예: 도동항 아침 바다',
@@ -1354,7 +1419,7 @@ const LANDING = [
    desc:'겨울 정원에서 발견한 색을 함께 기록해요.',
    text:'카멜리아힐에서 시작해 제주 동백 여행지를 돌며, 그날 그 자리의 동백 색을 키링과 함께 찾아 남깁니다. 별칭만 정하면 누구나 참여할 수 있어요.',
    sw:[['#7E1A2C',3],['#A8283D',4],['#C9455A',3],['#E08A93',2],['#F1D3D2',2],['#2F4A2B',3],['#5E7146',2]]},
-  {key:'ulleung', color:'#4F6B3E', badge:'참여 코드', meta:'울릉 색채수집단 · 바다·숲·꽃 키링', card:'나물·약초, 열매, 먹거리, 생업 재료. 주민의 시선으로 섬의 자원을 색으로 모읍니다.', title:'울릉색채수집 프로젝트', tag:'조사단 프로젝트 · 진행 중', sub:'울릉 헤리티지', state:'진행 중', tone:'ok',
+  {key:'ulleung', color:'#4F6B3E', badge:'참여 코드', meta:'울릉 색채수집단 · 톤파인더·컬러칩·컬러프레임', card:'나물·약초, 열매, 먹거리, 생업 재료. 주민의 시선으로 섬의 자원을 색으로 모읍니다.', title:'울릉색채수집 프로젝트', tag:'조사단 프로젝트 · 진행 중', sub:'울릉 헤리티지', state:'진행 중', tone:'ok',
    desc:'주민의 시선으로 모으는 우리 지역의 색과 이야기.',
    text:'나물·약초, 열매, 먹거리, 생업 재료. 울릉 사람들이 함께 섬의 자원을 색으로 모아 「색채기반 울릉자원도감」을 만듭니다.',
    sw:[['#2E4A33',3],['#4F6B3E',3],['#86915D',3],['#B9AE7E',2],['#D9C9A0',2],['#2B4B55',3],['#6F8C95',2]]},
@@ -1539,6 +1604,10 @@ async function loadAllEditions(){
 const STEPS = `<div class="card stack" style="gap:10px"><p class="h3">이렇게 기록해요</p>
   <ol class="tips" style="gap:8px"><li><b>키링을 대고 한 장</b> — 대상 바로 옆, 같은 빛 아래에서</li><li><b>키링을 빼고 한 장</b> — 같은 자리에서 바로 이어서</li><li><b>장소와 시간</b> — 휴대폰 위치로 자동 기록</li><li><b>이름과 이야기</b> — 그 자리에서 본 것, 한두 문장</li></ol>
   <p class="small muted">키링의 색 조각은 원래 색값을 알고 있는 기준색입니다. 함께 찍으면 빛과 휴대폰이 바꾼 색을 되돌려 대상의 색을 숫자로 남길 수 있어요.</p></div>`;
+/* 울릉: 키링 외에 컬러칩·컬러프레임도 쓰므로 «색 잣대»로 묶어 말한다 */
+const STEPS_TOOLS = `<div class="card stack" style="gap:10px"><p class="h3">이렇게 기록해요</p>
+  <ol class="tips" style="gap:8px"><li><b>색 잣대를 대고 한 장</b> — 톤파인더·컬러칩·컬러프레임을 대상 바로 옆, 같은 빛 아래에</li><li><b>색 잣대를 빼고 한 장</b> — 같은 자리에서 바로 이어서</li><li><b>장소와 시간</b> — 휴대폰 위치로 자동 기록</li><li><b>이름과 이야기</b> — 그 자리에서 본 것, 한두 문장</li></ol>
+  <p class="small muted">«색 잣대»는 색을 미리 재 둔 도구예요. 찍는 휴대폰은 달라도 잣대를 함께 찍으면, 빛과 카메라가 바꾼 색을 되돌려 대상의 색을 현장에서 본 색에 가깝게 숫자로 남길 수 있어요.</p></div>`;
 /* 미션마다 안내 카드 묶음 (좁은 화면은 «소개» 탭의 카드, 넓은 화면은 왼쪽 단의 접힌 안내로 같은 내용을 쓴다) */
 function aboutInner(key, eds){
   if(key==='ulleung') return `
@@ -1546,7 +1615,7 @@ function aboutInner(key, eds){
       <dl><dt>도감</dt><dd>「색채기반 울릉자원도감」 — 자원의 울릉 이름, 쓰임, 이야기, 색</dd><dt>지도</dt><dd>울릉 자원 지도 — 어느 동네에서 무엇이 나고 쓰이는지</dd><dt>기록</dt><dd>이번 겨울에 시작해 사계절 기록으로 이어갑니다</dd></dl></div>
     <div class="card stack" style="gap:10px"><p class="h3">기록하는 자원</p>
       ${CATS.map(c=>`<div><b>${h(c.v)}</b> <span class="small muted">— ${h(c.ex)}</span></div>`).join('')}</div>
-    ${STEPS}
+    ${STEPS_TOOLS}
     <div class="card stack" style="gap:6px"><p class="h3">함께하는 곳</p><p class="small">한동대학교 IRIS 리빙랩 · 컬러랩제주 · 울릉 색채수집단</p>
       <p class="small muted">정확한 위치와 사유지는 공개 지도에 나오지 않도록 흐리게 표시합니다.</p></div>`;
   if(key==='camellia'){
@@ -1751,7 +1820,7 @@ function openRecord(r){
       ${ps.length?`<div class="rv-ph"><div class="swipe" data-swipe>${ps.map(fig).join('')}</div>
         ${ps.length>1?`<div class="swnav"><button class="btn light" data-sw="-1" aria-label="이전 사진">‹</button><span class="small muted" data-swn>1 / ${ps.length} · 옆으로 넘겨 보세요</span><button class="btn light" data-sw="1" aria-label="다음 사진">›</button></div>`:''}</div>`:''}
       <div class="rv-tx">
-        <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(r.keyring)+' 키링':''}</p><h2 class="h2">${h(r.name)}</h2>
+        <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(toolName(r.keyring)):''}</p><h2 class="h2">${h(r.name)}</h2>
           ${r.status&&r.status!=='approved'?`<p class="small">${tag(r.status)} <span class="muted">컬러랩제주가 아직 확인하지 않은 기록이에요.</span></p>`:''}</div>
         ${col&&col.colors.length?`<div class="rv-col">${colorBlock(col)}${roi?'<p class="xs muted">사진 위 점선이 색을 뽑은 곳이에요.</p>':''}</div>`:''}
         <div class="stack" style="gap:6px">
@@ -1975,7 +2044,7 @@ function vRecord(id){
     ${r.status==='held'?`<div class="notice">보완 요청: ${h(r.review_memo||'')} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
     ${r.is_memory?'<p class="tag">기억 카드</p>':(r.photo1_path&&r.photo2_path?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div><div class="shot" data-ph="photo2_path"><span class="badge">② 키링 없이</span></div></div>`:r.photo1_path?`<div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div>`:`<div class="shot" data-ph="photo2_path"><span class="badge">사진</span></div>`)}
     ${colorBlock(r.colors)}
-    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>키링</dt><dd>${h(r.keyring||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${h([r.taken_src==='unknown'?'시각 모름':timeUnsure(r)&&CUR.conditions?'':(fmtWhen(r.taken_src?r.taken_at:(r.photo1_taken_at||r.taken_at||r.created_at))), whenLine(r), r.weather].filter(Boolean).join(' · ')||'—')}${timeUnsure(r)&&CUR.conditions&&canEditFields(r)?' <span class="xs muted">사진에 찍은 시각이 없어요. «고치기»에서 알려 주세요.</span>':''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
+    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>${CUR.tools?TOOL_WORD:'키링'}</dt><dd>${h(toolName(r.keyring)||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${h([r.taken_src==='unknown'?'시각 모름':timeUnsure(r)&&CUR.conditions?'':(fmtWhen(r.taken_src?r.taken_at:(r.photo1_taken_at||r.taken_at||r.created_at))), whenLine(r), r.weather].filter(Boolean).join(' · ')||'—')}${timeUnsure(r)&&CUR.conditions&&canEditFields(r)?' <span class="xs muted">사진에 찍은 시각이 없어요. «고치기»에서 알려 주세요.</span>':''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
     ${canEditText(r)?(S.textEdit===r.id?vTextForm(r):`<button class="btn light block" id="tedit">✎ ${canEditFields(r)?'고치기 (이름·분류·동네·이야기)':CUR.usage?'이름·쓰임·이야기 고치기':'색 이름·이야기 고치기'}</button>`):''}
     <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.mode==='invite'?'끄면 이 기록은 나와 컬러랩제주만 봐요.':'끄면 이 기록은 공개하지 않아요.'}</span></span></label>
     ${canDelete(r)?`<button class="btn light block" id="rdel" style="color:var(--bad-ink)">이 기록 지우기</button>`:''}
@@ -2194,33 +2263,52 @@ function vDraft(){
     body=`<h1 class="h2">무엇을 기록하나요?</h1>${CUR.catHint?`<p class="small muted">${h(CUR.catHint)}</p>`:''}<div class="stack">${CUR.cats.map(x=>`<button class="choice" data-cat="${h(x.v)}" aria-pressed="${d.category===x.v}"><b>${h(x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`;
     foot=`<button class="btn main block" id="next" ${d.category?'':'disabled'}>다음</button>`;
   } else if(k==='ring'){
-    body=`<h1 class="h2">${h(CUR.ringQ)}</h1><p class="muted small">${h(CUR.ringHint)}</p>
-      <div class="rings" style="grid-template-columns:repeat(${CUR.rings.length},1fr)">${CUR.rings.map(x=>`<button class="ring" style="color:${x.c}" data-ring="${x.v}" aria-pressed="${d.keyring===x.v}"><i></i><b>${h(x.t||x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`;
+    body=`<h1 class="h2">${h(CUR.ringQ)}</h1><p class="muted small">${h(CUR.ringHint)}</p>`
+      + (CUR.tools
+        /* 색 잣대 묶음: 톤파인더 넷(2×2), 다른 색 잣대 둘 — 실물을 닮은 작은 그림으로 */
+        ? CUR.tools.map(gr=>`<p class="small" style="margin:6px 0 -2px"><b>${h(gr.g)}</b></p>
+            <div class="rings tools" style="grid-template-columns:repeat(2,minmax(0,1fr))">${gr.items.map(v=>{ const t=TOOLS[v];
+              /* 톤파인더는 이름만(기본·바다·숲·꽃), 다른 색 잣대는 한 줄 설명을 함께 */
+              return `<button class="ring tool" data-ring="${h(v)}" aria-pressed="${d.keyring===v}" aria-label="${h(t.name)} — ${h(t.ex)}">${toolSVG(v)}<b>${h(t.t)}</b>${t.g==='tf'?'':`<span>${h(t.ex)}</span>`}</button>`; }).join('')}</div>`).join('')
+        : `<div class="rings" style="grid-template-columns:repeat(${CUR.rings.length},1fr)">${CUR.rings.map(x=>`<button class="ring" style="color:${x.c}" data-ring="${x.v}" aria-pressed="${d.keyring===x.v}"><i></i><b>${h(x.t||x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`);
     foot=`<button class="btn main block" id="next" ${d.keyring?'':'disabled'}>다음</button>`;
   } else if(k==='p1'){
-    const tapMsg = !d.p1 || !CUR.taps ? '' : !d.p1.kxy ? '사진에서 <b>키링 가운데</b>를 한 번 눌러 주세요' : !d.p1.txy ? '이제 <b>기록할 대상</b>을 한 번 눌러 주세요' : '잘 짚었어요. 다시 하려면 «다시 짚기»';
-    const mark = (pt, kind) => pt ? `<span aria-hidden="true" style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:${(pt.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:${kind==='k'?44:28}px;height:${kind==='k'?44:28}px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px ${kind==='k'?'#224653':'#A6503F'};${kind==='t'?'background:rgba(166,80,63,.35);':''}pointer-events:none"></span><span style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:calc(${(pt.y*100).toFixed(2)}% + ${kind==='k'?28:20}px);transform:translateX(-50%);background:${kind==='k'?'#224653':'#A6503F'};color:#fff;border-radius:6px;padding:0 6px;font-size:12px;font-weight:700;pointer-events:none">${kind==='k'?'키링':'대상'}</span>` : '';
-    body=`<h1 class="h2">① 키링을 대고 한 장</h1>
+    const tl=toolShort(d), tw=CUR.tools?TOOL_WORD:'키링', tool=TOOLS[d.keyring]||{};
+    const tapW=toolTap(d), josa=(w,a,b)=>jo(w,a,b).slice(w.length);
+    const tapMsg = !d.p1 || !CUR.taps ? '' : !d.p1.kxy ? `사진에서 <b>${h(tapW)}</b>${josa(tapW,'을','를')} 한 번 눌러 주세요. 이 ${h(jo(tw,'이','가'))} 색을 맞추는 기준이 돼요.`
+      : !d.p1.txy ? '이제 <b>기록할 대상</b>을 한 번 눌러 주세요'
+      : `잘 짚었어요. 사진 속 ${h(tl)}의 색이 원래 색과 얼마나 다른지 보고, 대상의 색을 현장에서 본 색에 가깝게 되돌려요. 다시 하려면 «다시 짚기»`;
+    /* ${TOOL_WORD}가 하는 일 — 한 번 읽으면 되니 접어 둔다 */
+    const why = CUR.tools ? `<details class="card why"><summary><b>왜 ${h(tw)}를 함께 찍나요?</b></summary>
+      <p class="small">휴대폰마다 카메라가 색을 조금씩 다르게 담아요. 찍는 휴대폰은 달라도, <b>색을 미리 재 둔 ${h(tw)}</b>(톤파인더·컬러칩·컬러프레임)를 대상 옆에 함께 찍으면
+      사진 속 잣대의 색이 얼마나 달라졌는지 보고 <b>대상의 색을 현장에서 본 색에 가깝게</b> 되돌릴 수 있어요. 그래서 잣대와 대상이 <b>같은 빛</b>을 받아야 해요.</p>
+      ${tool.note?`<p class="small muted">${h(tool.note)}</p>`:''}</details>` : '';
+    const mark = (pt, kind) => pt ? `<span aria-hidden="true" style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:${(pt.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:${kind==='k'?44:28}px;height:${kind==='k'?44:28}px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px ${kind==='k'?'#224653':'#A6503F'};${kind==='t'?'background:rgba(166,80,63,.35);':''}pointer-events:none"></span><span style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:calc(${(pt.y*100).toFixed(2)}% + ${kind==='k'?28:20}px);transform:translateX(-50%);background:${kind==='k'?'#224653':'#A6503F'};color:#fff;border-radius:6px;padding:0 6px;font-size:12px;font-weight:700;pointer-events:none">${kind==='k'?h(tl):'대상'}</span>` : '';
+    const isFrame = d.keyring==='컬러프레임';
+    body=`<h1 class="h2">① ${h(jo(tl,'을','를'))} 대고 한 장</h1>
+      ${why}
       ${d.p1&&CUR.taps?`<div class="notice small" id="tapmsg" style="margin:0">${tapMsg}</div>
-      <div id="tapwrap" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation"><img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진 — 눌러서 키링과 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">${d.p1.txy?roiMarks(d.p1.txy, d.p1.ow, d.p1.oh):''}${mark(d.p1.kxy,'k')}${mark(d.p1.txy,'t')}${accMark(d.p1)}<span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700">① 키링과 함께</span></div>
+      <div id="tapwrap" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation"><img src="${h(d.p1.url)}" alt="${h(jo(tl,'과','와'))} 함께 찍은 사진 — 눌러서 ${h(jo(tl,'과','와'))} 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">${d.p1.txy?roiMarks(d.p1.txy, d.p1.ow, d.p1.oh):''}${mark(d.p1.kxy,'k')}${mark(d.p1.txy,'t')}${accMark(d.p1)}<span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700">① ${h(jo(tl,'과','와'))} 함께</span></div>
       ${d.p1.kxy?'<button class="link" id="retap" style="align-self:flex-start">다시 짚기</button>':''}
       ${vColorPick(d.p1, 1, d.category)}`
-      :`<div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="키링과 함께 찍은 사진"><span class="badge">① 키링과 함께</span>`:d.oldP1?'<span class="muted small">이미 올린 사진이 있어요 (바꾸려면 다시 찍기)</span>':'<span class="muted">아직 사진이 없어요</span>'}</div>`}
+      :`<div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="${h(jo(tl,'과','와'))} 함께 찍은 사진"><span class="badge">① ${h(jo(tl,'과','와'))} 함께</span>`:d.oldP1?'<span class="muted small">이미 올린 사진이 있어요 (바꾸려면 다시 찍기)</span>':'<span class="muted">아직 사진이 없어요</span>'}</div>`}
       ${sizeNote(d.p1)}
       <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="1" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="1" data-cap="0">앨범에서 선택</button></div>
-      <div class="card"><ul class="tips"><li>키링을 대상 <b>바로 옆, 같은 높이</b>에</li><li>키링과 대상이 <b>같은 빛</b>을 받게 (반은 그늘, 반은 햇빛 ✕)</li><li>키링이 화면의 5분의 1 이상 보이게</li><li>손가락이 색 조각을 가리지 않게</li><li>플래시·필터는 끄고</li></ul></div>`;
+      <div class="card"><ul class="tips">${isFrame
+        ? `<li>프레임 <b>창 안에 대상</b>이 보이게, 흰 테두리가 다 나오게</li><li>프레임과 대상이 <b>같은 빛</b>을 받게 (반은 그늘, 반은 햇빛 ✕)</li><li>흰 테두리에 그림자가 지지 않게</li><li>플래시·필터는 끄고</li>`
+        : `<li>${h(jo(tl,'을','를'))} 대상 <b>바로 옆, 같은 높이</b>에</li><li>${h(jo(tl,'과','와'))} 대상이 <b>같은 빛</b>을 받게 (반은 그늘, 반은 햇빛 ✕)</li><li>${h(jo(tl,'이','가'))} 화면의 5분의 1 이상 보이게</li><li>손가락이 색 조각을 가리지 않게</li><li>플래시·필터는 끄고</li>`}</ul></div>`;
     foot=`<button class="btn main block" id="next" ${p1Ready(d)?'':'disabled'}>다음</button>`;
   } else if(k==='p2'){
     const gap = (d.p1&&d.p2&&d.p1.exif.taken&&d.p2.exif.taken) ? Math.abs(new Date(d.p1.exif.taken)-new Date(d.p2.exif.taken))/60000 : null;
     body= noRing(d)
       ? `<h1 class="h2">사진 한 장</h1><p class="muted small">오늘 본 색이 잘 보이게 찍어요. 플래시·필터·보정 기능은 끄고, 해를 정면으로 마주 보지 않게.</p>`
-      : `<h1 class="h2">② 키링만 빼고 한 장</h1><p class="muted small">같은 자리, 같은 빛에서 바로 이어서 찍어요. ${CUR.mode==='public'?'오늘 본 색이 잘 보이게.':'자원의 모양이 잘 보이게 가까이.'}</p>`;
+      : `<h1 class="h2">② ${h(toolShort(d))}만 빼고 한 장</h1><p class="muted small">같은 자리, 같은 빛에서 바로 이어서 찍어요. ${CUR.mode==='public'?'오늘 본 색이 잘 보이게.':'자원의 모양이 잘 보이게 가까이.'}</p>`;
     body+= (noRing(d) && d.p2) ? `
       <div class="notice small" style="margin:0">${d.p2.txy?'잘 짚었어요. 다시 하려면 «다시 짚기»':'사진에서 <b>기록할 대상</b>을 한 번 눌러 주세요'}</div>
       <div id="tapwrap2" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation"><img src="${h(d.p2.url)}" alt="찍은 사진 — 눌러서 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">${d.p2.txy?roiMarks(d.p2.txy, d.p2.ow, d.p2.oh)+`<span aria-hidden="true" style="position:absolute;left:${(d.p2.txy.x*100).toFixed(2)}%;top:${(d.p2.txy.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #A6503F;background:rgba(166,80,63,.35);pointer-events:none"></span>`+accMark(d.p2):''}</div>
       ${d.p2.txy?'<button class="link" id="retap2" style="align-self:flex-start">다시 짚기</button>':''}
       ${vColorPick(d.p2, 2, d.category)}` : `
-      <div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="키링 없이 찍은 사진"><span class="badge">② 키링 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>`;
+      <div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="${h(toolShort(d))} 없이 찍은 사진"><span class="badge">② ${h(toolShort(d))} 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>`;
     body+=`
       ${sizeNote(d.p2)}
       <div class="rings" style="grid-template-columns:1fr 1fr"><button class="btn dark" data-pick="2" data-cap="1">카메라로 찍기</button><button class="btn light" data-pick="2" data-cap="0">앨범에서 선택</button></div>
@@ -2271,7 +2359,7 @@ function vDraft(){
   } else if(k==='check'){
     body=`<h1 class="h2">이렇게 올릴게요</h1>
       ${isMemory(d)?'':noRing(d)?`<div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}</div>`:`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">①</span></div><div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:`<span class="small muted">${d.oldP2?'이전 사진':'건너뜀'}</span>`}<span class="badge">②</span></div></div>`}
-      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>키링</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':d.keyring)}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd>${CUR.conditions&&!isMemory(d)?`<dt>찍은 때</dt><dd>${h([d.when.src==='unknown'?'시각 모름':whenOut(d.when,d.lat,d.lng), d.when.note, d.weather].filter(Boolean).join(' · ')||'—')}</dd>`:''}<dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage&&!isMemory(d)?`<dt>${h(usageQ(CUR,d.category).label)}</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
+      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>${CUR.tools?TOOL_WORD:'키링'}</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':toolName(d.keyring))}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd>${CUR.conditions&&!isMemory(d)?`<dt>찍은 때</dt><dd>${h([d.when.src==='unknown'?'시각 모름':whenOut(d.when,d.lat,d.lng), d.when.note, d.weather].filter(Boolean).join(' · ')||'—')}</dd>`:''}<dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage&&!isMemory(d)?`<dt>${h(usageQ(CUR,d.category).label)}</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
       <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.usage?'정확한 위치는 흐리게 표시해요.':'공개 지도에는 약 100m 단위로 흐리게 표시해요.'}</span></span></label>
       ${d.error?`<div class="err">${h(d.error)}</div>`:''}`;
     foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?`<span class="spinner"></span> 올리는 중…${(d.p1||d.p2)?' ('+mb((d.p1?d.p1.sent:0)+(d.p2?d.p2.sent:0))+')':''}`:(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
@@ -2597,7 +2685,7 @@ function admDetail(r){
   const ex=r.exif1||{};
   return `<div class="card stack" style="gap:14px">
     <div class="row between"><div><h2 class="h2">${h(r.local_name||r.color_name)}</h2><p class="small muted">${h(A.authors[r.author]||'?')} · ${fmt(r.created_at)}${r.resubmitted_at?' · 보완 후 다시 냄':''}${r.text_edited_at?' · 글 고침 '+fmt(r.text_edited_at):''}${r.fields_edited_at?' · 분류·동네 등 고침 '+fmt(r.fields_edited_at):''}${editedAfterOk(r)?' · <b style="color:var(--warn-ink)">인정 후 고침 — 한 번 더 봐 주세요</b>':''}</p></div>${tag(r.status)}</div>
-    ${r.is_memory?'<p><span class="tag">기억 카드 — 사진 없음</span></p>':`<div class="pics"><figure><div class="ph" data-big="${h(r.photo1_path||'')}">${r.photo1_path?'불러오는 중':'키링 사진 없음'}</div><figcaption class="xs muted">① 키링과 함께 · ${h(r.keyring||'키링 없음')} · ${fmt(r.photo1_taken_at)}</figcaption></figure><figure><div class="ph" data-big="${h(r.photo2_path||'')}">${r.photo2_path?'불러오는 중':'없음'}</div><figcaption class="xs muted">② 키링 없이 · ${fmt(r.photo2_taken_at)}</figcaption></figure></div>`}
+    ${r.is_memory?'<p><span class="tag">기억 카드 — 사진 없음</span></p>':`<div class="pics"><figure><div class="ph" data-big="${h(r.photo1_path||'')}">${r.photo1_path?'불러오는 중':'키링 사진 없음'}</div><figcaption class="xs muted">① 색 잣대와 함께 · ${h(toolName(r.keyring)||'색 잣대 없음')} · ${fmt(r.photo1_taken_at)}</figcaption></figure><figure><div class="ph" data-big="${h(r.photo2_path||'')}">${r.photo2_path?'불러오는 중':'없음'}</div><figcaption class="xs muted">② 키링 없이 · ${fmt(r.photo2_taken_at)}</figcaption></figure></div>`}
     ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
     <dl><dt>분류</dt><dd>${admCatField(r)}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(ED[A.ed].placeLabel)}</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
       <dt>찍은 때</dt><dd>${admWhen(r)}</dd><dt>${h(usageQ(ED[A.ed], r.category).label)}</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
