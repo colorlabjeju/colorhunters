@@ -1130,6 +1130,18 @@ const mainLabOf = q => q.cmain==='point' ? q.cx.point.lab : q.cx.clusters[q.cmai
 function refreshAccents(q){ if(!q.cx || !q.px) return; try{ q.acc=findAccents(q.px, q.txy, mainLabOf(q), {r:q.r, exclude:q.kbox}); }catch(e){ q.acc=[]; } if(typeof q.cacc==='number') q.cacc=null; }
 const accentOf = q => (q.cacc==='tap' && q.atap) ? {role:'accent', from:'tap', hex:q.atap.hex, lab:q.atap.lab, x:q.atap.x, y:q.atap.y}
   : (typeof q.cacc==='number' && q.acc && q.acc[q.cacc]) ? Object.assign({role:'accent', from:'auto'}, q.acc[q.cacc]) : null;
+/* «내가 본 색»은 주민이 고른 것을 지킨다: 대상을 옮기거나 원 크기를 바꿔 5색을 다시 찾을 때,
+   전에 고른 색과 가장 가까운 칸(ΔE00 12 이하)을 그대로 «내가 본 색»으로 잇는다. 없으면 짚은 곳 색으로 두고 알린다 */
+const KEEP_DE = 12;
+function rememberMain(q){ if(!q.cx || q.cmain==null) return; q.keepPoint = q.cmain==='point'; q.keepLab = q.keepPoint ? q.cx.point.lab : q.cx.clusters[q.cmain].lab; }
+function restoreMain(q){
+  q.keepLost=false; if(!q.keepLab || !q.cx) return;
+  if(q.keepPoint){ q.cmain='point'; return; }
+  let bi=-1, bd=Infinity; q.cx.clusters.forEach((c,i)=>{ const d=deltaE00(c.lab, q.keepLab); if(d<bd){ bd=d; bi=i; } });
+  if(bi>=0 && bd<=KEEP_DE) q.cmain=bi; else q.keepLost=true;
+}
+/* 포인트 색을 «직접 짚기»로 고른 동안에는 사진을 눌러도 대상이 옮겨지지 않고 포인트 자리만 바뀐다 */
+const accentTapping = q => !!(q && (q.amode || (q.cacc==='tap' && q.atap)));
 function pickAccent(q, v){ if(v==='none'){ q.cacc=null; q.amode=false; } else if(v==='tap'){ q.amode=true; if(q.atap) q.cacc='tap'; } else { q.cacc=+v; q.amode=false; } }
 function tapAccent(q, pt){ q.atap=Object.assign(tapColor(q.px, pt), {x:pt.x, y:pt.y}); q.cacc='tap'; q.amode=false; }
 /* «포인트 색» 줄: 자동 후보 칩 + 직접 짚기 + 없음. 식물·나물은 늘 보이고, 나머지 분류는 후보가 있을 때만 */
@@ -1140,7 +1152,8 @@ function vAccentRow(q, cat){
     <div class="cchips">${acc.map((c,i)=>`<button type="button" data-cacc="${i}" aria-pressed="${q.cacc===i}" aria-label="포인트 색 후보 ${h(c.hex)}"><i style="background:${h(c.hex)}"></i><span>${q.cacc===i?'포인트 색':'후보 '+(i+1)}</span></button>`).join('')}
       <button type="button" data-cacc="tap" aria-pressed="${q.cacc==='tap'}"><i class="${q.atap?'':'dash'}" ${q.atap?`style="background:${h(q.atap.hex)}"`:''}>${q.atap?'':'＋'}</i><span>직접 짚기</span></button>
       <button type="button" data-cacc="none" aria-pressed="${q.cacc==null}"><i class="dash">—</i><span>없음</span></button></div>
-    ${q.amode?'<p class="small" style="color:#A6503F;font-weight:600">사진에서 포인트 색이 있는 곳을 눌러 주세요.</p>':''}</div>`;
+    ${q.amode?'<p class="small" style="color:#A6503F;font-weight:600">사진에서 포인트 색이 있는 곳을 눌러 주세요.</p>'
+      : q.cacc==='tap'&&q.atap?'<p class="xs muted">사진을 다시 누르면 포인트 자리만 옮겨져요. 대상을 옮기려면 포인트 색을 «없음»이나 후보로 바꾼 뒤 눌러 주세요.</p>':''}</div>`;
 }
 const accMark = (q, c) => { if(!(q && q.cacc==='tap' && q.atap)) return ''; const v=toView(c||null, q.atap); return `<span aria-hidden="true" style="position:absolute;left:${(v.x*100).toFixed(2)}%;top:${(v.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #A6503F;background:${h(q.atap.hex)};pointer-events:none"></span>`; };
 
@@ -1153,8 +1166,10 @@ async function previewPixels(blob){
 }
 /* 사진 p에서 짚은 대상(p.txy) 둘레의 색을 찾아 p.cx(5색)·p.cmain(내가 본 색: 군집 번호 또는 'point')에 둔다 */
 async function findColors(p){
-  const pt=p.txy; p.cx=null; p.cmain=null; p.cerr=false; p.acc=[]; p.cacc=null; p.atap=null; p.amode=false;
-  try{ const px=await previewPixels(p.full||p.sblob||p.blob), ex=extractColors(px, pt, p.r); if(p.txy===pt){ p.px=px; p.cx=ex; p.cmain=ex.pick; refreshAccents(p); } }
+  const pt=p.txy, keepTap=(p.cacc==='tap' && p.atap) ? p.atap : null;
+  p.cx=null; p.cmain=null; p.cerr=false; p.acc=[]; p.cacc=null; p.atap=null; p.amode=false;
+  try{ const px=await previewPixels(p.full||p.sblob||p.blob), ex=extractColors(px, pt, p.r);
+    if(p.txy===pt){ p.px=px; p.cx=ex; p.cmain=ex.pick; restoreMain(p); if(keepTap){ p.atap=keepTap; p.cacc='tap'; } refreshAccents(p); } }
   catch(e){ if(p.txy===pt) p.cerr=true; }
 }
 const draftColors = (p, photo) => (p && p.txy && p.cx && p.cmain!=null) ? buildColors(p.cx, p.cmain, {photo, x:p.txy.x, y:p.txy.y, r:p.r}, accentOf(p)) : null;
@@ -1189,7 +1204,7 @@ function vColorPick(p, photo, cat){
   if(!p.cx) return `<p class="small muted"><span class="spinner"></span> 짚은 곳의 색을 찾고 있어요…</p>`;
   const cl=p.cx.clusters, out=draftColors(p, photo);
   return `<div class="stack" style="gap:10px" id="cpick">
-    <div class="notice small" style="margin:0">짚은 곳 둘레(점선)에서 ${cl.length}가지 색을 찾았어요. <b>눈으로 본 색</b>에 가장 가까운 칸을 눌러 주세요.</div>
+    <div class="notice small" style="margin:0">${p.keepLost?'처음 고른 색이 새로 짚은 자리에는 없어요. <b>눈으로 본 색</b>에 가장 가까운 칸을 다시 눌러 주세요.':`짚은 곳 둘레(점선)에서 ${cl.length}가지 색을 찾았어요. <b>눈으로 본 색</b>에 가장 가까운 칸을 눌러 주세요.`}</div>
     <div class="cchips">${cl.map((c,i)=>`<button type="button" data-cmain="${i}" aria-pressed="${p.cmain===i}" aria-label="${h(c.hex)} ${Math.round(c.share*100)}%"><i style="background:${h(c.hex)}"></i><span>${p.cmain===i?'내가 본 색':Math.round(c.share*100)+'%'}</span></button>`).join('')}</div>
     <div class="cband" style="height:6px">${cl.map(c=>`<i style="flex:${Math.max(c.share,0.01)};background:${h(c.hex)}"></i>`).join('')}</div>
     ${vAccentRow(p, cat)}
@@ -2614,7 +2629,7 @@ function bindDraft(){
     const rc=tw.getBoundingClientRect(); const pt={x:+((e.clientX-rc.left)/rc.width).toFixed(4), y:+((e.clientY-rc.top)/rc.height).toFixed(4)};
     if(pt.x<0||pt.x>1||pt.y<0||pt.y>1) return;
     const p=d.p1;
-    if(p.amode && p.txy && p.px){ tapAccent(p, pt); render(); return; }   /* 포인트 색 직접 짚기 */
+    if(p.txy && p.px && accentTapping(p)){ tapAccent(p, pt); render(); return; }   /* 포인트 색 직접 짚기(고른 동안 계속) */
     if(!p.kxy){ p.kxy=pt; p.kblob=null; p.kbox=null; render(); const c=await cropKeyring(p.file, pt.x, pt.y); if(c && d.p1===p && p.kxy===pt){ p.kblob=c.blob; p.kbox=c.box; if(p.cx){ refreshAccents(p); if(steps(d)[d.step-1]==='p1') render(); } } }
     else { p.txy=pt; render(); await findColors(p); if(d.p1===p && p.txy===pt && steps(d)[d.step-1]==='p1') render(); }
   };
@@ -2631,12 +2646,12 @@ function bindDraft(){
     const rc=tw2.getBoundingClientRect(); const pt={x:+((e.clientX-rc.left)/rc.width).toFixed(4), y:+((e.clientY-rc.top)/rc.height).toFixed(4)};
     if(pt.x<0||pt.x>1||pt.y<0||pt.y>1) return;
     const p=d.p2, at=toOrig(okCrop(p.crop), pt);   /* 화면(틀 안)에서 짚은 자리를 원본 자리로 */
-    if(p.amode && p.txy && p.px){ tapAccent(p, at); render(); return; }
+    if(p.txy && p.px && accentTapping(p)){ tapAccent(p, at); render(); return; }
     p.txy=at; render(); await findColors(p); if(d.p2===p && p.txy===at && steps(d)[d.step-1]==='p2') render();
   };
   const rf=$('#refit'); if(rf && d.p2) rf.onclick=async ()=>{ const p=d.p2, c=await openFit({url:p.url, w:p.w, h:p.h, crop:p.crop, cancel:true}); if(!c || d.p2!==p) return; p.crop=c; const cs=await cropPreview(p.blob, c); if(cs) p.sblob=cs; render(); };
   const rt2=$('#retap2'); if(rt2) rt2.onclick=()=>{ if(d.p2){ d.p2.txy=null; d.p2.cx=null; d.p2.cmain=null; } render(); };
-  document.querySelectorAll('#cpick [data-cmain]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; const v=b.dataset.cmain; p.cmain = v==='point' ? 'point' : +v; refreshAccents(p); render(); });
+  document.querySelectorAll('#cpick [data-cmain]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; const v=b.dataset.cmain; p.cmain = v==='point' ? 'point' : +v; p.keepLost=false; rememberMain(p); refreshAccents(p); render(); });
   document.querySelectorAll('#apick [data-cacc]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; pickAccent(p, b.dataset.cacc); render(); });
   const nx=$('#next'); if(nx) nx.onclick=async()=>{
     if(k==='where' && CUR.conditions && !isMemory(d) && await nightLooksWrong(d)){
@@ -2841,7 +2856,9 @@ async function openRepick(r){
   try{ const u=await admUrl(r[`photo${n}_path`]); const blob=await (await fetch(u)).blob(); q.url=URL.createObjectURL(blob); q.px=await previewPixels(blob); }
   catch(e){ toast('사진을 받지 못했어요. 다시 눌러 주세요.'); close(); return; }
   if(!document.body.contains(d)) return;
-  const calc=()=>{ q.cx=extractColors(q.px, q.txy, q.r); q.cmain=q.cx.pick; q.cacc=null; q.atap=null; q.amode=false; refreshAccents(q); };
+  const calc=()=>{ const keepTap=(q.cacc==='tap' && q.atap) ? q.atap : null;
+    q.cx=extractColors(q.px, q.txy, q.r); q.cmain=q.cx.pick; restoreMain(q); q.cacc=null; q.atap=null; q.amode=false;
+    if(keepTap){ q.atap=keepTap; q.cacc='tap'; } refreshAccents(q); };
   const was=r.colors && r.colors.roi;
   q.txy = (was && (was.photo===2?2:1)===n && okXY(was)) || (n===1 && okXY(r.target_xy)) || {x:0.5, y:0.5};
   calc();
@@ -2857,7 +2874,7 @@ async function openRepick(r){
   const marks=pt=>{ roi.style.left=(pt.x*100)+'%'; roi.style.top=(pt.y*100)+'%'; roi.style.width=(2*q.r*Math.min(W,H)/W*100)+'%'; box.querySelector('#rpacc').innerHTML=accMark(q); };
   const draw=()=>{
     const out=buildColors(q.cx, q.cmain, {photo:n, x:q.txy.x, y:q.txy.y, r:q.r}, accentOf(q)), cl=q.cx.clusters;
-    panel.innerHTML=`<div class="notice small" style="margin:0">원 안에서 ${cl.length}가지 색을 찾았어요. <b>«내가 본 색»</b>으로 둘 칸을 눌러 주세요.</div>
+    panel.innerHTML=`<div class="notice small" style="margin:0">${q.keepLost?'전에 고른 색이 새 원 안에는 없어요. <b>«내가 본 색»</b>으로 둘 칸을 다시 눌러 주세요.':`원 안에서 ${cl.length}가지 색을 찾았어요. <b>«내가 본 색»</b>으로 둘 칸을 눌러 주세요.`}</div>
       <div class="cchips" id="cpick">${cl.map((c,i)=>`<button type="button" data-cmain="${i}" aria-pressed="${q.cmain===i}" aria-label="${h(c.hex)} ${Math.round(c.share*100)}%"><i style="background:${h(c.hex)}"></i><span>${q.cmain===i?'내가 본 색':Math.round(c.share*100)+'%'}</span></button>`).join('')}</div>
       <button type="button" class="link" data-cmain="point" style="align-self:flex-start">${q.cmain==='point'?'✓ 원 가운데 점의 색 그대로':'딱 맞는 색이 없어요 (원 가운데 점의 색 그대로)'} <i style="display:inline-block;width:14px;height:14px;vertical-align:-2px;border:1px solid var(--line);background:${h(q.cx.point.hex)}"></i></button>
       ${vAccentRow(q, r.category)}
@@ -2871,7 +2888,7 @@ async function openRepick(r){
   draw();
   const at=e=>{ const rc=wrap.getBoundingClientRect(); return {x:+Math.max(0,Math.min(1,(e.clientX-rc.left)/rc.width)).toFixed(4), y:+Math.max(0,Math.min(1,(e.clientY-rc.top)/rc.height)).toFixed(4), rc}; };
   let down=false;
-  const move=e=>{ const a=at(e); q.cur={x:a.x, y:a.y}; if(!q.amode) marks(q.cur);
+  const move=e=>{ const a=at(e); q.cur={x:a.x, y:a.y}; if(!accentTapping(q)) marks(q.cur);
     /* 누르는 동안 확대경(3배) — 손가락에 가리지 않게 위쪽에 */
     const Z=3, L=132, px=a.x*a.rc.width, py=a.y*a.rc.height;
     lens.hidden=false; lens.style.left=px+'px'; lens.style.top=(py<L+30 ? py+L/2+34 : py-L/2-34)+'px';
@@ -2879,14 +2896,14 @@ async function openRepick(r){
   wrap.addEventListener('pointerdown', e=>{ e.preventDefault(); try{ wrap.setPointerCapture(e.pointerId); }catch(x){} down=true; move(e); });
   wrap.addEventListener('pointermove', e=>{ if(down) move(e); });
   const up=()=>{ if(!down) return; down=false; lens.hidden=true; if(!q.cur) return;
-    if(q.amode) tapAccent(q, q.cur); else { q.txy=q.cur; calc(); }
+    if(accentTapping(q)) tapAccent(q, q.cur); else { q.txy=q.cur; calc(); }
     draw(); };
   wrap.addEventListener('pointerup', up); wrap.addEventListener('pointercancel', up);
   document.addEventListener('keydown', onKey);
   d.addEventListener('click', async e=>{
     if(e.target===d || e.target.closest('[data-close]')){ close(); return; }
     const sz=e.target.closest('[data-rpsize]'); if(sz){ q.r=+sz.dataset.rpsize; box.querySelectorAll('[data-rpsize]').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.rpsize===q.r))); calc(); draw(); return; }
-    const cm=e.target.closest('[data-cmain]'); if(cm){ q.cmain = cm.dataset.cmain==='point' ? 'point' : +cm.dataset.cmain; refreshAccents(q); draw(); return; }
+    const cm=e.target.closest('[data-cmain]'); if(cm){ q.cmain = cm.dataset.cmain==='point' ? 'point' : +cm.dataset.cmain; q.keepLost=false; rememberMain(q); refreshAccents(q); draw(); return; }
     const ca=e.target.closest('[data-cacc]'); if(ca){ pickAccent(q, ca.dataset.cacc); draw(); return; }
     if(e.target.id==='rpsave'){
       const b=e.target; b.disabled=true; b.innerHTML='<span class="spinner"></span> 저장 중…';
