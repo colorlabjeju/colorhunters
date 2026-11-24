@@ -1069,10 +1069,14 @@ function extractColors(img, pt, rr){
 }
 /* 저장할 모양: [내가 본 색(main), 포인트 색(accent, 고른 경우), 함께 보인 색(sub)…] 최대 3색.
    함께 보인 색은 나머지 중 넓은 순, 이미 고른 색과 ΔE00 5 미만이면 건너뜀. main: 군집 번호 또는 'point' */
-function buildColors(ex, main, roi, accent){
+function buildColors(ex, main, roi, accent, subs){
   const m = main==='point' ? {role:'main', from:'point', hex:ex.point.hex, lab:ex.point.lab} : Object.assign({role:'main', from:'cluster'}, ex.clusters[main]);
   const out=[m]; if(accent) out.push(accent);
-  ex.clusters.forEach((c,i)=>{ if(out.length>=3 || i===main) return; if(out.some(o=>deltaE00(o.lab,c.lab)<COLORS.minDE)) return; out.push(Object.assign({role:'sub', from:'cluster'}, c)); });
+  /* «함께 보인 색»: 사람이 고르는 화면(subs 배열)에서는 고른 칸만, 고른 순서대로 넣는다.
+     넓이(%) 순으로 저절로 채우면 배경이 끼어 기록이 왜곡되기 쉬워서다. 고르지 않으면 1~2색만 저장한다.
+     subs가 없을 때(예전 기록을 운영진이 한꺼번에 채울 때)만 넓은 순 자동(이미 넣은 색과 ΔE00 5 미만은 건너뜀) */
+  if(Array.isArray(subs)) subs.filter(i=>i!==main && ex.clusters[i]).forEach(i=>{ if(out.length<3) out.push(Object.assign({role:'sub', from:'pick'}, ex.clusters[i])); });
+  else ex.clusters.forEach((c,i)=>{ if(out.length>=3 || i===main) return; if(out.some(o=>deltaE00(o.lab,c.lab)<COLORS.minDE)) return; out.push(Object.assign({role:'sub', from:'cluster'}, c)); });
   return {method:COLORS.method, calibrated:false, weightL:COLORS.weightL, roi:{photo:roi.photo, x:roi.x, y:roi.y, r:roi.r||COLORS.roi}, colors:out, clusters5:ex.clusters};
 }
 /* ---------- 포인트 색: 넓지는 않지만 눈에 띄는 색 (단풍 든 잎끝, 열매, 꽃술 …) ----------
@@ -1140,6 +1144,21 @@ function restoreMain(q){
   let bi=-1, bd=Infinity; q.cx.clusters.forEach((c,i)=>{ const d=deltaE00(c.lab, q.keepLab); if(d<bd){ bd=d; bi=i; } });
   if(bi>=0 && bd<=KEEP_DE) q.cmain=bi; else q.keepLost=true;
 }
+/* «함께 보인 색»(세 번째 칸, 포인트 색이 없으면 두·세 번째 칸)도 주민이 고를 수 있다.
+   q.csubs = 고른 군집 번호(고른 순서). 자리보다 많이 고르면 먼저 고른 것부터 빠진다. 다시 누르면 빼고, 빈 자리는 넓은 순 자동 */
+const subSlots = q => 3 - 1 - (accentOf(q) ? 1 : 0);
+function pickSub(q, i){ q.csubs=(q.csubs||[]).filter(x=>x!==q.cmain); const k=q.csubs.indexOf(i);
+  if(k>=0){ q.csubs.splice(k,1); return; } q.csubs.push(i); while(q.csubs.length>subSlots(q)) q.csubs.shift(); }
+const subLabsOf = q => (q.cx && q.csubs) ? q.csubs.map(i=>q.cx.clusters[i] && q.cx.clusters[i].lab).filter(Boolean) : [];
+/* 5색을 다시 찾을 때 고른 «함께 보인 색»도 가장 가까운 칸(ΔE00 12 이하)으로 잇는다 */
+function keepSubs(q, labs){ const out=[]; (labs||[]).forEach(lab=>{ let bi=-1, bd=Infinity;
+  q.cx.clusters.forEach((c,i)=>{ if(i===q.cmain || out.includes(i)) return; const d=deltaE00(c.lab, lab); if(d<bd){ bd=d; bi=i; } });
+  if(bi>=0 && bd<=KEEP_DE) out.push(bi); }); q.csubs=out; }
+function vSubRow(q, out){
+  if(!q.cx || !out) return ''; const cl=q.cx.clusters, picked=new Set(out.colors.filter(x=>x.role==='sub').map(x=>x.hex)), n=subSlots(q), mine=(q.csubs||[]).length>0;
+  return `<div class="stack" style="gap:6px" id="spick"><div class="row between"><b class="small">함께 보인 색 <span class="xs muted" style="font-weight:400">${n}개까지</span></b><span class="xs muted">${mine?'고른 순서대로 들어가요. 다시 누르면 빠져요':'넓이와 상관없이 눈에 함께 들어온 색을 골라 주세요'}</span></div>
+    <div class="cchips">${cl.map((c,i)=> i===q.cmain ? '' : `<button type="button" data-csub="${i}" aria-pressed="${picked.has(c.hex)}" aria-label="함께 보인 색 ${h(c.hex)} ${Math.round(c.share*100)}%"><i style="background:${h(c.hex)}"></i><span>${picked.has(c.hex)?'함께 보인 색':Math.round(c.share*100)+'%'}</span></button>`).join('')}</div></div>`;
+}
 /* 포인트 색을 «직접 짚기»로 고른 동안에는 사진을 눌러도 대상이 옮겨지지 않고 포인트 자리만 바뀐다 */
 const accentTapping = q => !!(q && (q.amode || (q.cacc==='tap' && q.atap)));
 function pickAccent(q, v){ if(v==='none'){ q.cacc=null; q.amode=false; } else if(v==='tap'){ q.amode=true; if(q.atap) q.cacc='tap'; } else { q.cacc=+v; q.amode=false; } }
@@ -1166,13 +1185,13 @@ async function previewPixels(blob){
 }
 /* 사진 p에서 짚은 대상(p.txy) 둘레의 색을 찾아 p.cx(5색)·p.cmain(내가 본 색: 군집 번호 또는 'point')에 둔다 */
 async function findColors(p){
-  const pt=p.txy, keepTap=(p.cacc==='tap' && p.atap) ? p.atap : null;
+  const pt=p.txy, keepTap=(p.cacc==='tap' && p.atap) ? p.atap : null, keepSubLabs=subLabsOf(p);
   p.cx=null; p.cmain=null; p.cerr=false; p.acc=[]; p.cacc=null; p.atap=null; p.amode=false;
   try{ const px=await previewPixels(p.full||p.sblob||p.blob), ex=extractColors(px, pt, p.r);
-    if(p.txy===pt){ p.px=px; p.cx=ex; p.cmain=ex.pick; restoreMain(p); if(keepTap){ p.atap=keepTap; p.cacc='tap'; } refreshAccents(p); } }
+    if(p.txy===pt){ p.px=px; p.cx=ex; p.cmain=ex.pick; restoreMain(p); keepSubs(p, keepSubLabs); if(keepTap){ p.atap=keepTap; p.cacc='tap'; } refreshAccents(p); } }
   catch(e){ if(p.txy===pt) p.cerr=true; }
 }
-const draftColors = (p, photo) => (p && p.txy && p.cx && p.cmain!=null) ? buildColors(p.cx, p.cmain, {photo, x:p.txy.x, y:p.txy.y, r:p.r}, accentOf(p)) : null;
+const draftColors = (p, photo) => (p && p.txy && p.cx && p.cmain!=null) ? buildColors(p.cx, p.cmain, {photo, x:p.txy.x, y:p.txy.y, r:p.r}, accentOf(p), p.csubs||[]) : null;
 /* 정사각 카드로 자를 때 가운데가 아니라 짚은 대상을 기준으로 */
 const focusStyle = f => { f=okXY(f); return f ? ` style="object-position:${(f.x*100).toFixed(1)}% ${(f.y*100).toFixed(1)}%"` : ''; };
 /* 3색 띠 (내가 본 색 2 : 함께 보인 색 1 : 1) */
@@ -1208,7 +1227,8 @@ function vColorPick(p, photo, cat){
     <div class="cchips">${cl.map((c,i)=>`<button type="button" data-cmain="${i}" aria-pressed="${p.cmain===i}" aria-label="${h(c.hex)} ${Math.round(c.share*100)}%"><i style="background:${h(c.hex)}"></i><span>${p.cmain===i?'내가 본 색':Math.round(c.share*100)+'%'}</span></button>`).join('')}</div>
     <div class="cband" style="height:6px">${cl.map(c=>`<i style="flex:${Math.max(c.share,0.01)};background:${h(c.hex)}"></i>`).join('')}</div>
     ${vAccentRow(p, cat)}
-    <div class="row between"><b class="small">저장될 3색</b><span class="xs muted">${out&&out.colors.map((x,i)=>ROLE_KO[roleOf(x,i)]).join(' · ')}</span></div>
+    ${vSubRow(p, out)}
+    <div class="row between"><b class="small">저장될 색</b><span class="xs muted">${out&&out.colors.map((x,i)=>ROLE_KO[roleOf(x,i)]).join(' · ')}</span></div>
     ${colorBand(out, 30)}
     <button type="button" class="link" data-cmain="point" style="align-self:flex-start">${p.cmain==='point'?'✓ 짚은 점의 색 그대로 저장해요':'딱 맞는 색이 없어요 (짚은 점의 색 그대로 저장)'}${p.cmain==='point'?` <i style="display:inline-block;width:14px;height:14px;vertical-align:-2px;border:1px solid var(--line);background:${h(p.cx.point.hex)}"></i>`:''}</button>
   </div>`;
@@ -2651,7 +2671,8 @@ function bindDraft(){
   };
   const rf=$('#refit'); if(rf && d.p2) rf.onclick=async ()=>{ const p=d.p2, c=await openFit({url:p.url, w:p.w, h:p.h, crop:p.crop, cancel:true}); if(!c || d.p2!==p) return; p.crop=c; const cs=await cropPreview(p.blob, c); if(cs) p.sblob=cs; render(); };
   const rt2=$('#retap2'); if(rt2) rt2.onclick=()=>{ if(d.p2){ d.p2.txy=null; d.p2.cx=null; d.p2.cmain=null; } render(); };
-  document.querySelectorAll('#cpick [data-cmain]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; const v=b.dataset.cmain; p.cmain = v==='point' ? 'point' : +v; p.keepLost=false; rememberMain(p); refreshAccents(p); render(); });
+  document.querySelectorAll('#cpick [data-cmain]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; const v=b.dataset.cmain; p.cmain = v==='point' ? 'point' : +v; p.keepLost=false; p.csubs=(p.csubs||[]).filter(i=>i!==p.cmain); rememberMain(p); refreshAccents(p); render(); });
+  document.querySelectorAll('#spick [data-csub]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; pickSub(p, +b.dataset.csub); render(); });
   document.querySelectorAll('#apick [data-cacc]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; pickAccent(p, b.dataset.cacc); render(); });
   const nx=$('#next'); if(nx) nx.onclick=async()=>{
     if(k==='where' && CUR.conditions && !isMemory(d) && await nightLooksWrong(d)){
@@ -2856,8 +2877,8 @@ async function openRepick(r){
   try{ const u=await admUrl(r[`photo${n}_path`]); const blob=await (await fetch(u)).blob(); q.url=URL.createObjectURL(blob); q.px=await previewPixels(blob); }
   catch(e){ toast('사진을 받지 못했어요. 다시 눌러 주세요.'); close(); return; }
   if(!document.body.contains(d)) return;
-  const calc=()=>{ const keepTap=(q.cacc==='tap' && q.atap) ? q.atap : null;
-    q.cx=extractColors(q.px, q.txy, q.r); q.cmain=q.cx.pick; restoreMain(q); q.cacc=null; q.atap=null; q.amode=false;
+  const calc=()=>{ const keepTap=(q.cacc==='tap' && q.atap) ? q.atap : null, keepSubLabs=subLabsOf(q);
+    q.cx=extractColors(q.px, q.txy, q.r); q.cmain=q.cx.pick; restoreMain(q); keepSubs(q, keepSubLabs); q.cacc=null; q.atap=null; q.amode=false;
     if(keepTap){ q.atap=keepTap; q.cacc='tap'; } refreshAccents(q); };
   const was=r.colors && r.colors.roi;
   q.txy = (was && (was.photo===2?2:1)===n && okXY(was)) || (n===1 && okXY(r.target_xy)) || {x:0.5, y:0.5};
@@ -2873,12 +2894,13 @@ async function openRepick(r){
   const wrap=box.querySelector('#rpwrap'), roi=box.querySelector('#rproi'), lens=box.querySelector('#rplens'), panel=box.querySelector('#rpanel');
   const marks=pt=>{ roi.style.left=(pt.x*100)+'%'; roi.style.top=(pt.y*100)+'%'; roi.style.width=(2*q.r*Math.min(W,H)/W*100)+'%'; box.querySelector('#rpacc').innerHTML=accMark(q); };
   const draw=()=>{
-    const out=buildColors(q.cx, q.cmain, {photo:n, x:q.txy.x, y:q.txy.y, r:q.r}, accentOf(q)), cl=q.cx.clusters;
+    const out=buildColors(q.cx, q.cmain, {photo:n, x:q.txy.x, y:q.txy.y, r:q.r}, accentOf(q), q.csubs||[]), cl=q.cx.clusters;
     panel.innerHTML=`<div class="notice small" style="margin:0">${q.keepLost?'전에 고른 색이 새 원 안에는 없어요. <b>«내가 본 색»</b>으로 둘 칸을 다시 눌러 주세요.':`원 안에서 ${cl.length}가지 색을 찾았어요. <b>«내가 본 색»</b>으로 둘 칸을 눌러 주세요.`}</div>
       <div class="cchips" id="cpick">${cl.map((c,i)=>`<button type="button" data-cmain="${i}" aria-pressed="${q.cmain===i}" aria-label="${h(c.hex)} ${Math.round(c.share*100)}%"><i style="background:${h(c.hex)}"></i><span>${q.cmain===i?'내가 본 색':Math.round(c.share*100)+'%'}</span></button>`).join('')}</div>
       <button type="button" class="link" data-cmain="point" style="align-self:flex-start">${q.cmain==='point'?'✓ 원 가운데 점의 색 그대로':'딱 맞는 색이 없어요 (원 가운데 점의 색 그대로)'} <i style="display:inline-block;width:14px;height:14px;vertical-align:-2px;border:1px solid var(--line);background:${h(q.cx.point.hex)}"></i></button>
       ${vAccentRow(q, r.category)}
-      <div class="row between"><b class="small">저장될 3색</b><span class="xs muted">${out.colors.map((x,i)=>ROLE_KO[roleOf(x,i)]).join(' · ')}</span></div>
+      ${vSubRow(q, out)}
+      <div class="row between"><b class="small">저장될 색</b><span class="xs muted">${out.colors.map((x,i)=>ROLE_KO[roleOf(x,i)]).join(' · ')}</span></div>
       ${colorBand(out, 36)}<p class="xs muted">${out.colors.map(x=>h(x.hex)).join(' · ')}</p>
       ${okColors(r.colors)?`<div class="row between"><span class="small muted">지금 저장된 색</span></div>${colorBand(r.colors, 14)}`:''}
       <div class="rings" style="grid-template-columns:1fr 2fr"><button class="btn light" data-close>취소</button><button class="btn main" id="rpsave">저장하기</button></div>
@@ -2903,12 +2925,13 @@ async function openRepick(r){
   d.addEventListener('click', async e=>{
     if(e.target===d || e.target.closest('[data-close]')){ close(); return; }
     const sz=e.target.closest('[data-rpsize]'); if(sz){ q.r=+sz.dataset.rpsize; box.querySelectorAll('[data-rpsize]').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.rpsize===q.r))); calc(); draw(); return; }
-    const cm=e.target.closest('[data-cmain]'); if(cm){ q.cmain = cm.dataset.cmain==='point' ? 'point' : +cm.dataset.cmain; q.keepLost=false; rememberMain(q); refreshAccents(q); draw(); return; }
+    const cm=e.target.closest('[data-cmain]'); if(cm){ q.cmain = cm.dataset.cmain==='point' ? 'point' : +cm.dataset.cmain; q.keepLost=false; q.csubs=(q.csubs||[]).filter(i=>i!==q.cmain); rememberMain(q); refreshAccents(q); draw(); return; }
+    const cs=e.target.closest('[data-csub]'); if(cs){ pickSub(q, +cs.dataset.csub); draw(); return; }
     const ca=e.target.closest('[data-cacc]'); if(ca){ pickAccent(q, ca.dataset.cacc); draw(); return; }
     if(e.target.id==='rpsave'){
       const b=e.target; b.disabled=true; b.innerHTML='<span class="spinner"></span> 저장 중…';
       const prev = r.colors ? (({prev, ...rest})=>rest)(r.colors) : null;   /* 이전 색(그 안의 더 이전 기록은 빼고)과 고친 시각 */
-      const colors=Object.assign(buildColors(q.cx, q.cmain, {photo:n, x:q.txy.x, y:q.txy.y, r:q.r}, accentOf(q)), {by:'staff', at:'target', prev:{colors:prev, at:new Date().toISOString()}});
+      const colors=Object.assign(buildColors(q.cx, q.cmain, {photo:n, x:q.txy.x, y:q.txy.y, r:q.r}, accentOf(q), q.csubs||[]), {by:'staff', at:'target', prev:{colors:prev, at:new Date().toISOString()}});
       const {data, error}=await sb.from('records').update({colors, target_xy:{x:q.txy.x, y:q.txy.y}}).eq('id', r.id).select('colors,target_xy').single();
       if(error || !data){ toast('저장하지 못했어요'+(error?': '+error.message:'')); b.disabled=false; b.textContent='저장하기'; return; }
       Object.assign(r, data); delete S.gallery[S.adm.ed]; close(); toast('색을 다시 짚어 저장했어요'); admReview();
