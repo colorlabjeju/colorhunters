@@ -293,6 +293,19 @@ main.about{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 104px)}
 .rp-lens{position:absolute;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,.45);background-repeat:no-repeat;pointer-events:none;z-index:3}
 .rp-lens::after{content:'';position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-6px 0 0 -6px;border-radius:50%;border:1px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.6)}
 .rp-lens[hidden]{display:none}
+/* 사진 크게 보기(짚기 화면): 틀(.zbox) 안에서 사진과 표시(.zin)만 키우고 옮긴다 */
+.zbox{position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.zin{position:absolute;left:0;top:0;width:100%;height:100%}
+.zbox .zin>img{position:absolute;left:0;top:0;width:100%;height:100%;max-width:none;max-height:none;display:block;pointer-events:none}
+.zbox.cropv .zin>img{height:auto}
+.zbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;z-index:4;line-height:1}
+.zbar button{min-width:40px;height:40px;border-radius:999px;border:0;background:rgba(36,42,38,.84);color:#fff;font:700 20px/1 inherit;padding:0 12px;cursor:pointer}
+.zbar button[disabled]{opacity:.35;cursor:default}
+.zbar .zr{font-size:13px;font-weight:600}
+.zbar .zlv{background:rgba(36,42,38,.84);color:#fff;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:600}
+.zbox.zoomed{cursor:grab}
+.zbox.zoomed .zmt{background:transparent!important}
+.zbox.zoomed .zmt::after{content:'';position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.7)}
 @media(min-width:700px){
   .sheet-in.rv{max-width:940px}
   .rv-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:start}
@@ -1069,15 +1082,16 @@ function extractColors(img, pt, rr){
 }
 /* 저장할 모양: [내가 본 색(main), 포인트 색(accent, 고른 경우), 함께 보인 색(sub)…] 최대 3색.
    함께 보인 색은 나머지 중 넓은 순, 이미 고른 색과 ΔE00 5 미만이면 건너뜀. main: 군집 번호 또는 'point' */
-function buildColors(ex, main, roi, accent, subs){
+function buildColors(ex, main, roi, accent, subs, near){
   const m = main==='point' ? {role:'main', from:'point', hex:ex.point.hex, lab:ex.point.lab} : Object.assign({role:'main', from:'cluster'}, ex.clusters[main]);
   const out=[m]; if(accent) out.push(accent);
   /* «함께 보인 색»: 사람이 고르는 화면(subs 배열)에서는 고른 칸만, 고른 순서대로 넣는다.
      넓이(%) 순으로 저절로 채우면 배경이 끼어 기록이 왜곡되기 쉬워서다. 고르지 않으면 1~2색만 저장한다.
      subs가 없을 때(예전 기록을 운영진이 한꺼번에 채울 때)만 넓은 순 자동(이미 넣은 색과 ΔE00 5 미만은 건너뜀) */
-  if(Array.isArray(subs)) subs.filter(i=>i!==main && ex.clusters[i]).forEach(i=>{ if(out.length<3) out.push(Object.assign({role:'sub', from:'pick'}, ex.clusters[i])); });
+  if(Array.isArray(subs)) subs.forEach(c=>{ if(c && out.length<3) out.push({role:'sub', from:'near', hex:c.hex, lab:c.lab, share:c.share}); });
   else ex.clusters.forEach((c,i)=>{ if(out.length>=3 || i===main) return; if(out.some(o=>deltaE00(o.lab,c.lab)<COLORS.minDE)) return; out.push(Object.assign({role:'sub', from:'cluster'}, c)); });
-  return {method:COLORS.method, calibrated:false, weightL:COLORS.weightL, roi:{photo:roi.photo, x:roi.x, y:roi.y, r:roi.r||COLORS.roi}, colors:out, clusters5:ex.clusters};
+  return Object.assign({method:COLORS.method, calibrated:false, weightL:COLORS.weightL, roi:{photo:roi.photo, x:roi.x, y:roi.y, r:roi.r||COLORS.roi}, colors:out, clusters5:ex.clusters},
+    near && near.length ? {near5:near.map(({hex,lab,share})=>({hex,lab,share}))} : {});
 }
 /* ---------- 포인트 색: 넓지는 않지만 눈에 띄는 색 (단풍 든 잎끝, 열매, 꽃술 …) ----------
    같은 원 안에서 L* 15~92, C* ≥ 20, «내가 본 색»과 색상각이 60° 이상 다른 픽셀만 모은다(① 사진은 키링 자리 제외).
@@ -1119,9 +1133,50 @@ function findAccents(img, pt, mainLab, opt){
   if(out.length===2 && deltaE00(out[0].lab,out[1].lab)<ACCENT.minDE){ out[0].share=Math.round((out[0].share+out[1].share)*1000)/1000; out.pop(); }
   return out.map(({score,...x})=>x);
 }
+/* ---------- «함께 보인 색» 추천: «내가 본 색»과 가까운 색 5가지 ----------
+   넓이(%) 순으로 고르면 배경이 끼어 왜곡되기 쉬워서, 같은 원 안에서 «내가 본 색»과 ΔE00 4~20(모자라면 30까지)인
+   픽셀만 모아 5개로 묶는다. 같은 대상의 밝은 쪽·그늘 쪽·진한 쪽 색이 후보가 된다. 밝은 것부터, 거의 같은 색(ΔE00 3 미만)은 하나로 */
+const NEAR = {min:4, max:20, wide:30, k:5, minPx:20, keep:0.8, merge:3};
+function findNear(img, pt, mainLab, opt){
+  opt=opt||{}; const {data, width:W, height:H}=img, wL=COLORS.weightL;
+  const cx=Math.max(0,Math.min(W-1,Math.round(pt.x*W))), cy=Math.max(0,Math.min(H-1,Math.round(pt.y*H))), R=Math.max(4, (opt.r||COLORS.roi)*Math.min(W,H));
+  const kb=opt.exclude, kx=kb?kb.x*W:0, ky=kb?kb.y*H:0, ks=kb?kb.s*W:0;
+  let total=0; const all=[];
+  for(let y=Math.max(0,Math.floor(cy-R)); y<=Math.min(H-1,Math.ceil(cy+R)); y++) for(let x=Math.max(0,Math.floor(cx-R)); x<=Math.min(W-1,Math.ceil(cx+R)); x++){
+    if((x-cx)*(x-cx)+(y-cy)*(y-cy)>R*R) continue; total++;
+    if(kb && x>=kx && x<=kx+ks && y>=ky && y<=ky+ks) continue;
+    const i=(y*W+x)*4, l=rgb2lab(data[i],data[i+1],data[i+2]); if(l[0]<5 || l[0]>97) continue;
+    const de=deltaE00(l, mainLab); if(de<NEAR.min || de>NEAR.wide) continue; all.push([l,de]); }
+  let pts=all.filter(x=>x[1]<=NEAR.max).map(x=>x[0]); if(pts.length<NEAR.minPx) pts=all.map(x=>x[0]);
+  const N=pts.length; if(N<NEAR.minPx) return [];
+  const k=Math.min(NEAR.k, N), F=pts.map(l=>[l[0]*wL,l[1],l[2]]), d2=(p,q)=>(p[0]-q[0])*(p[0]-q[0])+(p[1]-q[1])*(p[1]-q[1])+(p[2]-q[2])*(p[2]-q[2]);
+  /* 처음 중심: 평균에 가장 가까운 점, 그다음부터는 이미 고른 중심들에서 가장 먼 점 (매번 같은 결과) */
+  const mean=F.reduce((m,p)=>[m[0]+p[0]/N,m[1]+p[1]/N,m[2]+p[2]/N],[0,0,0]);
+  let i0=0, bd=Infinity; F.forEach((p,i)=>{ const d=d2(p,mean); if(d<bd){ bd=d; i0=i; } });
+  const cen=[F[i0].slice()], md=F.map(p=>d2(p,cen[0]));
+  while(cen.length<k){ let fi=0, fd=-1; md.forEach((d,i)=>{ if(d>fd){ fd=d; fi=i; } }); cen.push(F[fi].slice()); F.forEach((p,i)=>{ md[i]=Math.min(md[i], d2(p,F[fi])); }); }
+  const lab=new Uint8Array(N);
+  for(let it=0; it<15; it++){
+    let ch=0; for(let i=0;i<N;i++){ let b=0, bv=Infinity; for(let c=0;c<k;c++){ const v=d2(F[i],cen[c]); if(v<bv){ bv=v; b=c; } } if(lab[i]!==b){ lab[i]=b; ch++; } }
+    if(it && !ch) break;
+    const sum=cen.map(()=>[0,0,0,0]); for(let i=0;i<N;i++){ const t=sum[lab[i]]; t[0]+=F[i][0]; t[1]+=F[i][1]; t[2]+=F[i][2]; t[3]++; }
+    sum.forEach((t,c)=>{ if(t[3]) cen[c]=[t[0]/t[3],t[1]/t[3],t[2]/t[3]]; });
+  }
+  let out=cen.map((_,c)=>{ const g=[]; for(let i=0;i<N;i++) if(lab[i]===c) g.push(i); if(!g.length) return null;
+    const near=g.map(i=>[d2(F[i],cen[c]),i]).sort((a,b)=>a[0]-b[0]).slice(0, Math.max(1, Math.round(g.length*NEAR.keep)));
+    const m=near.reduce((t,[,i])=>[t[0]+pts[i][0],t[1]+pts[i][1],t[2]+pts[i][2]],[0,0,0]).map(v=>v/near.length);
+    return {lab:m.map(r1), hex:lab2hex(...m), share:Math.round(g.length/Math.max(1,total)*1000)/1000}; }).filter(Boolean);
+  out.sort((a,b)=>b.share-a.share);
+  const merged=[]; out.forEach(c=>{ const same=merged.find(o=>deltaE00(o.lab,c.lab)<NEAR.merge); if(same) same.share=Math.round((same.share+c.share)*1000)/1000; else merged.push(c); });
+  return merged.sort((a,b)=>b.lab[0]-a.lab[0]);
+}
+/* 후보 칸 아래 짧은 말: «내가 본 색»보다 밝게·어둡게·진하게·흐리게 */
+function nearTag(c, mainLab){ const dL=c.lab[0]-mainLab[0], dC=Math.hypot(c.lab[1],c.lab[2])-Math.hypot(mainLab[1],mainLab[2]);
+  const l=Math.abs(dL)>=3 ? (dL>0?'밝':'어둡') : '', k=Math.abs(dC)>=3 ? (dC>0?'진하':'흐리') : '';
+  return l && k ? `더 ${l}고 ${k}게` : l ? `더 ${l}게` : k ? `더 ${k}게` : '색감만 조금 다르게'; }
 /* «직접 짚기»: 짚은 곳 둘레 작은 원(짧은 변의 3%)에서 가운데 가까운 80%의 평균 */
-function tapColor(img, pt){
-  const {data, width:W, height:H}=img, cx=Math.max(0,Math.min(W-1,Math.round(pt.x*W))), cy=Math.max(0,Math.min(H-1,Math.round(pt.y*H))), R=Math.max(1.5, ACCENT.tapR*Math.min(W,H)), pts=[];
+function tapColor(img, pt, rf){
+  const {data, width:W, height:H}=img, cx=Math.max(0,Math.min(W-1,Math.round(pt.x*W))), cy=Math.max(0,Math.min(H-1,Math.round(pt.y*H))), R=Math.max(1.5, (rf||ACCENT.tapR)*Math.min(W,H)), pts=[];
   for(let y=Math.max(0,Math.floor(cy-R)); y<=Math.min(H-1,Math.ceil(cy+R)); y++) for(let x=Math.max(0,Math.floor(cx-R)); x<=Math.min(W-1,Math.ceil(cx+R)); x++){
     if((x-cx)*(x-cx)+(y-cy)*(y-cy)>R*R) continue; const i=(y*W+x)*4; pts.push(rgb2lab(data[i],data[i+1],data[i+2])); }
   const avg=a=>a.reduce((t,l)=>[t[0]+l[0]/a.length,t[1]+l[1]/a.length,t[2]+l[2]/a.length],[0,0,0]);
@@ -1131,7 +1186,9 @@ function tapColor(img, pt){
 /* 짚기 상태 q(기록하기의 사진 p, 관리 화면의 다시 짚기에 공통): {px, txy, r, kbox, cx, cmain, acc, cacc, atap, amode}
    cacc: null(없음) | 0·1(자동 후보) | 'tap'(직접 짚은 색). 자동으로 저장하지 않고 고른 것만 저장한다 */
 const mainLabOf = q => q.cmain==='point' ? q.cx.point.lab : q.cx.clusters[q.cmain].lab;
-function refreshAccents(q){ if(!q.cx || !q.px) return; try{ q.acc=findAccents(q.px, q.txy, mainLabOf(q), {r:q.r, exclude:q.kbox}); }catch(e){ q.acc=[]; } if(typeof q.cacc==='number') q.cacc=null; }
+function refreshAccents(q){ if(!q.cx || !q.px) return; const labs=subLabsOf(q);
+  try{ q.acc=findAccents(q.px, q.txy, mainLabOf(q), {r:q.r, exclude:q.kbox}); }catch(e){ q.acc=[]; } if(typeof q.cacc==='number') q.cacc=null;
+  try{ q.near=findNear(q.px, q.txy, mainLabOf(q), {r:q.r, exclude:q.kbox}); }catch(e){ q.near=[]; } keepSubs(q, labs); }
 const accentOf = q => (q.cacc==='tap' && q.atap) ? {role:'accent', from:'tap', hex:q.atap.hex, lab:q.atap.lab, x:q.atap.x, y:q.atap.y}
   : (typeof q.cacc==='number' && q.acc && q.acc[q.cacc]) ? Object.assign({role:'accent', from:'auto'}, q.acc[q.cacc]) : null;
 /* «내가 본 색»은 주민이 고른 것을 지킨다: 대상을 옮기거나 원 크기를 바꿔 5색을 다시 찾을 때,
@@ -1144,25 +1201,102 @@ function restoreMain(q){
   let bi=-1, bd=Infinity; q.cx.clusters.forEach((c,i)=>{ const d=deltaE00(c.lab, q.keepLab); if(d<bd){ bd=d; bi=i; } });
   if(bi>=0 && bd<=KEEP_DE) q.cmain=bi; else q.keepLost=true;
 }
-/* «함께 보인 색»(세 번째 칸, 포인트 색이 없으면 두·세 번째 칸)도 주민이 고를 수 있다.
-   q.csubs = 고른 군집 번호(고른 순서). 자리보다 많이 고르면 먼저 고른 것부터 빠진다. 다시 누르면 빼고, 빈 자리는 넓은 순 자동 */
+/* «함께 보인 색»(포인트 색이 없으면 두·세 번째 칸, 있으면 세 번째 칸)은 «내가 본 색»과 가까운 추천 5가지(q.near)에서 고른다.
+   q.csubs = 고른 후보 번호(고른 순서). 자리보다 많이 고르면 먼저 고른 것부터 빠지고, 다시 누르면 뺀다. 고르지 않으면 넣지 않는다 */
 const subSlots = q => 3 - 1 - (accentOf(q) ? 1 : 0);
-function pickSub(q, i){ q.csubs=(q.csubs||[]).filter(x=>x!==q.cmain); const k=q.csubs.indexOf(i);
+function pickSub(q, i){ q.csubs=(q.csubs||[]).filter(x=>q.near && q.near[x]); const k=q.csubs.indexOf(i);
   if(k>=0){ q.csubs.splice(k,1); return; } q.csubs.push(i); while(q.csubs.length>subSlots(q)) q.csubs.shift(); }
-const subLabsOf = q => (q.cx && q.csubs) ? q.csubs.map(i=>q.cx.clusters[i] && q.cx.clusters[i].lab).filter(Boolean) : [];
-/* 5색을 다시 찾을 때 고른 «함께 보인 색»도 가장 가까운 칸(ΔE00 12 이하)으로 잇는다 */
+const subLabsOf = q => (q.near && q.csubs) ? q.csubs.map(i=>q.near[i] && q.near[i].lab).filter(Boolean) : [];
+const subsOf = q => (q.csubs||[]).map(i=>q.near && q.near[i]).filter(Boolean);
+/* 추천을 다시 만들 때(대상·원 크기·«내가 본 색»을 바꿀 때) 고른 «함께 보인 색»은 가장 가까운 새 후보(ΔE00 12 이하)로 잇는다 */
 function keepSubs(q, labs){ const out=[]; (labs||[]).forEach(lab=>{ let bi=-1, bd=Infinity;
-  q.cx.clusters.forEach((c,i)=>{ if(i===q.cmain || out.includes(i)) return; const d=deltaE00(c.lab, lab); if(d<bd){ bd=d; bi=i; } });
+  (q.near||[]).forEach((c,i)=>{ if(out.includes(i)) return; const d=deltaE00(c.lab, lab); if(d<bd){ bd=d; bi=i; } });
   if(bi>=0 && bd<=KEEP_DE) out.push(bi); }); q.csubs=out; }
 function vSubRow(q, out){
-  if(!q.cx || !out) return ''; const cl=q.cx.clusters, picked=new Set(out.colors.filter(x=>x.role==='sub').map(x=>x.hex)), n=subSlots(q), mine=(q.csubs||[]).length>0;
-  return `<div class="stack" style="gap:6px" id="spick"><div class="row between"><b class="small">함께 보인 색 <span class="xs muted" style="font-weight:400">${n}개까지</span></b><span class="xs muted">${mine?'고른 순서대로 들어가요. 다시 누르면 빠져요':'넓이와 상관없이 눈에 함께 들어온 색을 골라 주세요'}</span></div>
-    <div class="cchips">${cl.map((c,i)=> i===q.cmain ? '' : `<button type="button" data-csub="${i}" aria-pressed="${picked.has(c.hex)}" aria-label="함께 보인 색 ${h(c.hex)} ${Math.round(c.share*100)}%"><i style="background:${h(c.hex)}"></i><span>${picked.has(c.hex)?'함께 보인 색':Math.round(c.share*100)+'%'}</span></button>`).join('')}</div></div>`;
+  if(!q.cx || !out) return ''; const nr=q.near||[], ml=mainLabOf(q), picked=new Set(out.colors.filter(x=>x.role==='sub').map(x=>x.hex)), n=subSlots(q), mine=(q.csubs||[]).length>0;
+  return `<div class="stack" style="gap:6px" id="spick"><div class="row between"><b class="small">함께 보인 색 <span class="xs muted" style="font-weight:400">${n}개까지</span></b><span class="xs muted">${nr.length?`내가 본 색과 가까운 색 ${nr.length}가지 — 눌러서 골라요`:'가까운 색을 찾지 못했어요'}</span></div>
+    ${nr.length?`<div class="cchips">${nr.map((c,i)=>{ const on=picked.has(c.hex), tag=nearTag(c, ml); return `<button type="button" data-csub="${i}" aria-pressed="${on}" aria-label="함께 보인 색 후보 ${h(c.hex)} ${h(tag)}"><i style="background:${h(c.hex)}"></i><span>${on?'함께 보인 색':h(tag)}</span></button>`; }).join('')}</div>`:''}
+    ${mine?'':'<p class="xs muted">고르지 않으면 넣지 않아요. 같은 대상의 밝은 쪽·그늘 쪽처럼 함께 남기고 싶은 색이 있으면 골라 주세요.</p>'}</div>`;
 }
 /* 포인트 색을 «직접 짚기»로 고른 동안에는 사진을 눌러도 대상이 옮겨지지 않고 포인트 자리만 바뀐다 */
 const accentTapping = q => !!(q && (q.amode || (q.cacc==='tap' && q.atap)));
 function pickAccent(q, v){ if(v==='none'){ q.cacc=null; q.amode=false; } else if(v==='tap'){ q.amode=true; if(q.atap) q.cacc='tap'; } else { q.cacc=+v; q.amode=false; } }
-function tapAccent(q, pt){ q.atap=Object.assign(tapColor(q.px, pt), {x:pt.x, y:pt.y}); q.cacc='tap'; q.amode=false; }
+/* 크게 본 채 짚으면 큰 사진(q.hiPx)에서, 배율만큼 작은 원으로 뽑는다 — 화면에서 보이는 원 크기는 그대로 */
+function tapAccent(q, pt){ const s=zvOf(q).s, hi=(s>1 && q.hiPx) || null;
+  q.atap=Object.assign(tapColor(hi||q.px, pt, hi ? ACCENT.tapR/s : ACCENT.tapR), {x:pt.x, y:pt.y}); q.cacc='tap'; q.amode=false; }
+/* ---------- 사진 크게 보기 — 가는 잎줄기·잎맥처럼 작은 곳은 크게 봐야 짚을 수 있다 ----------
+   q.zv={s, ox, oy}: 배율과 보이는 자리(틀 너비·높이 단위). 사진 객체에 두어 다시 그려도 그대로 남는다.
+   크게 본 동안 한 손가락으로 밀면 옮기고, 짧게 누르면 짚는다. 두 손가락 벌리기·오므리기, ＋·−, 데스크톱은 Ctrl+휠.
+   색은 미리보기(400px)가 아니라 올린 사진에서 다시 읽은 큰 사진(최대 1600px)에서, 짚을 때의 배율만큼 작은 원으로 뽑는다 */
+const ZOOM = {max:5, step:2, hi:1600, pointR:0.0045};
+const zvOf = q => (q && q.zv && q.zv.s>1) ? q.zv : {s:1, ox:0, oy:0};
+const zinStyle = q => { const z=zvOf(q); return `left:${(-z.ox*100).toFixed(3)}%;top:${(-z.oy*100).toFixed(3)}%;width:${(z.s*100).toFixed(3)}%;height:${(z.s*100).toFixed(3)}%`; };
+const zbarHtml = q => { const z=zvOf(q); return `<div class="zbar" role="group" aria-label="사진 크게 보기">${z.s>1?`<span class="zlv">${z.s.toFixed(1)}배</span><button type="button" class="zr" data-z="1">원래대로</button>`:''}<button type="button" data-z="out" aria-label="작게 보기" ${z.s>1?'':'disabled'}>−</button><button type="button" data-z="in" aria-label="크게 보기" ${z.s>=ZOOM.max-0.01?'disabled':''}>＋</button></div>`; };
+const zhintText = q => zvOf(q).s>1 ? '크게 보는 중 — 한 손가락으로 밀면 사진이 움직이고, 짧게 누르면 짚어요' : '작은 곳은 ＋를 누르거나 두 손가락으로 벌려 크게 본 뒤 짚어요';
+const zTouch = (q, at1) => zvOf(q).s>1 ? 'none' : (at1||'pan-x pan-y');
+/* 틀 안 화면 자리 → 사진(.zin) 안 자리 (0~1) */
+function zinPt(wrap, e){ const zi=wrap.querySelector('.zin')||wrap, rc=zi.getBoundingClientRect(); return {x:+((e.clientX-rc.left)/rc.width).toFixed(4), y:+((e.clientY-rc.top)/rc.height).toFixed(4)}; }
+const inPt = pt => pt.x>=0 && pt.x<=1 && pt.y>=0 && pt.y<=1;
+/* 큰 사진 픽셀: 처음 크게 볼 때 한 번 읽어 둔다 */
+function hiPixels(q){ if(q.hiPx) return Promise.resolve(q.hiPx); if(!q.blob) return Promise.resolve(null);
+  if(!q.hiP) q.hiP=previewPixels(q.blob, ZOOM.hi).then(x=>(q.hiPx=x)).catch(()=>null); return q.hiP; }
+/* 크게 본 채 대상을 짚었으면(배율 s) 짚은 점의 색을 큰 사진의 작은 원에서 다시 읽고, 그 색에 가장 가까운 칸을 «내가 본 색» 후보로 */
+function refinePoint(ex, hi, pt, s){
+  try{ const c=tapColor(hi, pt, ZOOM.pointR/s), wL=COLORS.weightL; ex.point={lab:c.lab, hex:c.hex};
+    let b=ex.pick, bd=Infinity; ex.clusters.forEach((x,i)=>{ const d=((x.lab[0]-c.lab[0])*wL)**2+(x.lab[1]-c.lab[1])**2+(x.lab[2]-c.lab[2])**2; if(d<bd){ bd=d; b=i; } }); ex.pick=b; }
+  catch(e){}
+}
+/* 틀 wrap에 크게 보기 손짓을 단다. opt.tap(e): 짚기(밀지 않고 뗀 손), opt.move(e)·opt.cancel(): 누른 채 움직이기·취소(관리 화면 원 끌기),
+   opt.lens: {url, crop} 누르는 동안 확대경, opt.onZoom: 처음 커질 때, opt.at1: 배율 1일 때 touch-action, opt.wheel: 'plain'이면 휠만으로도 */
+function zoomable(wrap, q, opt={}){
+  const zi=wrap.querySelector('.zin'); if(!zi) return;
+  const apply=()=>{ const z=zvOf(q); zi.style.left=(-z.ox*100)+'%'; zi.style.top=(-z.oy*100)+'%'; zi.style.width=zi.style.height=(z.s*100)+'%';
+    wrap.style.touchAction=zTouch(q, opt.at1); wrap.classList.toggle('zoomed', z.s>1); };
+  const sync=()=>{ const b=wrap.querySelector('.zbar'); if(b) b.outerHTML=zbarHtml(q); const hn=wrap.nextElementSibling; if(hn && hn.classList.contains('zhint')) hn.textContent=zhintText(q); };
+  const put=(s, ox, oy)=>{ s=Math.min(ZOOM.max, Math.max(1, s)); const was=zvOf(q).s;
+    q.zv = s<1.03 ? null : {s, ox:Math.min(s-1, Math.max(0, ox)), oy:Math.min(s-1, Math.max(0, oy))}; if(was<=1 && q.zv && opt.onZoom) opt.onZoom(); apply(); };
+  const zoomAt=(s, fx, fy)=>{ const z=zvOf(q), ux=(z.ox+fx)/z.s, uy=(z.oy+fy)/z.s; s=Math.min(ZOOM.max, Math.max(1, s)); put(s, ux*s-fx, uy*s-fy); };
+  const rel=(x, y)=>{ const rc=wrap.getBoundingClientRect(); return {fx:(x-rc.left)/rc.width, fy:(y-rc.top)/rc.height}; };
+  const lens = opt.lens ? (()=>{ const l=document.createElement('span'); l.className='rp-lens'; l.hidden=true; wrap.appendChild(l); return l; })() : null;
+  const showLens=e=>{ if(!lens) return; const wr=wrap.getBoundingClientRect(), zr=zi.getBoundingClientRect(), px=e.clientX-wr.left, py=e.clientY-wr.top;
+    if(px<0||py<0||px>wr.width||py>wr.height){ lens.hidden=true; return; }
+    const c=opt.lens.crop||null, fw=zr.width/(c?c.w:1), fh=zr.height/(c?c.h:1), ix=(c?c.x*fw:0)+(e.clientX-zr.left), iy=(c?c.y*fh:0)+(e.clientY-zr.top), Z=zvOf(q).s>1?2:2.5, L=132;
+    lens.hidden=false; lens.style.left=px+'px'; lens.style.top=(py<L+30 ? py+L/2+34 : py-L/2-34)+'px'; lens.style.backgroundImage=`url("${opt.lens.url}")`;
+    lens.style.backgroundSize=`${fw*Z}px ${fh*Z}px`; lens.style.backgroundPosition=`${-(ix*Z-L/2)}px ${-(iy*Z-L/2)}px`; };
+  const hideLens=()=>{ if(lens) lens.hidden=true; };
+  const pts=new Map(); let g=null;   /* g.mode: press(누름) · drag(배율 1에서 누른 채 움직임) · pan(크게 본 채 밀기) · pinch(두 손가락) */
+  wrap.addEventListener('pointerdown', e=>{
+    if(e.target.closest('.zbar') || (e.pointerType==='mouse' && e.button!==0)) return;
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY}); try{ wrap.setPointerCapture(e.pointerId); }catch(_){}
+    if(pts.size===1){ g={mode:'press', x0:e.clientX, y0:e.clientY, lx:e.clientX, ly:e.clientY}; showLens(e); if(opt.move) opt.move(e); }
+    else if(pts.size===2){ hideLens(); if(opt.cancel && g && g.mode!=='pan') opt.cancel(); const [a,b]=[...pts.values()], r=rel((a.x+b.x)/2, (a.y+b.y)/2), z=zvOf(q);
+      g={mode:'pinch', d0:Math.hypot(a.x-b.x, a.y-b.y)||1, s0:z.s, ux:(z.ox+r.fx)/z.s, uy:(z.oy+r.fy)/z.s}; }
+  });
+  wrap.addEventListener('pointermove', e=>{
+    if(!g || !pts.has(e.pointerId)) return; pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(g.mode==='pinch'){ if(pts.size<2) return; const [a,b]=[...pts.values()], r=rel((a.x+b.x)/2, (a.y+b.y)/2), s=Math.min(ZOOM.max, Math.max(1, g.s0*(Math.hypot(a.x-b.x, a.y-b.y)||1)/g.d0));
+      put(s, g.ux*s-r.fx, g.uy*s-r.fy); return; }
+    if(g.mode==='press'){ if(Math.hypot(e.clientX-g.x0, e.clientY-g.y0)<8){ showLens(e); if(opt.move) opt.move(e); return; }
+      if(zvOf(q).s>1){ g.mode='pan'; hideLens(); if(opt.cancel) opt.cancel(); } else g.mode='drag'; }
+    if(g.mode==='pan'){ const rc=wrap.getBoundingClientRect(), z=zvOf(q); put(z.s, z.ox-(e.clientX-g.lx)/rc.width, z.oy-(e.clientY-g.ly)/rc.height); g.lx=e.clientX; g.ly=e.clientY; }
+    else if(g.mode==='drag'){ showLens(e); if(opt.move) opt.move(e); }
+  });
+  const end=(e, ok)=>{ if(!pts.has(e.pointerId)) return; pts.delete(e.pointerId);
+    if(g && g.mode==='pinch'){ if(pts.size===1){ const [a]=[...pts.values()]; g={mode:'pan', x0:a.x, y0:a.y, lx:a.x, ly:a.y}; } else if(!pts.size){ g=null; sync(); } return; }
+    if(pts.size) return;
+    const m=g && g.mode; g=null; hideLens();
+    if(m==='pan'){ sync(); return; }
+    if(ok && (m==='press' || m==='drag')){ if(opt.tap) opt.tap(e); } else if(opt.cancel) opt.cancel();
+  };
+  wrap.addEventListener('pointerup', e=>end(e, true)); wrap.addEventListener('pointercancel', e=>end(e, false));
+  wrap.addEventListener('click', e=>{ const b=e.target.closest('[data-z]'); if(!b) return; e.preventDefault(); e.stopPropagation(); const z=zvOf(q), v=b.dataset.z;
+    if(v==='1') put(1, 0, 0); else zoomAt(v==='in' ? z.s*ZOOM.step : z.s/ZOOM.step, 0.5, 0.5); sync(); });
+  wrap.addEventListener('wheel', e=>{ if(!e.ctrlKey){ if(opt.wheel!=='plain' || (zvOf(q).s<=1 && e.deltaY>0)) return; } e.preventDefault(); const r=rel(e.clientX, e.clientY);
+    zoomAt(zvOf(q).s*Math.exp(-Math.max(-60, Math.min(60, e.deltaY))*(e.ctrlKey?0.01:0.004)), r.fx, r.fy); sync(); }, {passive:false});
+  wrap.addEventListener('gesturestart', e=>e.preventDefault());   /* iOS 사파리: 사진 위 두 손가락은 페이지가 아니라 사진을 키운다 */
+  wrap.addEventListener('contextmenu', e=>{ if(e.pointerType!=='mouse') e.preventDefault(); });
+  apply();
+}
 /* «포인트 색» 줄: 자동 후보 칩 + 직접 짚기 + 없음. 식물·나물은 늘 보이고, 나머지 분류는 후보가 있을 때만 */
 function vAccentRow(q, cat){
   if(!q.cx) return ''; const acc=q.acc||[];
@@ -1177,21 +1311,22 @@ function vAccentRow(q, cat){
 const accMark = (q, c) => { if(!(q && q.cacc==='tap' && q.atap)) return ''; const v=toView(c||null, q.atap); return `<span aria-hidden="true" style="position:absolute;left:${(v.x*100).toFixed(2)}%;top:${(v.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #A6503F;background:${h(q.atap.hex)};pointer-events:none"></span>`; };
 
 /* 미리보기(약 400px) 픽셀 읽기 */
-async function previewPixels(blob){
-  const bmp=await createImageBitmap(blob); const sc=Math.min(1, PREVIEW.max/Math.max(bmp.width,bmp.height));
+async function previewPixels(blob, max){
+  const bmp=await createImageBitmap(blob); const sc=Math.min(1, (max||PREVIEW.max)/Math.max(bmp.width,bmp.height));
   const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(bmp.width*sc)); c.height=Math.max(1,Math.round(bmp.height*sc));
   const ctx=c.getContext('2d',{willReadFrequently:true}); ctx.drawImage(bmp,0,0,c.width,c.height);
   const d=ctx.getImageData(0,0,c.width,c.height); c.width=c.height=0; if(bmp.close) bmp.close(); return d;
 }
 /* 사진 p에서 짚은 대상(p.txy) 둘레의 색을 찾아 p.cx(5색)·p.cmain(내가 본 색: 군집 번호 또는 'point')에 둔다 */
 async function findColors(p){
-  const pt=p.txy, keepTap=(p.cacc==='tap' && p.atap) ? p.atap : null, keepSubLabs=subLabsOf(p);
+  const pt=p.txy, keepTap=(p.cacc==='tap' && p.atap) ? p.atap : null;
   p.cx=null; p.cmain=null; p.cerr=false; p.acc=[]; p.cacc=null; p.atap=null; p.amode=false;
-  try{ const px=await previewPixels(p.full||p.sblob||p.blob), ex=extractColors(px, pt, p.r);
-    if(p.txy===pt){ p.px=px; p.cx=ex; p.cmain=ex.pick; restoreMain(p); keepSubs(p, keepSubLabs); if(keepTap){ p.atap=keepTap; p.cacc='tap'; } refreshAccents(p); } }
+  try{ const px=await previewPixels(p.full||p.sblob||p.blob), ex=extractColors(px, pt, p.r), ts=p.ts||1;
+    if(ts>1){ const hi=await hiPixels(p); if(hi) refinePoint(ex, hi, pt, ts); }   /* 크게 본 채 짚었으면 짚은 점은 큰 사진에서 */
+    if(p.txy===pt){ p.px=px; p.cx=ex; p.cmain=ex.pick; restoreMain(p); if(keepTap){ p.atap=keepTap; p.cacc='tap'; } refreshAccents(p); } }
   catch(e){ if(p.txy===pt) p.cerr=true; }
 }
-const draftColors = (p, photo) => (p && p.txy && p.cx && p.cmain!=null) ? buildColors(p.cx, p.cmain, {photo, x:p.txy.x, y:p.txy.y, r:p.r}, accentOf(p), p.csubs||[]) : null;
+const draftColors = (p, photo) => (p && p.txy && p.cx && p.cmain!=null) ? buildColors(p.cx, p.cmain, {photo, x:p.txy.x, y:p.txy.y, r:p.r}, accentOf(p), subsOf(p), p.near) : null;
 /* 정사각 카드로 자를 때 가운데가 아니라 짚은 대상을 기준으로 */
 const focusStyle = f => { f=okXY(f); return f ? ` style="object-position:${(f.x*100).toFixed(1)}% ${(f.y*100).toFixed(1)}%"` : ''; };
 /* 3색 띠 (내가 본 색 2 : 함께 보인 색 1 : 1) */
@@ -2528,12 +2663,13 @@ function vDraft(){
       <p class="small">휴대폰마다 카메라가 색을 조금씩 다르게 담아요. 찍는 휴대폰은 달라도, <b>색을 미리 재 둔 ${h(tw)}</b>(톤파인더·컬러칩·컬러프레임)를 대상 옆에 함께 찍으면
       사진 속 잣대의 색이 얼마나 달라졌는지 보고 <b>대상의 색을 현장에서 본 색에 가깝게</b> 되돌릴 수 있어요. 그래서 잣대와 대상이 <b>같은 빛</b>을 받아야 해요.</p>
       ${tool.note?`<p class="small muted">${h(tool.note)}</p>`:''}</details>` : '';
-    const mark = (pt, kind) => pt ? `<span aria-hidden="true" style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:${(pt.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:${kind==='k'?44:28}px;height:${kind==='k'?44:28}px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px ${kind==='k'?'#224653':'#A6503F'};${kind==='t'?'background:rgba(166,80,63,.35);':''}pointer-events:none"></span><span style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:calc(${(pt.y*100).toFixed(2)}% + ${kind==='k'?28:20}px);transform:translateX(-50%);background:${kind==='k'?'#224653':'#A6503F'};color:#fff;border-radius:6px;padding:0 6px;font-size:12px;font-weight:700;pointer-events:none">${kind==='k'?h(tl):'대상'}</span>` : '';
+    const mark = (pt, kind) => pt ? `<span aria-hidden="true" class="${kind==='t'?'zmt':''}" style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:${(pt.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:${kind==='k'?44:28}px;height:${kind==='k'?44:28}px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px ${kind==='k'?'#224653':'#A6503F'};${kind==='t'?'background:rgba(166,80,63,.35);':''}pointer-events:none"></span><span style="position:absolute;left:${(pt.x*100).toFixed(2)}%;top:calc(${(pt.y*100).toFixed(2)}% + ${kind==='k'?28:20}px);transform:translateX(-50%);background:${kind==='k'?'#224653':'#A6503F'};color:#fff;border-radius:6px;padding:0 6px;font-size:12px;font-weight:700;pointer-events:none">${kind==='k'?h(tl):'대상'}</span>` : '';
     const isFrame = d.keyring==='컬러프레임';
     body=`<h1 class="h2">① ${h(jo(tl,'을','를'))} 대고 한 장</h1>
       ${why}
       ${d.p1&&CUR.taps?`<div class="notice small" id="tapmsg" style="margin:0">${tapMsg}</div>
-      <div id="tapwrap" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation"><img src="${h(d.p1.url)}" alt="${h(jo(tl,'과','와'))} 함께 찍은 사진 — 눌러서 ${h(jo(tl,'과','와'))} 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">${d.p1.txy?roiMarks(d.p1.txy, d.p1.ow, d.p1.oh):''}${mark(d.p1.kxy,'k')}${mark(d.p1.txy,'t')}${accMark(d.p1)}<span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700">① ${h(jo(tl,'과','와'))} 함께</span></div>
+      <div id="tapwrap" class="zbox" style="border-radius:14px;cursor:crosshair;aspect-ratio:${d.p1.w}/${d.p1.h};touch-action:${zTouch(d.p1)}"><div class="zin" style="${zinStyle(d.p1)}"><img src="${h(d.p1.url)}" alt="${h(jo(tl,'과','와'))} 함께 찍은 사진 — 눌러서 ${h(jo(tl,'과','와'))} 대상을 짚어요" draggable="false">${d.p1.txy?roiMarks(d.p1.txy, d.p1.ow, d.p1.oh):''}${mark(d.p1.kxy,'k')}${mark(d.p1.txy,'t')}${accMark(d.p1)}</div><span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700;line-height:1.5">① ${h(jo(tl,'과','와'))} 함께</span>${zbarHtml(d.p1)}</div>
+      <p class="xs muted zhint" style="margin:0">${zhintText(d.p1)}</p>
       ${d.p1.kxy?'<button class="link" id="retap" style="align-self:flex-start">다시 짚기</button>':''}
       ${vColorPick(d.p1, 1, d.category)}`
       :`<div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="${h(jo(tl,'과','와'))} 함께 찍은 사진"><span class="badge">① ${h(jo(tl,'과','와'))} 함께</span>`:d.oldP1?'<span class="muted small">이미 올린 사진이 있어요 (바꾸려면 다시 찍기)</span>':'<span class="muted">아직 사진이 없어요</span>'}</div>`}
@@ -2551,7 +2687,8 @@ function vDraft(){
     body+= (noRing(d) && d.p2) ? `
       <div class="notice small" style="margin:0">${d.p2.txy?'잘 짚었어요. 다시 하려면 «다시 짚기»':'사진에서 <b>기록할 대상</b>을 한 번 눌러 주세요'}</div>
       ${(()=>{ const p=d.p2, c=okCrop(p.crop), v=p.txy?toView(c, p.txy):null, W=c?c.w*p.w:p.ow, H=c?c.h*p.h:p.oh, rr=(p.r||COLORS.roi)*(c?Math.min(p.w,p.h)/Math.min(W,H):1);
-        return `<div id="tapwrap2" class="${c?'cropv':''}" style="position:relative;border-radius:14px;overflow:hidden;cursor:crosshair;touch-action:manipulation;${c?fitStyle(c):''}">${c?fitImg(p.url, c, '찍은 사진 — 눌러서 대상을 짚어요'):`<img src="${h(p.url)}" alt="찍은 사진 — 눌러서 대상을 짚어요" style="display:block;width:100%;height:auto" draggable="false">`}${v?roiMarks(v, W, H, rr)+`<span aria-hidden="true" style="position:absolute;left:${(v.x*100).toFixed(2)}%;top:${(v.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #A6503F;background:rgba(166,80,63,.35);pointer-events:none"></span>`+accMark(p, c):''}</div>`; })()}
+        return `<div id="tapwrap2" class="zbox${c?' cropv':''}" style="border-radius:14px;cursor:crosshair;touch-action:${zTouch(p)};${c?fitStyle(c):`aspect-ratio:${p.w}/${p.h}`}"><div class="zin" style="${zinStyle(p)}">${c?fitImg(p.url, c, '찍은 사진 — 눌러서 대상을 짚어요'):`<img src="${h(p.url)}" alt="찍은 사진 — 눌러서 대상을 짚어요" draggable="false">`}${v?roiMarks(v, W, H, rr)+`<span aria-hidden="true" class="zmt" style="position:absolute;left:${(v.x*100).toFixed(2)}%;top:${(v.y*100).toFixed(2)}%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #A6503F;background:rgba(166,80,63,.35);pointer-events:none"></span>`+accMark(p, c):''}</div>${zbarHtml(p)}</div>
+      <p class="xs muted zhint" style="margin:0">${zhintText(p)}</p>`; })()}
       ${d.p2.txy?'<button class="link" id="retap2" style="align-self:flex-start">다시 짚기</button>':''}
       ${vColorPick(d.p2, 2, d.category)}` : `
       ${d.p2&&okCrop(d.p2.crop)?`<div class="cropv" style="border-radius:14px;${fitStyle(d.p2.crop)}">${fitImg(d.p2.url, d.p2.crop, toolShort(d)+' 없이 찍은 사진')}<span class="badge" style="position:absolute;left:10px;top:10px;background:rgba(34,70,83,.88);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700">② ${h(toolShort(d))} 없이</span></div>`:`<div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="${h(toolShort(d))} 없이 찍은 사진"><span class="badge">② ${h(toolShort(d))} 없이</span>`:(d.oldP2?'<span class="muted small">이미 올린 사진이 있어요</span>':'<span class="muted">아직 사진이 없어요</span>')}</div>`}`;
@@ -2645,33 +2782,24 @@ function bindDraft(){
       render();
     }catch(e){ toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요.'); }
   }; });
-  const tw=$('#tapwrap'); if(tw && d.p1) tw.onclick=async e=>{
-    const rc=tw.getBoundingClientRect(); const pt={x:+((e.clientX-rc.left)/rc.width).toFixed(4), y:+((e.clientY-rc.top)/rc.height).toFixed(4)};
-    if(pt.x<0||pt.x>1||pt.y<0||pt.y>1) return;
-    const p=d.p1;
-    if(p.txy && p.px && accentTapping(p)){ tapAccent(p, pt); render(); return; }   /* 포인트 색 직접 짚기(고른 동안 계속) */
+  /* ① 사진 짚기: 크게 보기(밀기·벌리기·＋−) 안에서 짧게 누르면 짚는다. 누르는 동안 확대경 */
+  const tw=$('#tapwrap'); if(tw && d.p1) zoomable(tw, d.p1, {lens:{url:d.p1.url}, onZoom:()=>{ hiPixels(d.p1); }, tap: async e=>{
+    const p=d.p1, pt=zinPt(tw, e); if(!inPt(pt)) return;
+    if(p.txy && p.px && accentTapping(p)){ if(zvOf(p).s>1) await hiPixels(p); if(d.p1!==p) return; tapAccent(p, pt); render(); return; }   /* 포인트 색 직접 짚기(고른 동안 계속) */
     if(!p.kxy){ p.kxy=pt; p.kblob=null; p.kbox=null; render(); const c=await cropKeyring(p.file, pt.x, pt.y); if(c && d.p1===p && p.kxy===pt){ p.kblob=c.blob; p.kbox=c.box; if(p.cx){ refreshAccents(p); if(steps(d)[d.step-1]==='p1') render(); } } }
-    else { p.txy=pt; render(); await findColors(p); if(d.p1===p && p.txy===pt && steps(d)[d.step-1]==='p1') render(); }
-  };
-  if(tw && d.p1){ /* 누르는 동안 확대경 — 짚는 자리는 그대로, 보기만 키운다 */
-    const lens=document.createElement('span'); lens.className='rp-lens'; lens.hidden=true; tw.appendChild(lens); const Z=2.5, L=132;
-    const show=e=>{ const rc=tw.getBoundingClientRect(), px=e.clientX-rc.left, py=e.clientY-rc.top; if(px<0||py<0||px>rc.width||py>rc.height){ lens.hidden=true; return; }
-      lens.hidden=false; lens.style.left=px+'px'; lens.style.top=(py<L+30 ? py+L/2+34 : py-L/2-34)+'px'; lens.style.backgroundImage=`url("${d.p1.url}")`;
-      lens.style.backgroundSize=`${rc.width*Z}px ${rc.height*Z}px`; lens.style.backgroundPosition=`${-(px*Z-L/2)}px ${-(py*Z-L/2)}px`; };
-    let on=false; tw.addEventListener('pointerdown', e=>{ on=true; show(e); }); tw.addEventListener('pointermove', e=>{ if(on) show(e); });
-    ['pointerup','pointercancel','pointerleave'].forEach(t=>tw.addEventListener(t, ()=>{ on=false; lens.hidden=true; })); }
+    else { p.txy=pt; p.ts=zvOf(p).s; render(); await findColors(p); if(d.p1===p && p.txy===pt && steps(d)[d.step-1]==='p1') render(); }
+  }});
   const rt=$('#retap'); if(rt) rt.onclick=()=>{ if(d.p1){ d.p1.kxy=null; d.p1.txy=null; d.p1.kblob=null; d.p1.kbox=null; d.p1.cx=null; d.p1.cmain=null; } render(); };
   /* 키링 없이 올리는 기록: ② 사진에서 대상을 한 번 짚는다 */
-  const tw2=$('#tapwrap2'); if(tw2 && d.p2) tw2.onclick=async e=>{
-    const rc=tw2.getBoundingClientRect(); const pt={x:+((e.clientX-rc.left)/rc.width).toFixed(4), y:+((e.clientY-rc.top)/rc.height).toFixed(4)};
-    if(pt.x<0||pt.x>1||pt.y<0||pt.y>1) return;
-    const p=d.p2, at=toOrig(okCrop(p.crop), pt);   /* 화면(틀 안)에서 짚은 자리를 원본 자리로 */
-    if(p.txy && p.px && accentTapping(p)){ tapAccent(p, at); render(); return; }
-    p.txy=at; render(); await findColors(p); if(d.p2===p && p.txy===at && steps(d)[d.step-1]==='p2') render();
-  };
-  const rf=$('#refit'); if(rf && d.p2) rf.onclick=async ()=>{ const p=d.p2, c=await openFit({url:p.url, w:p.w, h:p.h, crop:p.crop, cancel:true}); if(!c || d.p2!==p) return; p.crop=c; const cs=await cropPreview(p.blob, c); if(cs) p.sblob=cs; render(); };
+  const tw2=$('#tapwrap2'); if(tw2 && d.p2) zoomable(tw2, d.p2, {lens:{url:d.p2.url, crop:okCrop(d.p2.crop)}, onZoom:()=>{ hiPixels(d.p2); }, tap: async e=>{
+    const p=d.p2, pt=zinPt(tw2, e); if(!inPt(pt)) return;
+    const at=toOrig(okCrop(p.crop), pt);   /* 화면(틀 안)에서 짚은 자리를 원본 자리로 */
+    if(p.txy && p.px && accentTapping(p)){ if(zvOf(p).s>1) await hiPixels(p); if(d.p2!==p) return; tapAccent(p, at); render(); return; }
+    p.txy=at; p.ts=zvOf(p).s; render(); await findColors(p); if(d.p2===p && p.txy===at && steps(d)[d.step-1]==='p2') render();
+  }});
+  const rf=$('#refit'); if(rf && d.p2) rf.onclick=async ()=>{ const p=d.p2, c=await openFit({url:p.url, w:p.w, h:p.h, crop:p.crop, cancel:true}); if(!c || d.p2!==p) return; p.crop=c; p.zv=null; const cs=await cropPreview(p.blob, c); if(cs) p.sblob=cs; render(); };
   const rt2=$('#retap2'); if(rt2) rt2.onclick=()=>{ if(d.p2){ d.p2.txy=null; d.p2.cx=null; d.p2.cmain=null; } render(); };
-  document.querySelectorAll('#cpick [data-cmain]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; const v=b.dataset.cmain; p.cmain = v==='point' ? 'point' : +v; p.keepLost=false; p.csubs=(p.csubs||[]).filter(i=>i!==p.cmain); rememberMain(p); refreshAccents(p); render(); });
+  document.querySelectorAll('#cpick [data-cmain]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; const v=b.dataset.cmain; p.cmain = v==='point' ? 'point' : +v; p.keepLost=false; rememberMain(p); refreshAccents(p); render(); });
   document.querySelectorAll('#spick [data-csub]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; pickSub(p, +b.dataset.csub); render(); });
   document.querySelectorAll('#apick [data-cacc]').forEach(b=>b.onclick=()=>{ const p=steps(d)[d.step-1]==='p2'?d.p2:d.p1; if(!p||!p.cx) return; pickAccent(p, b.dataset.cacc); render(); });
   const nx=$('#next'); if(nx) nx.onclick=async()=>{
@@ -2874,11 +3002,11 @@ async function openRepick(r){
   const q={r:ROI_SIZES[1][0], txy:null, px:null, url:'', kbox:(n===1 && r.keyring_xy && r.keyring_xy.crop) || null, cx:null, cmain:null, acc:[], cacc:null, atap:null, amode:false, cur:null};
   const close=()=>{ d.remove(); if(q.url) URL.revokeObjectURL(q.url); document.removeEventListener('keydown', onKey); };
   const onKey=e=>{ if(e.key==='Escape') close(); };
-  try{ const u=await admUrl(r[`photo${n}_path`]); const blob=await (await fetch(u)).blob(); q.url=URL.createObjectURL(blob); q.px=await previewPixels(blob); }
+  try{ const u=await admUrl(r[`photo${n}_path`]); const blob=await (await fetch(u)).blob(); q.blob=blob; q.url=URL.createObjectURL(blob); q.px=await previewPixels(blob); }
   catch(e){ toast('사진을 받지 못했어요. 다시 눌러 주세요.'); close(); return; }
   if(!document.body.contains(d)) return;
-  const calc=()=>{ const keepTap=(q.cacc==='tap' && q.atap) ? q.atap : null, keepSubLabs=subLabsOf(q);
-    q.cx=extractColors(q.px, q.txy, q.r); q.cmain=q.cx.pick; restoreMain(q); keepSubs(q, keepSubLabs); q.cacc=null; q.atap=null; q.amode=false;
+  const calc=()=>{ const keepTap=(q.cacc==='tap' && q.atap) ? q.atap : null;
+    q.cx=extractColors(q.px, q.txy, q.r); if(q.ts>1 && q.hiPx) refinePoint(q.cx, q.hiPx, q.txy, q.ts); q.cmain=q.cx.pick; restoreMain(q); q.cacc=null; q.atap=null; q.amode=false;
     if(keepTap){ q.atap=keepTap; q.cacc='tap'; } refreshAccents(q); };
   const was=r.colors && r.colors.roi;
   q.txy = (was && (was.photo===2?2:1)===n && okXY(was)) || (n===1 && okXY(r.target_xy)) || {x:0.5, y:0.5};
@@ -2887,14 +3015,15 @@ async function openRepick(r){
   box.innerHTML=`<div class="row between"><h2 class="h2">색 다시 짚기</h2><button class="link" data-close>닫기 ✕</button></div>
     <p class="small muted">«${h(r.local_name||r.color_name)}» · ${n===2?'② 키링 없이':'① 키링과 함께'} 사진. 원을 끌거나 원하는 곳을 눌러 옮기면 색을 다시 찾아요.</p>
     <div class="rp-grid">
-      <div class="stack" style="gap:8px;min-width:0"><div class="rp-wrap" id="rpwrap"><img src="${h(q.url)}" alt="" draggable="false"><span class="rp-roi" id="rproi"></span><span id="rpacc"></span><span class="rp-lens" id="rplens" hidden></span></div>
+      <div class="stack" style="gap:8px;min-width:0"><div class="rp-wrap zbox" id="rpwrap" style="aspect-ratio:${W}/${H};width:min(100%, calc(70vh * ${(W/H).toFixed(4)}))"><div class="zin" style="${zinStyle(q)}"><img src="${h(q.url)}" alt="" draggable="false"><span class="rp-roi" id="rproi"></span><span id="rpacc"></span></div>${zbarHtml(q)}</div>
+        <p class="xs muted zhint" style="margin:0">${zhintText(q)}</p>
         <div class="row" style="gap:8px;align-items:center"><span class="small muted">원 크기</span><div class="seg" role="group" aria-label="원 크기">${ROI_SIZES.map(([v,t])=>`<button type="button" data-rpsize="${v}" aria-pressed="${v===q.r}">${t}</button>`).join('')}</div></div></div>
       <div class="stack" style="gap:10px;min-width:0" id="rpanel"></div>
     </div>`;
-  const wrap=box.querySelector('#rpwrap'), roi=box.querySelector('#rproi'), lens=box.querySelector('#rplens'), panel=box.querySelector('#rpanel');
+  const wrap=box.querySelector('#rpwrap'), roi=box.querySelector('#rproi'), panel=box.querySelector('#rpanel');
   const marks=pt=>{ roi.style.left=(pt.x*100)+'%'; roi.style.top=(pt.y*100)+'%'; roi.style.width=(2*q.r*Math.min(W,H)/W*100)+'%'; box.querySelector('#rpacc').innerHTML=accMark(q); };
   const draw=()=>{
-    const out=buildColors(q.cx, q.cmain, {photo:n, x:q.txy.x, y:q.txy.y, r:q.r}, accentOf(q), q.csubs||[]), cl=q.cx.clusters;
+    const out=buildColors(q.cx, q.cmain, {photo:n, x:q.txy.x, y:q.txy.y, r:q.r}, accentOf(q), subsOf(q), q.near), cl=q.cx.clusters;
     panel.innerHTML=`<div class="notice small" style="margin:0">${q.keepLost?'전에 고른 색이 새 원 안에는 없어요. <b>«내가 본 색»</b>으로 둘 칸을 다시 눌러 주세요.':`원 안에서 ${cl.length}가지 색을 찾았어요. <b>«내가 본 색»</b>으로 둘 칸을 눌러 주세요.`}</div>
       <div class="cchips" id="cpick">${cl.map((c,i)=>`<button type="button" data-cmain="${i}" aria-pressed="${q.cmain===i}" aria-label="${h(c.hex)} ${Math.round(c.share*100)}%"><i style="background:${h(c.hex)}"></i><span>${q.cmain===i?'내가 본 색':Math.round(c.share*100)+'%'}</span></button>`).join('')}</div>
       <button type="button" class="link" data-cmain="point" style="align-self:flex-start">${q.cmain==='point'?'✓ 원 가운데 점의 색 그대로':'딱 맞는 색이 없어요 (원 가운데 점의 색 그대로)'} <i style="display:inline-block;width:14px;height:14px;vertical-align:-2px;border:1px solid var(--line);background:${h(q.cx.point.hex)}"></i></button>
@@ -2908,30 +3037,25 @@ async function openRepick(r){
     marks(q.txy);
   };
   draw();
-  const at=e=>{ const rc=wrap.getBoundingClientRect(); return {x:+Math.max(0,Math.min(1,(e.clientX-rc.left)/rc.width)).toFixed(4), y:+Math.max(0,Math.min(1,(e.clientY-rc.top)/rc.height)).toFixed(4), rc}; };
-  let down=false;
-  const move=e=>{ const a=at(e); q.cur={x:a.x, y:a.y}; if(!accentTapping(q)) marks(q.cur);
-    /* 누르는 동안 확대경(3배) — 손가락에 가리지 않게 위쪽에 */
-    const Z=3, L=132, px=a.x*a.rc.width, py=a.y*a.rc.height;
-    lens.hidden=false; lens.style.left=px+'px'; lens.style.top=(py<L+30 ? py+L/2+34 : py-L/2-34)+'px';
-    lens.style.backgroundImage=`url("${q.url}")`; lens.style.backgroundSize=`${a.rc.width*Z}px ${a.rc.height*Z}px`; lens.style.backgroundPosition=`${-(px*Z-L/2)}px ${-(py*Z-L/2)}px`; };
-  wrap.addEventListener('pointerdown', e=>{ e.preventDefault(); try{ wrap.setPointerCapture(e.pointerId); }catch(x){} down=true; move(e); });
-  wrap.addEventListener('pointermove', e=>{ if(down) move(e); });
-  const up=()=>{ if(!down) return; down=false; lens.hidden=true; if(!q.cur) return;
-    if(accentTapping(q)) tapAccent(q, q.cur); else { q.txy=q.cur; calc(); }
-    draw(); };
-  wrap.addEventListener('pointerup', up); wrap.addEventListener('pointercancel', up);
+  /* 배율 1: 원을 끌어 옮기고 떼면 색을 다시 찾는다. 크게 본 채: 밀면 사진이 움직이고, 짧게 누르면 그 자리로 */
+  const at=e=>{ const p=zinPt(wrap, e); return {x:+Math.max(0,Math.min(1,p.x)).toFixed(4), y:+Math.max(0,Math.min(1,p.y)).toFixed(4)}; };
+  zoomable(wrap, q, {at1:'none', wheel:'plain', lens:{url:q.url}, onZoom:()=>{ hiPixels(q); },
+    move: e=>{ q.cur=at(e); if(!accentTapping(q)) marks(q.cur); },
+    cancel: ()=>{ q.cur=null; marks(q.txy); },
+    tap: async e=>{ const c=at(e); q.cur=null; if(zvOf(q).s>1) await hiPixels(q); if(!document.body.contains(d)) return;
+      if(accentTapping(q)) tapAccent(q, c); else { q.txy=c; q.ts=zvOf(q).s; calc(); }
+      draw(); } });
   document.addEventListener('keydown', onKey);
   d.addEventListener('click', async e=>{
     if(e.target===d || e.target.closest('[data-close]')){ close(); return; }
     const sz=e.target.closest('[data-rpsize]'); if(sz){ q.r=+sz.dataset.rpsize; box.querySelectorAll('[data-rpsize]').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.rpsize===q.r))); calc(); draw(); return; }
-    const cm=e.target.closest('[data-cmain]'); if(cm){ q.cmain = cm.dataset.cmain==='point' ? 'point' : +cm.dataset.cmain; q.keepLost=false; q.csubs=(q.csubs||[]).filter(i=>i!==q.cmain); rememberMain(q); refreshAccents(q); draw(); return; }
+    const cm=e.target.closest('[data-cmain]'); if(cm){ q.cmain = cm.dataset.cmain==='point' ? 'point' : +cm.dataset.cmain; q.keepLost=false; rememberMain(q); refreshAccents(q); draw(); return; }
     const cs=e.target.closest('[data-csub]'); if(cs){ pickSub(q, +cs.dataset.csub); draw(); return; }
     const ca=e.target.closest('[data-cacc]'); if(ca){ pickAccent(q, ca.dataset.cacc); draw(); return; }
     if(e.target.id==='rpsave'){
       const b=e.target; b.disabled=true; b.innerHTML='<span class="spinner"></span> 저장 중…';
       const prev = r.colors ? (({prev, ...rest})=>rest)(r.colors) : null;   /* 이전 색(그 안의 더 이전 기록은 빼고)과 고친 시각 */
-      const colors=Object.assign(buildColors(q.cx, q.cmain, {photo:n, x:q.txy.x, y:q.txy.y, r:q.r}, accentOf(q), q.csubs||[]), {by:'staff', at:'target', prev:{colors:prev, at:new Date().toISOString()}});
+      const colors=Object.assign(buildColors(q.cx, q.cmain, {photo:n, x:q.txy.x, y:q.txy.y, r:q.r}, accentOf(q), subsOf(q), q.near), {by:'staff', at:'target', prev:{colors:prev, at:new Date().toISOString()}});
       const {data, error}=await sb.from('records').update({colors, target_xy:{x:q.txy.x, y:q.txy.y}}).eq('id', r.id).select('colors,target_xy').single();
       if(error || !data){ toast('저장하지 못했어요'+(error?': '+error.message:'')); b.disabled=false; b.textContent='저장하기'; return; }
       Object.assign(r, data); delete S.gallery[S.adm.ed]; close(); toast('색을 다시 짚어 저장했어요'); admReview();
