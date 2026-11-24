@@ -328,6 +328,19 @@ body{font-size:17px;letter-spacing:-.01em;color:var(--ink2)}
 .choice,.check,.rec,.stat,.input,.ring,.gcard,.qitem{border-radius:4px}
 .choice[aria-pressed="true"]{border-color:var(--berry);background:var(--panel)}
 .ring[aria-pressed="true"]{background:var(--panel)}
+/* 기록하기 첫 단계: 분류 정사각 타일 */
+.cats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cat{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 6px;border:2px solid var(--line);border-radius:4px;background:var(--card);cursor:pointer;text-align:center;color:var(--ink2)}
+.cat svg{width:30px;height:30px;margin-bottom:3px}
+.cat b{font-size:15px;line-height:1.25;color:var(--ink);word-break:keep-all}
+.cat span{font-size:12px;line-height:1.3;color:var(--ink3);word-break:keep-all}
+.cat.wide{aspect-ratio:auto;flex-direction:row;justify-content:flex-start;gap:10px;padding:10px 14px;margin-top:8px;width:100%}
+.cat.wide svg{width:24px;height:24px;margin:0}
+.cat[aria-pressed="true"]{border-color:var(--berry);background:var(--panel);color:var(--berry)}
+.subchk{display:flex;gap:10px;align-items:flex-start;margin-top:8px;padding:12px 14px;border:2px solid var(--line);border-radius:4px;background:var(--card);cursor:pointer}
+.subchk input{width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:var(--berry)}
+.subchk>span{display:flex;flex-direction:column;gap:2px}
+.subchk:has(input:checked){border-color:var(--berry);background:var(--panel)}
 .stat{border-color:var(--line)}
 .stat b{font-family:var(--display);font-weight:500;font-size:34px}
 .tag{border-radius:2px;background:var(--panel)}
@@ -582,15 +595,36 @@ const BUCKET = 'record-photos';
 const CONSENT_VERSION = 'ul-2026-11';
 const GAP_WARN_MIN = 5;
 
+/* ex: 소개 페이지용 긴 설명, s: 기록하기 정사각 타일용 짧은 설명 */
 const CATS = [
-  {v:'나물·약초', ex:'먹거나 약으로 쓰는 풀 — 명이, 부지깽이, 묵나물·장아찌'},
-  {v:'식물·꽃·열매', ex:'보고 즐기는 풀·꽃·나무·열매 — 울릉국화, 마가목, 너도밤나무'},
-  {v:'바다', ex:'바닷물, 갯바위, 해조류, 해산물'},
-  {v:'농작물·먹거리', ex:'늦호박, 호박엿'},
-  {v:'생업 재료', ex:'오징어 덕장, 어구'},
-  {v:'기타', ex:'위에 맞는 게 없을 때 — 풍경, 건물, 생활 도구'},
-  {v:'기억 카드', ex:'지금 볼 수 없는 것 — 사진 없이 이야기만'}
+  {v:'식물·꽃·열매', s:'나물·꽃·열매·나무', ex:'풀·꽃·나무·열매 — 명이, 부지깽이, 울릉국화, 마가목. 먹거나 약으로 쓰면 «나물·약초»에 체크'},
+  {v:'바다', s:'바다 풍경·갯바위', ex:'바다 풍경(물빛·파도)이 기본 — 갯바위·해조류를 가까이 찍었으면 체크'},
+  {v:'풍경·지질', s:'산·들판·바위', ex:'산·들판·마을 풍경, 바위·절벽·흙 — 땅이 주인공인 장면'},
+  {v:'농작물·먹거리', s:'늦호박·호박엿', ex:'늦호박, 호박엿'},
+  {v:'생업 재료', s:'덕장·어구', ex:'오징어 덕장, 어구'},
+  {v:'기타', s:'건물·도구', ex:'위에 맞는 게 없을 때 — 건물, 생활 도구'},
+  {v:'기억 카드', s:'사진 없이 이야기만', ex:'지금 볼 수 없는 것 — 사진 없이 이야기만'}
 ];
+/* 분류 타일의 선 그림 (28×28, 글자색을 따른다) */
+const CAT_ICONS = {
+  '나물·약초':'<path d="M14 25V11"/><path d="M14 17c-4 0-7-2-8-6 4 0 7 2 8 6Z"/><path d="M14 13c4 0 7-2 8-6-4 0-7 2-8 6Z"/><path d="M14 21.5c3.5 0 6-1.6 7-4.6-3.5 0-6 1.6-7 4.6Z"/>',
+  '식물·꽃·열매':'<circle cx="14" cy="5.8" r="2.6"/><circle cx="18.2" cy="10" r="2.6"/><circle cx="14" cy="14.2" r="2.6"/><circle cx="9.8" cy="10" r="2.6"/><circle cx="14" cy="10" r="1.3"/><path d="M14 16.8V25"/><path d="M14 22c2.6 0 4.6-1.5 5.2-4-2.6 0-4.6 1.5-5.2 4Z"/>',
+  '바다':'<path d="M3.5 10c2.6-2.6 5.2-2.6 7.8 0s5.2 2.6 7.8 0 5.2-2.6 5.4-.2"/><path d="M3.5 16c2.6-2.6 5.2-2.6 7.8 0s5.2 2.6 7.8 0 5.2-2.6 5.4-.2"/><path d="M7 22c2.3-2.2 4.6-2.2 6.9 0s4.6 2.2 6.9 0"/>',
+  '풍경·지질':'<path d="M2.5 23 10 10.5l4.6 7.2 3.6-5.2L25.5 23Z"/><path d="M6.5 20h5M15.5 20.6h5.5"/><circle cx="21" cy="6.5" r="2"/>',
+  '농작물·먹거리':'<ellipse cx="14" cy="17.5" rx="9.5" ry="7"/><path d="M14 10.5v14"/><path d="M9.6 11.4c-2 3.2-2 8.6 0 11.8"/><path d="M18.4 11.4c2 3.2 2 8.6 0 11.8"/><path d="M14 10.5c0-2.2 1.1-3.8 3.4-4.8"/>',
+  '생업 재료':'<path d="M5 25V6"/><path d="M23 25V6"/><path d="M3 8.5h22"/><path d="M9.5 8.5v2M14 8.5v2M18.5 8.5v2"/><rect x="7.8" y="10.5" width="3.4" height="9" rx="1.7"/><rect x="12.3" y="10.5" width="3.4" height="10.5" rx="1.7"/><rect x="16.8" y="10.5" width="3.4" height="9" rx="1.7"/>',
+  '기타':'<rect x="5" y="5" width="7.5" height="7.5" rx="1.5"/><rect x="15.5" y="5" width="7.5" height="7.5" rx="1.5"/><rect x="5" y="15.5" width="7.5" height="7.5" rx="1.5"/><rect x="15.5" y="15.5" width="7.5" height="7.5" rx="1.5"/>',
+  '기억 카드':'<path d="M6 6h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9l-4.5 4v-4H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/><path d="M8.5 10.5h11M8.5 14.5h7"/>'
+};
+/* 세부 분류: 분류마다 체크 하나 (records.subcat). 식물·꽃·열매 → «나물·약초», 바다 → «갯바위·해조류».
+   예전 분류 값 '나물·약초'는 식물·꽃·열매 + 나물·약초로 읽는다. 모인 기록(public-gallery)에서는 sub로 온다 */
+const OLD_HERB = '나물·약초';
+const subOf = r => !r ? '' : (r.subcat || r.sub || (r.category===OLD_HERB ? OLD_HERB : ''));
+const catOf = r => !r ? '' : (r.category===OLD_HERB ? '식물·꽃·열매' : r.category);
+const catText = r => catOf(r) + (subOf(r) ? ' · '+subOf(r) : '');
+const subDef = (cfg, cat) => ((cfg||{}).subcats||{})[cat] || null;
+const subBox = (id, sd, on) => `<label class="subchk"><input type="checkbox" id="${id}" ${on?'checked':''}><span><b>${h(sd.t)}</b><span class="xs muted">${h(sd.d)}</span></span></label>`;
+const catIcon = v => CAT_ICONS[v] ? `<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CAT_ICONS[v]}</svg>` : '';
 const RINGS = [
   {v:'바다', c:'var(--sea)', ex:'바닷물·갯바위·해조류'},
   {v:'숲', c:'var(--forest)', ex:'나물·약초·잎·이끼'},
@@ -625,9 +659,14 @@ function tfSVG(p){
   p.i.forEach((c,k)=>{ s+=wedge(12.5,19.3,22.5*k,22.5*(k+1),c); });
   return s+`<rect x="${cx-7}" y="${cy-27.6}" width="14" height="1.8" rx=".9" fill="#8C8C8C"/></svg>`;
 }
+/* 컬러카드(컬러랩제주 뚜띠콜로리 컬러카드 — 한 장에 한 색, 위에 색 이름, 아래에 tutti colori·색 번호)와 컬러칩 띠를 나란히 */
 function chipSVG(){
   const cs=['#C6DB91','#A9C769','#85AD4E','#698447'];
-  return `<svg viewBox="0 0 64 72" aria-hidden="true"><g transform="rotate(-8 32 38)"><rect x="19" y="6" width="26" height="62" rx="3" fill="#FFFFFF" stroke="#CFCAB8"/>${cs.map((c,i)=>`<rect x="22" y="${9+i*14}" width="20" height="12.5" fill="${c}"/>`).join('')}</g></svg>`;
+  return `<svg viewBox="0 0 64 72" aria-hidden="true">`
+    +`<g transform="rotate(-6 19 38)"><rect x="4" y="16" width="30" height="44" rx="3" fill="#E0752E"/>`
+    +`<rect x="7.5" y="20.5" width="17" height="2.2" rx="1.1" fill="#FFFFFF"/><rect x="7.5" y="24.6" width="13" height="2.2" rx="1.1" fill="#FFFFFF"/><rect x="7.5" y="28.8" width="11" height="1.4" rx=".7" fill="#FFFFFF" opacity=".85"/>`
+    +`<rect x="7.5" y="54.6" width="8" height="1.4" rx=".7" fill="#FFFFFF" opacity=".85"/><rect x="24" y="53.6" width="6.5" height="2.6" rx="1" fill="#FFFFFF"/></g>`
+    +`<g transform="rotate(7 49 38)"><rect x="39.5" y="8" width="19" height="58" rx="2.5" fill="#FFFFFF" stroke="#CFCAB8"/>${cs.map((c,i)=>`<rect x="42" y="${10.5+i*13.4}" width="14" height="12" fill="${c}"/>`).join('')}</g></svg>`;
 }
 function frameSVG(){
   /* 위쪽 정사각 창은 뚫린 자리: 바깥 틀에서 창을 빼고(evenodd) 테두리만 그린다 */
@@ -639,7 +678,7 @@ const TOOLS = {
   '바다':{g:'tf', t:'바다', name:'톤파인더 바다', ex:'바닷물·갯바위·해조류', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
   '숲':{g:'tf', t:'숲', name:'톤파인더 숲', ex:'나물·약초·잎·이끼', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
   '꽃':{g:'tf', t:'꽃', name:'톤파인더 꽃', ex:'꽃·열매·호박·먹거리', short:'톤파인더', tap:'톤파인더 가운데 구멍'},
-  '컬러칩':{g:'etc', t:'컬러카드·컬러칩', name:'컬러카드·컬러칩', ex:'색 견본 카드나 칩', short:'컬러칩', tap:'컬러칩 가운데'},
+  '컬러칩':{g:'etc', t:'컬러카드·컬러칩', name:'컬러카드·컬러칩', ex:'컬러랩제주 카드·견본 칩', short:'컬러칩', tap:'컬러칩 가운데'},
   '컬러프레임':{g:'etc', t:'컬러프레임', name:'컬러프레임', ex:'흰 틀 창에 대상을 담아', short:'컬러프레임', tap:'프레임의 흰 테두리',
     note:'컬러프레임은 흰 테두리로 그날 빛의 색(누렇거나 푸른 기운)을 맞춰요.'},
   '제주블루스':{name:'제주블루스 키링', short:'키링', tap:'키링 가운데'}
@@ -689,7 +728,9 @@ const ED = {
   ulleung:{slug:'ulleung', base:'', mode:'invite', name:'울릉 색채수집단', cats:CATS, rings:RINGS, center:[37.505,130.865], zoom:12,
     ringQ:'어떤 색 잣대를 대고 찍나요?', ringHint:'톤파인더·컬러칩·컬러프레임처럼 색을 미리 재 둔 도구를 «색 잣대»라고 불러요. 찍을 대상과 비슷한 색이 많은 것을 고르세요.',
     tools:[{g:'톤파인더', items:['기본','바다','숲','꽃']}, {g:'다른 색 잣대', items:['컬러칩','컬러프레임']}],
-    catHint:'나물과 식물이 겹치면 — 먹거나 약으로 쓰면 «나물·약초», 아니면 «식물·꽃·열매». 헷갈리면 아무거나 골라도 돼요. 확인할 때 함께 정리해요.',
+    catHint:'바다가 주인공이면 «바다», 산·들판·바위·절벽처럼 땅이 주인공이면 «풍경·지질».',
+    subcats:{'식물·꽃·열매':{v:'나물·약초', t:'나물·약초로도 써요', d:'먹거나 약으로 쓰는 풀·열매면 체크 — 따는 때와 먹는 법을 여쭤요'},
+             '바다':{v:'갯바위·해조류', t:'갯바위·해조류를 가까이 찍었어요', d:'체크하지 않으면 바다 풍경(물빛·파도)으로 남아요'}},
     placeLabel:'동네', wordsTitle:'울릉 이름과 이야기', nameQ:'울릉에서는 뭐라고 부르나요?', nameLabel:'울릉 이름', namePh:'예: 명이, 부지깽이',
     nameHint:'따로 부르는 이름이 없으면 보이는 대로 적어도 돼요. 예: 도동항 아침 바다',
     usage:true, usagePh:'예: 봄에 따서 장아찌로 담가요', storyPh:'언제 따서 어떻게 먹는지, 얽힌 기억 무엇이든 한두 문장이면 돼요',
@@ -699,8 +740,10 @@ const ED = {
       '농작물·먹거리':['어떻게 먹나요?','예: 늦가을 호박으로 엿을 고아요','언제 거두어 어떻게 먹는지, 얽힌 기억 무엇이든 한두 문장이면 돼요','먹는 법'],
       '생업 재료':['어디에 쓰나요?','예: 오징어를 덕장에 걸어 말려요','어떤 일에 어떻게 쓰는지, 얽힌 기억 무엇이든 한두 문장이면 돼요','쓰임'],
       '식물·꽃·열매':['언제 이 색을 볼 수 있나요?','예: 10월, 바닷가 바위틈에 피어요','어디서 자라는지, 얽힌 기억 무엇이든 한두 문장이면 돼요','보이는 때'],
+      '갯바위·해조류':['언제 이렇게 드러나나요?','예: 썰물 때 도동 갯바위에 드러나요','어디서 자라는지, 따거나 쓰는 법, 얽힌 기억 무엇이든 한두 문장이면 돼요','보이는 때'],
+      '풍경·지질':['어디서 바라본 풍경인가요?','예: 망향봉 전망대에서 도동항 쪽으로','이곳 이름의 유래, 바위나 땅이 생긴 이야기, 얽힌 기억 무엇이든 한두 문장이면 돼요','바라본 곳'],
       '바다':['언제 이런 색이 되나요?','예: 바람 잔 아침, 물이 맑을 때','그날의 바다, 이곳 이름의 유래, 얽힌 기억 무엇이든 한두 문장이면 돼요','보이는 때'],
-      '기타':['언제 이 색이 가장 잘 보이나요?','예: 해 질 녘 절벽이 붉게 물들 때','이곳 이름의 유래나 얽힌 기억, 무엇이든 한두 문장이면 돼요','보이는 때']
+      '기타':['언제 이 색이 가장 잘 보이나요?','예: 비 온 뒤 지붕 색이 짙어질 때','이곳 이름의 유래나 얽힌 기억, 무엇이든 한두 문장이면 돼요','보이는 때']
     },
     conditions:true,
     taps:true,  /* 사진①에서 키링·대상 짚기 (키링 원본 자르기, 색 추출 영역) */
@@ -1940,11 +1983,11 @@ function openRecord(r){
       ${ps.length?`<div class="rv-ph"><div class="swipe" data-swipe>${ps.map(fig).join('')}</div>
         ${ps.length>1?`<div class="swnav"><button class="btn light" data-sw="-1" aria-label="이전 사진">‹</button><span class="small muted" data-swn>1 / ${ps.length} · 옆으로 넘겨 보세요</span><button class="btn light" data-sw="1" aria-label="다음 사진">›</button></div>`:''}</div>`:''}
       <div class="rv-tx">
-        <div class="stack" style="gap:6px"><p class="eyebrow">${h(r.category)}${r.keyring?' · '+h(toolName(r.keyring)):''}</p><h2 class="h2">${h(r.name)}</h2>
+        <div class="stack" style="gap:6px"><p class="eyebrow">${h(catText(r))}${r.keyring?' · '+h(toolName(r.keyring)):''}</p><h2 class="h2">${h(r.name)}</h2>
           ${r.status&&r.status!=='approved'?`<p class="small">${tag(r.status)} <span class="muted">컬러랩제주가 아직 확인하지 않은 기록이에요.</span></p>`:''}</div>
         ${col&&col.colors.length?`<div class="rv-col">${colorBlock(col)}${roi?'<p class="xs muted">사진 위 점선이 색을 뽑은 곳이에요.</p>':''}</div>`:''}
         <div class="stack" style="gap:6px">
-          ${r.usage?`<p><b>${h(usageQ(CUR, r.category).label)}</b> ${h(r.usage)}</p>`:''}
+          ${r.usage?`<p><b>${h(usageQ(CUR, r.category, subOf(r)).label)}</b> ${h(r.usage)}</p>`:''}
           ${r.story?`<p style="white-space:pre-wrap">${h(r.story)}</p>`:''}
           ${(r.tod||r.time_note)?`<p><b>찍은 때</b> ${h([r.tod, r.time_note].filter(Boolean).join(' · '))}</p>`:''}
           <p class="small muted">${[r.area, r.by?`기록 ${r.by}`:'', fmt(r.at)].filter(Boolean).map(h).join(' · ')}</p></div>
@@ -2173,7 +2216,7 @@ function vRecord(id){
     ${r.status==='held'?`<div class="notice">보완 요청: ${h(r.review_memo||'')} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
     ${r.is_memory?'<p class="tag">기억 카드</p>':(r.photo1_path&&r.photo2_path?`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div><div class="shot" data-ph="photo2_path"><span class="badge">② 키링 없이</span></div></div>`:r.photo1_path?`<div class="shot" data-ph="photo1_path"><span class="badge">① 키링과 함께</span></div>`:`<div class="shot" data-ph="photo2_path"><span class="badge">사진</span></div>`)}
     ${colorBlock(r.colors)}
-    <dl><dt>분류</dt><dd>${h(r.category)}</dd><dt>${CUR.tools?TOOL_WORD:'키링'}</dt><dd>${h(toolName(r.keyring)||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${h([r.taken_src==='unknown'?'시각 모름':timeUnsure(r)&&CUR.conditions?'':(fmtWhen(r.taken_src?r.taken_at:(r.photo1_taken_at||r.taken_at||r.created_at))), whenLine(r), r.weather].filter(Boolean).join(' · ')||'—')}${timeUnsure(r)&&CUR.conditions&&canEditFields(r)?' <span class="xs muted">사진에 찍은 시각이 없어요. «고치기»에서 알려 주세요.</span>':''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
+    <dl><dt>분류</dt><dd>${h(catText(r))}</dd><dt>${CUR.tools?TOOL_WORD:'키링'}</dt><dd>${h(toolName(r.keyring)||'없음')}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(r.area||r.place_name||'—')}</dd>${(CUR.usage||r.usage)?`<dt>${h(usageQ(CUR,r.category).label)}</dt><dd>${h(r.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(r.story||'—')}</dd><dt>찍은 때</dt><dd>${h([r.taken_src==='unknown'?'시각 모름':timeUnsure(r)&&CUR.conditions?'':(fmtWhen(r.taken_src?r.taken_at:(r.photo1_taken_at||r.taken_at||r.created_at))), whenLine(r), r.weather].filter(Boolean).join(' · ')||'—')}${timeUnsure(r)&&CUR.conditions&&canEditFields(r)?' <span class="xs muted">사진에 찍은 시각이 없어요. «고치기»에서 알려 주세요.</span>':''}</dd>${r.text_edited_at?`<dt>글 고친 때</dt><dd>${fmt(r.text_edited_at)}</dd>`:''}</dl>
     ${canEditText(r)?(S.textEdit===r.id?vTextForm(r):`<button class="btn light block" id="tedit">✎ ${canEditFields(r)?'고치기 (이름·분류·동네·이야기)':CUR.usage?'이름·쓰임·이야기 고치기':'색 이름·이야기 고치기'}</button>`):''}
     <label class="check"><input type="checkbox" id="share" ${r.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.mode==='invite'?'끄면 이 기록은 나와 컬러랩제주만 봐요.':'끄면 이 기록은 공개하지 않아요.'}</span></span></label>
     ${r.photo2_path&&canEditText(r)?`<button class="btn light block" id="recrop">사진 맞추기 (② 사진의 틀 다시 잡기)</button>`:''}
@@ -2185,7 +2228,7 @@ const canEditText = r => r && r.status!=='rejected' && r.status!=='held';
 /* 확인 중·인정 기록: 현장에서 빨리 올리고 나중에 컴퓨터로 분류·동네·찍은 때·날씨까지 고친다 (울릉) */
 const canEditFields = r => canEditText(r) && CUR.conditions && !r.is_memory;
 function teditState(r){
-  if(!S.tedit || S.tedit.id!==r.id){ const known=S.places.some(p=>p.name===r.area); S.tedit={id:r.id, cat:r.category, area:r.area||'', areaOther:!!r.area&&!known, when:whenFrom(r), wx:r.weather||''}; }
+  if(!S.tedit || S.tedit.id!==r.id){ const known=S.places.some(p=>p.name===r.area); S.tedit={id:r.id, cat:catOf(r), sub:subOf(r), area:r.area||'', areaOther:!!r.area&&!known, when:whenFrom(r), wx:r.weather||''}; }
   return S.tedit;
 }
 function vEditFields(r){
@@ -2193,7 +2236,7 @@ function vEditFields(r){
   const cats=CUR.cats.map(c=>c.v).filter(v=>v!=='기억 카드');
   const other=t.areaOther || (!!t.area && !S.places.some(p=>p.name===t.area));
   return `<div class="field"><label for="ecat">분류</label><select id="ecat" class="input">${cats.map(v=>`<option value="${h(v)}" ${v===t.cat?'selected':''}>${h(v)}</option>`).join('')}</select>
-      ${CUR.catHint?`<span class="hint">${h(CUR.catHint)}</span>`:''}</div>
+      ${subDef(CUR,t.cat)?subBox('esub', subDef(CUR,t.cat), !!t.sub):CUR.catHint?`<span class="hint">${h(CUR.catHint)}</span>`:''}</div>
     <div class="field"><label for="earea">${h(CUR.placeLabel)}</label><select id="earea" class="input">${S.places.map(p=>`<option value="${h(p.name)}" ${!other&&t.area===p.name?'selected':''}>${h(p.name)}</option>`).join('')}<option value="${OTHER_AREA}" ${other?'selected':''}>기타 (직접 적기)</option></select>
       ${other?`<input id="eareatxt" class="input" maxlength="30" style="margin-top:8px" value="${h(t.area)}" placeholder="예: 내수전 약수터" aria-label="어디인가요?">`:''}</div>
     ${vWhen(t.when, r.lat, r.lng)}
@@ -2206,7 +2249,7 @@ function vTextForm(r){
     ${canEditFields(r)?'<p class="small muted">현장에서는 빨리 올리고, 글과 분류는 컴퓨터로 차분히 고쳐도 돼요.</p>':''}
     <div class="field"><label for="ln2">${h(CUR.nameLabel)} <span style="color:var(--bad-ink)">*</span></label><input id="ln2" class="input" maxlength="40" value="${h(t&&t.ln!=null?t.ln:(r.local_name||r.color_name||''))}"></div>
     ${canEditFields(r)?vEditFields(r):''}
-    ${CUR.usage&&!r.is_memory?`<div class="field"><label for="us2" id="us2label">${h(usageQ(CUR,qcat).q)}</label><input id="us2" class="input" maxlength="500" value="${h(t&&t.us!=null?t.us:(r.usage||''))}" placeholder="${h(usageQ(CUR,qcat).ph)}"></div>`:''}
+    ${CUR.usage&&!r.is_memory?`<div class="field"><label for="us2" id="us2label">${h(usageQ(CUR, qcat, t?t.sub:subOf(r)).q)}</label><input id="us2" class="input" maxlength="500" value="${h(t&&t.us!=null?t.us:(r.usage||''))}" placeholder="${h(usageQ(CUR,qcat).ph)}"></div>`:''}
     <div class="field"><label for="sto2">들려줄 이야기 ${r.is_memory?'<span style="color:var(--bad-ink)">*</span>':''}</label><textarea id="sto2" class="input" maxlength="1000">${h(t&&t.st!=null?t.st:(r.story||''))}</textarea>
       <span class="hint">🎤 키보드의 마이크 버튼을 누르고 말하면 글로 바뀌어요.</span></div>
     ${r.status==='approved'?'<p class="xs muted">이미 인정된 기록이에요. 고친 내용은 공개 기록에 바로 반영되고, 컬러랩제주가 한 번 더 살펴봐요.</p>':''}
@@ -2222,6 +2265,7 @@ async function saveText(id){
   const upd={local_name:ln, color_name:ln.slice(0,30), usage:us, story:st};
   if(canEditFields(r) && S.tedit && S.tedit.id===id){
     const t=S.tedit; if(!t.area){ toast(CUR.placeLabel+'을 적어 주세요'); return; }
+    if(CUR.subcats) upd.subcat = subDef(CUR,t.cat) && t.sub ? subDef(CUR,t.cat).v : '';
     Object.assign(upd, {category:t.cat, area:t.area, place_id:(S.places.find(p=>p.name===t.area)||{}).id||'', weather:t.wx||'', time_note:(t.when.note||'').trim().slice(0,40)||null});
     /* 찍은 시각은 손댔을 때만 보낸다 — 예전 기록의 저장값을 그대로 두기 위해 */
     const w=t.when;
@@ -2231,7 +2275,7 @@ async function saveText(id){
     }
   }
   const {data, error}=await sb.from('records').update(upd).eq('id', id).select().single();
-  const same = data && data.local_name===ln && (data.story||'')===st && (data.usage||'')===us && (!upd.category || (data.category===upd.category && data.area===upd.area && (upd.light===undefined || (data.light||'')===upd.light) && (data.weather||'')===upd.weather && (data.time_note||null)===upd.time_note));
+  const same = data && data.local_name===ln && (data.story||'')===st && (data.usage||'')===us && (upd.subcat===undefined || (data.subcat||'')===upd.subcat) && (!upd.category || (data.category===upd.category && data.area===upd.area && (upd.light===undefined || (data.light||'')===upd.light) && (data.weather||'')===upd.weather && (data.time_note||null)===upd.time_note));
   if(error || !same){
     b.disabled=false; b.textContent='저장하기'; toast('저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'); return;
   }
@@ -2250,7 +2294,8 @@ document.addEventListener('click', e=>{
 function keepTextAndRender(){ if(S.tedit){ ['ln','us','st'].forEach(k=>{ const el=$('#'+(k==='ln'?'ln2':k==='us'?'us2':'sto2')); if(el) S.tedit[k]=el.value; }); } render(); }
 document.addEventListener('change', e=>{
   if(!S.tedit || !sub().startsWith('rec/')) return;
-  if(e.target.id==='ecat'){ S.tedit.cat=e.target.value; keepTextAndRender(); }
+  if(e.target.id==='ecat'){ S.tedit.cat=e.target.value; S.tedit.sub=''; keepTextAndRender(); }
+  if(e.target.id==='esub'){ const sd=subDef(CUR,S.tedit.cat); S.tedit.sub=e.target.checked&&sd?sd.v:''; keepTextAndRender(); }
   if(e.target.id==='earea'){ const v=e.target.value; if(v===OTHER_AREA){ S.tedit.areaOther=true; S.tedit.area=''; } else { S.tedit.areaOther=false; S.tedit.area=v; } keepTextAndRender(); }
 });
 document.addEventListener('input', e=>{ if(S.tedit && e.target.id==='eareatxt') S.tedit.area=e.target.value.trim().slice(0,30); });
@@ -2265,8 +2310,9 @@ document.addEventListener('change', async e=>{
 
 /* ---------- 기록 남기기 ---------- */
 /* 분류별 두 번째 질문 (설정이 없으면 «어디에 쓰나요?») */
-function usageQ(cfg, cat){
-  const u=((cfg||{}).usageBy||{})[cat];
+function usageQ(cfg, cat, sub){
+  const ub=(cfg||{}).usageBy||{}, key = sub && ub[sub] ? sub : cat===OLD_HERB ? OLD_HERB : cat;
+  const u=ub[key];
   return u ? {q:u[0], ph:u[1], story:u[2], label:u[3]} : {q:'어디에 쓰나요?', ph:(cfg||{}).usagePh||'', story:(cfg||{}).storyPh||'', label:'쓰임'};
 }
 /* 찍은 때(시간대)와 날씨 — 색은 빛에 따라 달라지므로 함께 남긴다. 시간대는 light 칸, 날씨는 weather 칸에 저장 */
@@ -2377,8 +2423,8 @@ const OTHER_AREA='__other';
 /* ① 단계를 넘어가려면: 새 사진이면 키링·대상을 모두 짚어야 하고, 고치기에서 예전 사진을 그대로 두면 바로 넘어간다 */
 const p1Ready = d => d.p1 ? (!CUR.taps || !!(d.p1.kxy && d.p1.txy)) : !!d.oldP1;
 const areaIsOther = d => !!d.areaOther || (!!d.area && !S.places.some(p=>p.name===d.area));
-function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', areaOther:false, local_name:'', usage:'', story:'', when:newWhen(), weather:'', share:true, chip:'', noMatch:false, error:''}; }
-function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:r.category, keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', when:whenFrom(r), weather:r.weather||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], chip:r.chip_code||'', noMatch:!!r.no_match, error:''}; }
+function newDraft(){ return {ed:CUR.slug, id:crypto.randomUUID(), mode:'new', step:1, category:'', sub:'', keyring:CUR.keyring||'', p1:null, p2:null, lat:null, lng:null, acc:null, locMethod:'', area:'', areaOther:false, local_name:'', usage:'', story:'', when:newWhen(), weather:'', share:true, chip:'', noMatch:false, error:''}; }
+function draftFrom(r){ return {ed:CUR.slug, id:r.id, mode:'edit', step:1, category:catOf(r), sub:subOf(r), keyring:r.keyring||(CUR.mode==='public'&&!r.photo1_path&&!r.is_memory?'없음':''), p1:null, p2:null, oldP1:r.photo1_path, oldP2:r.photo2_path, lat:r.lat, lng:r.lng, acc:r.gps_accuracy_m, locMethod:r.loc_method, area:r.area||r.place_name||'', local_name:r.local_name||r.color_name||'', usage:r.usage||'', story:r.story||'', when:whenFrom(r), weather:r.weather||'', share:r.share, memo:r.review_memo, reasons:r.review_reasons||[], chip:r.chip_code||'', noMatch:!!r.no_match, error:''}; }
 const isMemory = d => d.category==='기억 카드';
 const noRing = d => d.keyring==='없음';
 function steps(d){ if(CUR.chips) return ['what','p1','p2','chip','where','words','check']; return isMemory(d) ? ['what','where','words','check'] : noRing(d) ? ['what','ring','p2','where','words','check'] : ['what','ring','p1','p2','where','words','check']; }
@@ -2390,7 +2436,14 @@ function vDraft(){
     ${d.mode==='edit'?`<div class="notice small"><b>보완 요청</b> ${h(d.memo||'')} ${h((d.reasons||[]).join(', '))}</div>`:''}`;
   let body='', foot='';
   if(k==='what'){
-    body=`<h1 class="h2">무엇을 기록하나요?</h1>${CUR.catHint?`<p class="small muted">${h(CUR.catHint)}</p>`:''}<div class="stack">${CUR.cats.map(x=>`<button class="choice" data-cat="${h(x.v)}" aria-pressed="${d.category===x.v}"><b>${h(x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`;
+    const tiles = CUR.cats.every(x=>x.s);
+    body=`<h1 class="h2">무엇을 기록하나요?</h1>${CUR.catHint?`<p class="small muted">${h(CUR.catHint)}</p>`:''}`
+      + (tiles
+        /* 한눈에 보이게: 사진으로 찍는 분류는 3열 정사각 타일, 기억 카드(사진 없음)는 아래에 얇게 따로 */
+        ? `<div class="cats">${CUR.cats.filter(x=>x.v!=='기억 카드').map(x=>`<button class="cat" data-cat="${h(x.v)}" aria-pressed="${d.category===x.v}" aria-label="${h(x.v)} — ${h(x.ex)}">${catIcon(x.v)}<b>${h(x.v)}</b><span>${h(x.s)}</span></button>`).join('')}</div>`
+          + (subDef(CUR,d.category) ? subBox('sub', subDef(CUR,d.category), !!d.sub) : '')
+          + CUR.cats.filter(x=>x.v==='기억 카드').map(x=>`<button class="cat wide" data-cat="${h(x.v)}" aria-pressed="${d.category===x.v}" aria-label="${h(x.v)} — ${h(x.ex)}">${catIcon(x.v)}<b>${h(x.v)}</b><span>${h(x.s)}</span></button>`).join('')
+        : `<div class="stack">${CUR.cats.map(x=>`<button class="choice" data-cat="${h(x.v)}" aria-pressed="${d.category===x.v}"><b>${h(x.v)}</b><span>${h(x.ex)}</span></button>`).join('')}</div>`);
     foot=`<button class="btn main block" id="next" ${d.category?'':'disabled'}>다음</button>`;
   } else if(k==='ring'){
     body=`<h1 class="h2">${h(CUR.ringQ)}</h1><p class="muted small">${h(CUR.ringHint)}</p>`
@@ -2481,7 +2534,7 @@ function vDraft(){
       <p class="xs muted">지도를 눌러 핀을 옮길 수 있어요. 인터넷이 약해 지도가 안 보이면 ${h(CUR.placeLabel)}만 골라도 됩니다.</p></div>`;
     foot=`<button class="btn main block" id="next" ${whereOk(d)?'':'disabled'}>다음</button>`;
   } else if(k==='words'){
-    const uq=usageQ(CUR, d.category);
+    const uq=usageQ(CUR, d.category, d.sub);
     body=`<h1 class="h2">${h(CUR.wordsTitle)}</h1>
       <div class="field"><label for="ln">${h(CUR.nameQ)} <span style="color:var(--bad-ink)">*</span></label><input id="ln" class="input" maxlength="40" value="${h(d.local_name)}" placeholder="${h(CUR.namePh)}">${CUR.nameHint?`<span class="hint">${h(CUR.nameHint)}</span>`:''}</div>
       ${CUR.usage&&!isMemory(d)?`<div class="field"><label for="us">${h(uq.q)}</label><input id="us" class="input" maxlength="500" value="${h(d.usage)}" placeholder="${h(uq.ph)}"></div>`:''}
@@ -2491,7 +2544,7 @@ function vDraft(){
   } else if(k==='check'){
     body=`<h1 class="h2">이렇게 올릴게요</h1>
       ${isMemory(d)?'':noRing(d)?`<div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}</div>`:`<div class="rings" style="grid-template-columns:1fr 1fr"><div class="shot">${d.p1?`<img src="${h(d.p1.url)}" alt="">`:'<span class="small muted">이전 사진</span>'}<span class="badge">①</span></div><div class="shot">${d.p2?`<img src="${h(d.p2.url)}" alt="">`:`<span class="small muted">${d.oldP2?'이전 사진':'건너뜀'}</span>`}<span class="badge">②</span></div></div>`}
-      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}</dd>${!isMemory(d)?`<dt>${CUR.tools?TOOL_WORD:'키링'}</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':toolName(d.keyring))}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd>${CUR.conditions&&!isMemory(d)?`<dt>찍은 때</dt><dd>${h([d.when.src==='unknown'?'시각 모름':whenOut(d.when,d.lat,d.lng), d.when.note, d.weather].filter(Boolean).join(' · ')||'—')}</dd>`:''}<dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage&&!isMemory(d)?`<dt>${h(usageQ(CUR,d.category).label)}</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
+      <div class="card"><dl><dt>분류</dt><dd>${h(d.category)}${d.sub?' · '+h(d.sub):''}</dd>${!isMemory(d)?`<dt>${CUR.tools?TOOL_WORD:'키링'}</dt><dd>${h(noRing(d)?'없음 (사진 한 장)':toolName(d.keyring))}</dd>`:''}${CUR.chips&&!d.p2&&!d.oldP2?`<dt>② 사진</dt><dd>건너뜀</dd>`:''}${CUR.chips?`<dt>고른 칸</dt><dd>${chipLabel(CUR.tool, d.chip, d.noMatch)}</dd>`:''}<dt>${h(CUR.placeLabel)}</dt><dd>${h(d.area)}${d.lat?' · 지도 위치 있음':''}</dd>${CUR.conditions&&!isMemory(d)?`<dt>찍은 때</dt><dd>${h([d.when.src==='unknown'?'시각 모름':whenOut(d.when,d.lat,d.lng), d.when.note, d.weather].filter(Boolean).join(' · ')||'—')}</dd>`:''}<dt>${h(CUR.nameLabel)}</dt><dd>${h(d.local_name)}</dd>${CUR.usage&&!isMemory(d)?`<dt>${h(usageQ(CUR,d.category).label)}</dt><dd>${h(d.usage||'—')}</dd>`:''}<dt>이야기</dt><dd>${h(d.story||'—')}</dd></dl></div>
       <label class="check"><input type="checkbox" id="dshare" ${d.share?'checked':''}><span><b>${CUR.mode==='invite'?'수집단과 함께 보고, 골라서 도감·지도에 실어도 좋아요':'도감·지도에 실어도 좋아요'}</b><br><span class="small muted">${CUR.usage?'정확한 위치는 흐리게 표시해요.':'공개 지도에는 약 100m 단위로 흐리게 표시해요.'}</span></span></label>
       ${d.error?`<div class="err">${h(d.error)}</div>`:''}`;
     foot=`<button class="btn main block" id="submit" ${S.busy?'disabled':''}>${S.busy?`<span class="spinner"></span> 올리는 중…${(d.p1||d.p2)?' ('+mb((d.p1?d.p1.sent:0)+(d.p2?d.p2.sent:0))+')':''}`:(d.mode==='edit'?'고쳐서 다시 내기':'제출하기')}</button>`;
@@ -2510,7 +2563,8 @@ let pickTarget=1, mapObj=null, marker=null;
 function bindDraft(){
   const d=S.draft; const st=steps(d); const k=st[d.step-1];
   $('#back').onclick=()=>{ if(d.step>1){ d.step--; render(); } else { if(confirm('이 기록을 그만둘까요? 입력한 내용은 사라져요.')){ S.draft=null; go(''); } } };
-  document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ d.category=b.dataset.cat; render(); });
+  document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ if(b.dataset.cat!==d.category){ d.category=b.dataset.cat; d.sub=''; } render(); });
+  const sbx=$('#sub'); if(sbx) sbx.onchange=()=>{ const sd=subDef(CUR,d.category); d.sub=sbx.checked&&sd?sd.v:''; };
   document.querySelectorAll('[data-ring]').forEach(b=>b.onclick=()=>{ d.keyring=b.dataset.ring; if(noRing(d)) d.p1=null; render(); });
   document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ pickTarget=+b.dataset.pick; (b.dataset.cap==='1'?$('#fcam'):$('#fgal')).click(); });
   ['#fcam','#fgal'].forEach(s=>{ const inp=$(s); inp.onchange=async ()=>{
@@ -2610,7 +2664,7 @@ async function submitDraft(){
   const d=S.draft; S.busy=true; d.error=''; render();
   const placeId=(S.places.find(p=>p.name===d.area)||{}).id||'';
   const row={
-    edition:CUR.slug, category:d.category, keyring:(isMemory(d)||noRing(d))?'':d.keyring, is_memory:isMemory(d),
+    edition:CUR.slug, category:d.category, ...(CUR.subcats?{subcat:subDef(CUR,d.category)&&d.sub?d.sub:''}:{}), keyring:(isMemory(d)||noRing(d))?'':d.keyring, is_memory:isMemory(d),
     local_name:d.local_name.trim(), color_name:(d.local_name.trim()||d.category).slice(0,30), usage:d.usage.trim(), story:d.story.trim(),
     area:d.area, place_id:placeId, place_name:d.area,
     lat:d.lat, lng:d.lng, gps_accuracy_m:d.acc, loc_method:d.locMethod||'none',
@@ -2821,7 +2875,9 @@ function admCatField(r){
   const cats=(ED[A_ED()].cats||[]).map(c=>c.v).filter(v=>v!=='기억 카드');
   if(r.is_memory || !cats.length) return h(r.category);
   const list=cats.includes(r.category)?cats:[r.category, ...cats];
-  return `<select id="acat" class="input" style="min-height:36px;padding:4px 8px;width:auto" aria-label="분류 바꾸기">${list.map(v=>`<option value="${h(v)}" ${v===r.category?'selected':''}>${h(v)}</option>`).join('')}</select>`;
+  const sd=subDef(ED[A_ED()], catOf(r));
+  return `<select id="acat" class="input" style="min-height:36px;padding:4px 8px;width:auto" aria-label="분류 바꾸기">${list.map(v=>`<option value="${h(v)}" ${v===r.category?'selected':''}>${h(v)}</option>`).join('')}</select>`
+    + (sd ? ` <label class="small" style="white-space:nowrap"><input type="checkbox" id="asub" ${subOf(r)?'checked':''}> ${h(sd.v)}</label>` : '');
 }
 const A_ED = () => S.adm.ed;
 function admDetail(r){
@@ -2833,7 +2889,7 @@ function admDetail(r){
     ${r.is_memory?'<p><span class="tag">기억 카드 — 사진 없음</span></p>':`<div class="pics"><figure><div class="ph" data-big="${h(r.photo1_path||'')}">${r.photo1_path?'불러오는 중':'키링 사진 없음'}</div><figcaption class="xs muted">① 색 잣대와 함께 · ${h(toolName(r.keyring)||'색 잣대 없음')} · ${fmt(r.photo1_taken_at)}</figcaption></figure><figure><div class="ph" data-big="${h(r.photo2_path||'')}">${r.photo2_path?'불러오는 중':'없음'}</div><figcaption class="xs muted">② 키링 없이 · ${fmt(r.photo2_taken_at)}</figcaption></figure></div>`}
     ${gap!=null&&gap>GAP_WARN_MIN?`<div class="notice small">두 사진 촬영 간격 ${gap}분</div>`:''}
     <dl><dt>분류</dt><dd>${admCatField(r)}</dd>${r.tool?`<dt>고른 칸</dt><dd>${chipLabel(r.tool, r.chip_code, r.no_match, r.chip_hex)}</dd>`:''}<dt>${h(ED[A.ed].placeLabel)}</dt><dd>${h(r.area||'—')}${r.lat?` · <a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}" target="_blank" rel="noopener">지도</a> (${h(r.loc_method)})`:' · 좌표 없음'}</dd>
-      <dt>찍은 때</dt><dd>${admWhen(r)}</dd><dt>${h(usageQ(ED[A.ed], r.category).label)}</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
+      <dt>찍은 때</dt><dd>${admWhen(r)}</dd><dt>${h(usageQ(ED[A.ed], r.category, subOf(r)).label)}</dt><dd>${h(r.usage||'—')}</dd><dt>이야기</dt><dd style="white-space:pre-wrap">${h(r.story||'—')}</dd>
       <dt>색</dt><dd>${okColors(r.colors)?`${colorBand(r.colors, 18)}<span class="xs muted">${okColors(r.colors).colors.map(x=>h(x.hex)).join(' · ')} · ${r.colors.calibrated?'보정됨':'보정 전'}${r.colors.at==='center'?' · 사진 가운데 기준':''}</span>`:'없음'}${needsFill(r)?` <button class="btn light" id="fillone" style="min-height:34px;padding:2px 10px;font-size:13px">미리보기·색 채우기</button>`:''}${r.photo2_path?` <button class="btn light" id="admcrop" style="min-height:34px;padding:2px 10px;font-size:13px">사진 맞추기</button>`:''}${(r.photo1_path||r.photo2_path)?` <button class="btn light" id="repick" style="min-height:34px;padding:2px 10px;font-size:13px">색 다시 짚기</button>`:''}${r.colors&&r.colors.prev?` <span class="xs muted">· 운영진이 다시 짚음 ${fmt(r.colors.prev.at)}</span>`:''}</dd>
       <dt>기기</dt><dd class="small">${h([ex.Make,ex.Model].filter(Boolean).join(' ')||'—')}</dd><dt>공개</dt><dd>${r.share?'동의':'비공개'}</dd></dl>
     ${r.review_memo?`<div class="small muted">이전 검수 메모: ${h(r.review_memo)} ${h((r.review_reasons||[]).join(', '))}</div>`:''}
@@ -2854,11 +2910,18 @@ function bindDetail(r){
   $('#memo').oninput=e=>{ A.memo=e.target.value; };
   const ac=$('#acat'); if(ac) ac.onchange=async e=>{
     const v=e.target.value, prev=r.category; ac.disabled=true;
-    const {error}=await sb.from('records').update({category:v}).eq('id', r.id);
+    const {error}=await sb.from('records').update({category:v, subcat:''}).eq('id', r.id);
     ac.disabled=false;
     if(error){ toast('분류를 바꾸지 못했어요: '+error.message); ac.value=prev; return; }
-    r.category=v; const it=A.list.find(x=>x.id===r.id); if(it) it.category=v;
+    r.category=v; r.subcat=''; const it=A.list.find(x=>x.id===r.id); if(it){ it.category=v; it.subcat=''; }
     toast('분류를 «'+v+'»(으)로 바꿨어요');
+  };
+  const as=$('#asub'); if(as) as.onchange=async ()=>{
+    const sd=subDef(ED[A_ED()], catOf(r)), v=as.checked?sd.v:'', upd={subcat:v}; if(r.category===OLD_HERB) upd.category=catOf(r);   /* 예전 값은 이참에 합친 분류로 */
+    as.disabled=true; const {error}=await sb.from('records').update(upd).eq('id', r.id); as.disabled=false;
+    if(error){ toast('바꾸지 못했어요: '+error.message); as.checked=!as.checked; return; }
+    Object.assign(r, upd); const it=A.list.find(x=>x.id===r.id); if(it) Object.assign(it, upd);
+    toast(v?'«'+sd.v+'»로 표시했어요':'«'+sd.v+'» 표시를 뺐어요'); render();
   };
   const rp=$('#repick'); if(rp) rp.onclick=()=>openRepick(r);
   const acp=$('#admcrop'); if(acp) acp.onclick=async ()=>{ acp.disabled=true; const ok=await refitRecord(r); if(ok){ delete S.adm.urls[r.photo2_preview]; admReview(); } else acp.disabled=false; };
