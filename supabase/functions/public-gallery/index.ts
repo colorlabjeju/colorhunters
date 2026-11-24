@@ -116,7 +116,7 @@ Deno.serve(async (req: Request) => {
 
   let q = scoped(sb
     .from("records")
-    .select("id,author,status,category,subcat,local_name,color_name,usage,story,keyring,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy,photo2_crop,light,taken_at,taken_src,time_note,d1:exif1->>DateTimeOriginal,d2:exif2->>DateTimeOriginal"));
+    .select("id,author,status,category,subcat,local_name,color_name,usage,story,keyring,tool_note,area,is_memory,photo1_path,photo2_path,photo1_preview,photo2_preview,created_at,lat,lng,colors,target_xy,photo2_crop,light,taken_at,taken_src,time_note,d1:exif1->>DateTimeOriginal,d2:exif2->>DateTimeOriginal"));
   if (category) q = q.eq("category", category);
   const { data, error } = await q.order("created_at", { ascending: false }).order("id").range(offset, offset + limit - 1);
   if (error) return json({ error: "load failed" }, 500);
@@ -169,6 +169,8 @@ Deno.serve(async (req: Request) => {
       usage: r.usage,
       story: r.story,
       keyring: r.keyring,
+      // «기타» 색 잣대일 때만 주민이 적은 도구 이름
+      ...(r.keyring === "기타" && r.tool_note ? { tool_note: String(r.tool_note).slice(0, 30) } : {}),
       area: r.area,
       is_memory: r.is_memory,
       photo: ph[0]?.url ?? null,
